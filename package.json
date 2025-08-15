@@ -1,3 +1,4 @@
+
 {
   "name": "froggyhub",
   "private": true,
@@ -6,7 +7,7 @@
     "dev": "netlify dev",
     "serve:functions": "netlify functions:serve",
     "test": "npm run test:syntax && node tools/smoke.mjs",
-    "test:syntax": "node --check FroggyHub/app.js && node --check api/join-by-code.js && node --check api/event-by-code.js"
+    "test:syntax": "node --check FroggyHub/app.js && node --check api/join-by-code.js && node --check api/event-by-code.js && node --check FroggyHub/event-analytics.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.42.5"

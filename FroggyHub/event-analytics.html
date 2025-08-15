@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Аналитика события</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container" role="main">
+    <div class="card" id="eventHead">
+      <div class="hero">
+        <div class="hero-text">
+          <h1 id="eventTitle">Событие</h1>
+          <div class="chips">
+            <span class="chip" id="eventDate">—</span>
+            <span class="chip" id="eventTime">—</span>
+            <span class="chip" id="eventAddr">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="bar-actions">
+        <button class="btn ghost small" id="backBtn" aria-label="Назад в меню">Назад</button>
+        <button class="btn small" id="editEventBtn" aria-label="Редактировать событие">Редактировать событие</button>
+      </div>
+    </div>
+
+    <section class="card" id="visitorsBlock" aria-labelledby="visitorsTitle">
+      <h2 id="visitorsTitle">Посетители</h2>
+      <ul id="visitorsList" class="ea-list" role="list" aria-describedby="visitorsHint"></ul>
+      <p id="visitorsHint" class="hint">Сортировка по статусу участия</p>
+    </section>
+
+    <section class="card" id="wishlistBlock" aria-labelledby="wishlistTitle">
+      <h2 id="wishlistTitle">Wishlist</h2>
+      <ul id="wishlistList" class="wl-list" role="list"></ul>
+    </section>
+
+    <p id="error" class="error" role="status" aria-live="polite"></p>
+  </main>
+  <script type="module" src="event-analytics.js"></script>
+</body>
+</html>
