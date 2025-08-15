@@ -1,36 +1,49 @@
-import { Pool } from 'pg';
-import { json, getUserFromAuth, clientIp, isRateLimited } from './_utils.js';
+import { createClient } from '@supabase/supabase-js';
 
-const pool = new Pool({ connectionString: process.env.SUPABASE_DB_URL, ssl:{rejectUnauthorized:false} });
+export async function handler(event) {
+  try {
+    if (event.httpMethod !== 'GET') {
+      return { statusCode: 405, body: 'Method Not Allowed' };
+    }
+    const code = event.queryStringParameters.code;
+    const userId = event.queryStringParameters.userId;
+    if (!code || !userId) {
+      return { statusCode: 400, body: 'code and userId required' };
+    }
 
-export async function handler(event){
-  try{
-    if (event.httpMethod !== 'GET') return json(405,{error:'Method Not Allowed'});
-    const code = (event.queryStringParameters?.code || '').trim();
-    if(!/^\d{6}$/.test(code)) return json(400,{error:'Invalid code format'});
+    const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const ip = clientIp(event);
-    const client = await pool.connect();
-    try{
-      if (await isRateLimited(client, `evcode:${ip}`, 600, 60))
-        return json(429, { error:'Too Many Requests' });
+    const { data: eventRow } = await client
+      .from('events')
+      .select('*')
+      .eq('code', code)
+      .single();
+    if (!eventRow) return { statusCode: 404, body: 'Event not found' };
 
-      try{ await getUserFromAuth(event); } catch { return json(401,{error:'Unauthorized'}); }
+    const { data: participants } = await client
+      .from('participants')
+      .select('user_id, profiles(nickname)')
+      .eq('event_id', eventRow.id);
 
-      const { rows } = await client.query(
-        `select id, title, date, time, address, dress, bring, notes, code, code_expires_at
-           from events
-          where code=$1
-          limit 1`,
-        [code]
-      );
-      if(!rows.length) return json(404,{error:'Not found'});
+    const { data: wishlist } = await client
+      .from('wishlist_items')
+      .select('*')
+      .eq('event_id', eventRow.id);
 
-      const ev = rows[0];
-      if (ev.code_expires_at && new Date(ev.code_expires_at) < new Date())
-        return json(410, { error:'Code expired' });
+    const isOwner = eventRow.owner_id === userId;
+    const isParticipant = participants.some(p => p.user_id === userId) || isOwner;
 
-      return json(200, ev);
-    } finally { client.release(); }
-  }catch(e){ console.error(e); return json(500,{error:'Server error'}); }
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        event: eventRow,
+        participants,
+        wishlist,
+        isOwner,
+        isParticipant
+      })
+    };
+  } catch (err) {
+    return { statusCode: 500, body: err.message };
+  }
 }

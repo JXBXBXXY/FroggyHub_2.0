@@ -34,12 +34,12 @@ async function sha256(pass){
   return toHex(buf);
 }
 
-async function signUp(name,email,password){
+async function signUp(nickname,email,password){
   if(window.supabase){
-    const { data, error } = await window.supabase.auth.signUp({ email, password, options:{ data:{ name } } });
+    const { data, error } = await window.supabase.auth.signUp({ email, password });
     if(error) throw error;
     const user=data.user;
-    if(user){ await window.supabase.from('profiles').upsert({ id:user.id, name }); }
+    if(user){ await window.supabase.from('profiles').upsert({ id:user.id, nickname }); }
     return user;
   }
   if(users[email]) throw new Error('Такой пользователь уже существует.');
@@ -199,17 +199,13 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
 })();
 
 /* ---------- COOKIE CONSENT ---------- */
-let cookieChoice = { necessary: true, analytics: false };
 let analyticsTag = null;
-
-function applyCookieChoice(choice = {}) {
-  cookieChoice = { necessary: true, analytics: !!choice.analytics };
-  if (cookieChoice.analytics) {
-    if (!analyticsTag) {
+function applyCookieConsent(consented){
+  if(consented){
+    if(!analyticsTag){
       const src = window.ANALYTICS_SRC || '';
-      if (src) {
+      if(src){
         analyticsTag = document.createElement('script');
-        analyticsTag.id = 'analyticsTag';
         analyticsTag.src = src;
         analyticsTag.async = true;
         document.head.appendChild(analyticsTag);
@@ -221,105 +217,62 @@ function applyCookieChoice(choice = {}) {
   }
 }
 
-async function initCookieBanner() {
-  const banner = document.getElementById('cookieBanner');
-  if (!banner || !window.supabase) return;
-  const analyticsCb = document.getElementById('ccAnalytics');
-  const btnAll = document.getElementById('ccAcceptAll');
-  const btnSave = document.getElementById('ccSave');
-  const statusEl = document.getElementById('cookieStatus');
+async function initCookieBanner(){
+  const banner = document.getElementById('cookie-banner');
+  if(!banner) return;
+  const accept = document.getElementById('cookie-accept');
+  const decline = document.getElementById('cookie-decline');
 
-  const showBanner = () => { banner.hidden = false; trapFocus(banner); banner.focus(); };
-  const readChoice = () => ({ necessary: true, analytics: !!analyticsCb.checked });
-  const persistChoice = async (choice) => {
-    try {
-      if (currentUser) {
-        await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
-      } else {
-        localStorage.setItem('cookie_consent_temp', JSON.stringify(choice));
+  async function persist(consented){
+    try{
+      localStorage.setItem('cookieConsent', consented);
+      if(currentUser){
+        await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, consented });
       }
-      applyCookieChoice(choice);
-      banner.hidden = true;
-      statusEl.textContent = 'Сохранено';
-    } catch (e) {
-      console.warn('cookie consent save', e);
-      statusEl.textContent = 'Ошибка';
-    }
-  };
+      applyCookieConsent(consented);
+    }catch(e){ console.warn('cookie save', e); }
+    banner.hidden = true;
+  }
 
-  btnAll?.addEventListener('click', () => {
-    analyticsCb.checked = true;
-    persistChoice({ necessary: true, analytics: true });
-  });
-  btnSave?.addEventListener('click', () => persistChoice(readChoice()));
+  accept?.addEventListener('click', ()=>persist(true));
+  decline?.addEventListener('click', ()=>persist(false));
 
-  const { data } = await window.supabase.auth.getSession();
-  const user = data.session?.user;
-  if (user) currentUser = user;
-
-  if (user) {
-    try {
-      const { data: cons } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', user.id).single();
-      if (cons) {
-        analyticsCb.checked = !!cons.choice.analytics;
-        applyCookieChoice(cons.choice);
+  const stored = localStorage.getItem('cookieConsent');
+  if(stored !== null){
+    applyCookieConsent(stored === 'true');
+  } else if(currentUser){
+    try{
+      const { data } = await window.supabase.from('cookie_consents').select('consented').eq('user_id', currentUser.id).single();
+      if(data){
+        applyCookieConsent(data.consented);
+        localStorage.setItem('cookieConsent', data.consented);
       } else {
-        const temp = localStorage.getItem('cookie_consent_temp');
-        if (temp) {
-          const choice = JSON.parse(temp);
-          analyticsCb.checked = !!choice.analytics;
-          await window.supabase.from('cookie_consents').upsert({ user_id: user.id, choice });
-          localStorage.removeItem('cookie_consent_temp');
-          applyCookieChoice(choice);
-        } else {
-          showBanner();
-        }
+        banner.hidden = false; trapFocus(banner);
       }
-    } catch (e) {
-      console.warn('cookie consent load', e);
-      showBanner();
+    } catch(e){
+      console.warn('cookie load', e); banner.hidden = false; trapFocus(banner);
     }
   } else {
-    const temp = localStorage.getItem('cookie_consent_temp');
-    if (temp) {
-      const choice = JSON.parse(temp);
-      analyticsCb.checked = !!choice.analytics;
-      applyCookieChoice(choice);
-    } else {
-      showBanner();
-    }
+    banner.hidden = false; trapFocus(banner);
   }
 }
 
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
-window.supabase?.auth.onAuthStateChange(async (event, session) => {
-  const user = session?.user;
-  if (event === 'SIGNED_IN' && user) {
-    currentUser = user;
-    const temp = localStorage.getItem('cookie_consent_temp');
-    if (temp) {
-      const choice = JSON.parse(temp);
-      try { await window.supabase.from('cookie_consents').upsert({ user_id: user.id, choice }); } catch (e) { console.warn('cookie migrate', e); }
-      localStorage.removeItem('cookie_consent_temp');
-      applyCookieChoice(choice);
+window.supabase?.auth.onAuthStateChange(async (event, session)=>{
+  currentUser = session?.user || null;
+  if(event === 'SIGNED_IN' && currentUser){
+    const local = localStorage.getItem('cookieConsent');
+    if(local !== null){
+      try{ await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, consented: local === 'true' }); } catch(e){ console.warn('cookie sync', e); }
     } else {
-      try {
-        const { data } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', user.id).single();
-        if (data) applyCookieChoice(data.choice);
-      } catch (e) { console.warn('cookie fetch', e); }
-    }
-  }
-  if (event === 'SIGNED_OUT') {
-    const temp = localStorage.getItem('cookie_consent_temp');
-    if (temp) {
-      applyCookieChoice(JSON.parse(temp));
-    } else {
-      applyCookieChoice({ necessary: true, analytics: false });
+      try{
+        const { data } = await window.supabase.from('cookie_consents').select('consented').eq('user_id', currentUser.id).single();
+        if(data){ localStorage.setItem('cookieConsent', data.consented); applyCookieConsent(data.consented); }
+      } catch(e){ console.warn('cookie sync', e); }
     }
   }
 });
-
 /* ---------- ВЫХОД ---------- */
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
   await signOut();
@@ -606,9 +559,9 @@ function mapStatusToMessage(res){
 }
 
 async function verifyCode(code){
-  const res = await fetch('/.netlify/functions/event-by-code?code='+code, { headers: await authHeader() });
+  const params = new URLSearchParams({ code, userId: currentUser?.id || '' });
+  const res = await fetch('/.netlify/functions/event-by-code?'+params.toString());
   if (!res.ok){
-    if(res.status===401) await needLogin();
     throw new Error(mapStatusToMessage(res));
   }
   return res.json();
@@ -718,12 +671,11 @@ async function joinCurrentEvent(){
   try{
     await fetch('/.netlify/functions/join-by-code',{
       method:'POST',
-      headers:{'Content-Type':'application/json', ...(await authHeader())},
-      body:JSON.stringify({ code:eventData.code, name:currentGuestName })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ code:eventData.code, userId: currentUser?.id })
     });
   }catch(_){ }
 }
-
 /* RSVP + подарок */
 let currentGuestName='';
 document.querySelectorAll('[data-rsvp]')?.forEach(b=>b.addEventListener('click',e=>{
