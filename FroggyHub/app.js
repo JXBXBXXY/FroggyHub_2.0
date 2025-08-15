@@ -216,7 +216,7 @@ async function logout(msg){
     sessionBanner.hidden = true;
   }
   show('#screen-auth');
-  switchAuth('login');
+  setAuthState('login');
 }
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -273,301 +273,157 @@ function show(idToShow){
   });
 }
 
-/* ---------- ВКЛАДКИ ВХОД/РЕГ ---------- */
-function switchAuth(mode){
-  const loginForm=$('#authFormLogin');
-  const regForm=$('#authFormRegister');
-  const tabLogin=$('#tabLogin');
-  const tabRegister=$('#tabRegister');
-  const showLogin = mode==='login';
-  if(loginForm&&regForm){
-    loginForm.hidden=!showLogin;
-    regForm.hidden=showLogin;
-  }
-  if(tabLogin&&tabRegister){
-    tabLogin.classList.toggle('active',showLogin);
-    tabRegister.classList.toggle('active',!showLogin);
-    tabLogin.setAttribute('aria-selected',showLogin?'true':'false');
-    tabRegister.setAttribute('aria-selected',showLogin?'false':'true');
-  }
-  const focusEl = showLogin ? loginForm?.querySelector('input') : regForm?.querySelector('input');
-  focusEl?.focus();
-}
-$('#tabLogin')?.addEventListener('click',()=>switchAuth('login'));
-$('#tabRegister')?.addEventListener('click',()=>switchAuth('register'));
-
-/* ---------- ЛОГИН ---------- */
-const loginForm = $('#authFormLogin');
-const loginBtn = $('#loginBtn');
-if(loginForm && loginBtn){
-  let loginFails = 0;
-  let throttleTimer = null;
-  function startThrottle(ms){
-    loginBtn.disabled = true;
-    let secs = Math.ceil(ms/1000);
-    loginBtn.textContent = `Подождите ${secs}`;
-    throttleTimer = setInterval(()=>{
-      secs--;
-      if(secs <= 0){
-        clearInterval(throttleTimer); throttleTimer=null;
-        loginBtn.disabled=false; loginBtn.textContent='Войти';
-        sessionStorage.removeItem('loginThrottle');
-      }else{
-        loginBtn.textContent = `Подождите ${secs}`;
+// --- Auth state management ---
+let authState = 'login';
+function setAuthState(state){
+  authState = state;
+  const panes = { login: document.getElementById('paneLogin'), signup: document.getElementById('paneSignup'), reset: document.getElementById('paneReset') };
+  Object.entries(panes).forEach(([name,pane])=>{
+    const active = name===state;
+    if(pane){
+      pane.hidden = !active;
+      if('inert' in pane){ pane.inert = !active; }
+      else if(!active){ pane.setAttribute('inert',''); } else { pane.removeAttribute('inert'); }
+      if(!active){
+        pane.querySelectorAll('.is-invalid').forEach(el=>el.classList.remove('is-invalid'));
+        pane.querySelectorAll('.form-error').forEach(el=>el.textContent='');
       }
-    },1000);
-  }
-  const handleLogin = async (e)=>{
-    e.preventDefault();
-    clearFieldError($('#loginEmail'));
-    clearFieldError($('#loginPass'));
-    clearFormError($('#loginError'));
-    $('#loginAnnounce').textContent='';
-    const throttle = JSON.parse(sessionStorage.getItem('loginThrottle')||'null');
-    const now = Date.now();
-    if(throttle && throttle.count>=3 && now - throttle.ts < 30000){
-      startThrottle(30000 - (now - throttle.ts));
-      showFormError($('#loginError'), 'Слишком много попыток, попробуйте позже');
-      return;
     }
-    const { ok, errors } = validateAuthForm({ email: $('#loginEmail').value, password: $('#loginPass').value }, 'login');
-    if(!ok){ applyValidationErrors('login', errors); return; }
-    const email = $('#loginEmail').value.trim().toLowerCase();
-    const password  = $('#loginPass').value;
-    loginBtn.disabled = true; loginBtn.textContent='Входим…'; loginBtn.style.cursor='progress';
-    try{
-      const sb = await ensureSupabase();
-      let { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if(error && (error.status===400 || error.status===401)){
-        loginFails++;
-        showFieldError($('#loginPass'),'Неверная почта или пароль');
-        $('#loginAnnounce').textContent='Неверная почта или пароль';
-        if(loginFails>=2){
-          $('#otpEmail').value = email; $('#otpModal').showModal();
-        }
-      }else if(error){
-        loginFails = /Failed to fetch|timeout/i.test(error.message) ? loginFails+1 : 0;
-        if(loginFails>=2){ $('#otpEmail').value=email; $('#otpModal').showModal(); }
-        throw error;
-      }else if(data.user){
-        loginFails=0;
-        sessionStorage.removeItem('loginThrottle');
-        await sb.auth.getSession();
-        const { data:{ user } } = await sb.auth.getUser();
-        if(user){ $('#chipEmail').textContent = user.email; show('#screen-lobby'); }
-      }
-    }catch(ex){
-      if(ex instanceof TypeError){
-        loginFails++;
-        try{
-          const { result:{ data, error }, sb: sb2 } = await switchToProxyAndRetry(s=>s.auth.signInWithPassword({ email, password }));
-          if(error && (error.status===400 || error.status===401)){
-            showFieldError($('#loginPass'),'Неверная почта или пароль');
-            $('#loginAnnounce').textContent='Неверная почта или пароль';
-          }else if(error){
-            showFormError($('#loginError'), formatAuthError(error));
-          }else if(data.user){
-            loginFails=0;
-            sessionStorage.removeItem('loginThrottle');
-            await sb2.auth.getSession();
-            const { data:{ user } } = await sb2.auth.getUser();
-            if(user){ $('#chipEmail').textContent = user.email; show('#screen-lobby'); }
-          }
-        }catch(err2){
-          loginFails++;
-          showFormError($('#loginError'), formatAuthError(err2));
-        }
-      }else{
-        showFormError($('#loginError'), formatAuthError(ex));
-      }
-      if(loginFails>=2){ $('#otpEmail').value=email; $('#otpModal').showModal(); }
-    }finally{
-      loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.style.cursor='';
-      let t = JSON.parse(sessionStorage.getItem('loginThrottle')||'null');
-      if(t && now - t.ts < 30000){ t.count++; }
-      else{ t = { count:1, ts:now }; }
-      sessionStorage.setItem('loginThrottle', JSON.stringify(t));
-      if(t.count>=3){ startThrottle(30000); }
+  });
+  const tabs = { login: document.getElementById('tabLogin'), signup: document.getElementById('tabSignup') };
+  Object.entries(tabs).forEach(([name,tab])=>{
+    if(tab){
+      const active = name===state;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active? 'true':'false');
     }
-  };
-  loginForm.addEventListener('submit', handleLogin);
-  loginBtn.addEventListener('click', handleLogin);
+  });
+  sessionStorage.setItem('auth_state', state);
+  const params = new URLSearchParams(location.search);
+  params.set('auth', state);
+  history.replaceState(null,'', location.pathname + '?' + params.toString() + location.hash);
+  const panel = panes[state];
+  panel?.querySelector('input')?.focus({ preventScroll:true });
+  panel?.scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
-$('#loginOtpBtn')?.addEventListener('click', async ()=>{
-  const email = $('#loginEmail').value.trim().toLowerCase();
-  clearFormError($('#loginError'));
-  const info = $('#loginInfo');
-  if(info){ info.hidden=false; info.textContent=''; }
-  if(!email){ showFormError($('#loginError'),'Введите почту'); return; }
+document.getElementById('tabLogin')?.addEventListener('click',()=>setAuthState('login'));
+document.getElementById('tabSignup')?.addEventListener('click', async ()=>{
   try{
     const sb = await ensureSupabase();
-    if(!sb) throw new Error('init failed');
-    await sb.auth.signInWithOtp({ email });
-    if(info){ info.textContent='Мы отправили письмо. Откройте ссылку на этом устройстве.'; }
-  }catch(ex){
-    const msg = formatAuthError(ex);
-    showFormError($('#loginError'), msg);
-    if(info) info.hidden=true;
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session?.user){ await sb.auth.signOut(); }
+  }catch(_){ }
+  setAuthState('signup');
+});
+document.getElementById('showReset')?.addEventListener('click',()=>setAuthState('reset'));
+document.getElementById('backToLogin')?.addEventListener('click',()=>setAuthState('login'));
+
+const initialParams = new URLSearchParams(location.search || location.hash.slice(1));
+const initState = initialParams.get('auth') || sessionStorage.getItem('auth_state') || 'login';
+setAuthState(initState);
+
+// --- Login ---
+const loginBtn = document.getElementById('loginBtn');
+loginBtn?.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  clearFieldError(document.getElementById('loginEmail'));
+  clearFieldError(document.getElementById('loginPass'));
+  clearFormError(document.getElementById('loginError'));
+  const { ok, errors } = validateAuthForm({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value }, 'login');
+  if(!ok){ applyValidationErrors('login', errors); return; }
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPass').value;
+  const orig = loginBtn.textContent;
+  loginBtn.disabled = true; loginBtn.textContent='Входим…';
+  const ctrl = new AbortController();
+  try{
+    const sb = await ensureSupabase();
+    await withTimeout(sb.auth.signInWithPassword({ email, password }),15000,ctrl);
+    document.getElementById('chipEmail').textContent = email;
+    show('#screen-lobby');
+  }catch(err){
+    showFormError(document.getElementById('loginError'), formatAuthError(err));
+  }finally{
+    loginBtn.disabled=false; loginBtn.textContent=orig;
   }
 });
 
-$('#otpSendBtn')?.addEventListener('click', async ()=>{
-  const email = $('#otpEmail').value.trim().toLowerCase();
-  const status = $('#otpStatus');
-  status.textContent='';
-  if(!email){ status.textContent='Введите почту'; return; }
+// --- Signup ---
+const regBtn = document.getElementById('regBtn');
+regBtn?.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  clearFieldError(document.getElementById('regName'));
+  clearFieldError(document.getElementById('regEmail'));
+  clearFieldError(document.getElementById('regPass'));
+  clearFieldError(document.getElementById('regPass2'));
+  clearFormError(document.getElementById('regError'));
+  const { ok, errors } = validateAuthForm({ nickname: document.getElementById('regName').value, email: document.getElementById('regEmail').value, password: document.getElementById('regPass').value, password2: document.getElementById('regPass2').value }, 'signup');
+  if(!ok){ applyValidationErrors('signup', errors); return; }
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const pass = document.getElementById('regPass').value;
+  const orig = regBtn.textContent;
+  regBtn.disabled = true; regBtn.textContent='Регистрируем…';
+  const ctrl = new AbortController();
   try{
     const sb = await ensureSupabase();
-    await sb.auth.signInWithOtp({ email });
-    status.textContent='Письмо отправлено';
-  }catch(ex){
-    status.textContent = formatAuthError(ex);
+    const { data, error } = await withTimeout(sb.auth.signUp({ email, password: pass }),15000,ctrl);
+    if(error) throw error;
+    if(data.user && data.session){
+      await sb.from('profiles').upsert({ id:data.user.id, nickname:name });
+      document.getElementById('chipEmail').textContent = email;
+      show('#screen-lobby');
+    }else if(data.user){
+      sessionStorage.setItem('pendingProfileName', name);
+      toast('Проверьте почту');
+      setAuthState('login');
+    }
+  }catch(err){
+    showFormError(document.getElementById('regError'), formatAuthError(err));
+  }finally{
+    regBtn.disabled=false; regBtn.textContent=orig;
   }
 });
 
-$('#resetPassBtn')?.addEventListener('click', async ()=>{
-  const email = $('#loginEmail').value.trim().toLowerCase();
-  clearFormError($('#loginError'));
-  if(!email){ showFormError($('#loginError'),'Введите почту'); return; }
+// --- Password reset ---
+const resetBtn = document.getElementById('resetSend');
+resetBtn?.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  clearFormError(document.getElementById('resetError'));
+  const email = document.getElementById('resetEmail').value.trim().toLowerCase();
+  if(!email){ showFormError(document.getElementById('resetError'),'Введите почту'); return; }
+  const orig = resetBtn.textContent;
+  resetBtn.disabled=true; resetBtn.textContent='Отправляем…';
+  const ctrl = new AbortController();
   try{
     const sb = await ensureSupabase();
-    await sb.auth.resetPasswordForEmail(email);
-    $('#loginInfo').hidden=false; $('#loginInfo').textContent='Ссылка для сброса отправлена';
-  }catch(ex){
-    showFormError($('#loginError'), formatAuthError(ex));
+    await withTimeout(sb.auth.resetPasswordForEmail(email),15000,ctrl);
+    toast('Письмо отправлено');
+    setAuthState('login');
+  }catch(err){
+    showFormError(document.getElementById('resetError'), formatAuthError(err));
+  }finally{
+    resetBtn.disabled=false; resetBtn.textContent=orig;
   }
 });
 
-$('#setNewPassBtn')?.addEventListener('click', async ()=>{
-  clearFormError($('#newPassError'));
-  const p1 = $('#newPass').value;
-  const p2 = $('#newPass2').value;
-  if(!p1 || p1.length<4){ showFormError($('#newPassError'),'Пароль слишком короткий'); return; }
-  if(p1 !== p2){ showFormError($('#newPassError'),'Пароли не совпадают'); return; }
+// --- Set new password ---
+document.getElementById('setNewPassBtn')?.addEventListener('click', async ()=>{
+  clearFormError(document.getElementById('newPassError'));
+  const p1 = document.getElementById('newPass').value;
+  const p2 = document.getElementById('newPass2').value;
+  if(!p1 || p1.length<4){ showFormError(document.getElementById('newPassError'),'Пароль слишком короткий'); return; }
+  if(p1 !== p2){ showFormError(document.getElementById('newPassError'),'Пароли не совпадают'); return; }
   try{
     const sb = await ensureSupabase();
     const { error } = await sb.auth.updateUser({ password:p1 });
     if(error) throw error;
     toast('Пароль обновлён');
-    $('#newPassForm').hidden=true;
+    document.getElementById('newPassForm').hidden=true;
     show('#screen-lobby');
   }catch(ex){
-    showFormError($('#newPassError'), formatAuthError(ex));
-  }
-});
-
-/* ---------- РЕГИСТРАЦИЯ ---------- */
-const regForm = $('#authFormRegister');
-const regBtn = $('#regBtn');
-const regCancelBtn = $('#regCancelBtn');
-let regCtrl = null;
-let lastResend = 0;
-if(regForm && regBtn){
-  const setRegState = (loading)=>{
-    if(loading){
-      regBtn.disabled=true; regBtn.textContent='Регистрируем…'; regBtn.style.cursor='progress';
-      regCancelBtn.hidden=false; regCancelBtn.disabled=false;
-    }else{
-      regBtn.disabled=false; regBtn.textContent='Зарегистрироваться'; regBtn.style.cursor='';
-      regCancelBtn.hidden=true;
-    }
-  };
-  const doSignUp = (sb,email,pass,ctrl)=>withTimeout(sb.auth.signUp({ email, password:pass }),15000,ctrl);
-  const handleReg = async (e)=>{
-    e.preventDefault();
-    if(regBtn.disabled) return;
-    clearFieldError($('#regName'));
-    clearFieldError($('#regEmail'));
-    clearFieldError($('#regPass'));
-    clearFieldError($('#regPass2'));
-    clearFormError($('#regError'));
-    $('#regAnnounce').textContent='';
-    const { ok, errors } = validateAuthForm({ nickname: $('#regName').value, email: $('#regEmail').value, password: $('#regPass').value, password2: $('#regPass2').value }, 'signup');
-    if(!ok){ applyValidationErrors('signup', errors); return; }
-    const name = $('#regName').value.trim();
-    const email = $('#regEmail').value.trim().toLowerCase();
-    const pass = $('#regPass').value;
-    regCtrl = new AbortController();
-    setRegState(true);
-    let signed='no';
-    let outcome='ok';
-    try{
-      let sb = await ensureSupabase();
-      dbgAuth('signUp start', email.replace(/^(.{2}).+(@.*)$/,'$1***$2'), sessionStorage.getItem('sb_mode')||'direct');
-      let res;
-      try{
-        res = await doSignUp(sb,email,pass,regCtrl);
-      }catch(err){
-        if(err.name==='AbortError'){ outcome='aborted'; return; }
-        if(err.message==='timeout' || (err instanceof TypeError && /Failed to fetch/i.test(err.message))){
-          outcome = err.message==='timeout'? 'timeout':'network';
-          try{
-            const { result, sb:sb2 } = await switchToProxyAndRetry(s=>doSignUp(s,email,pass,regCtrl));
-            sb = sb2; res = result;
-          }catch(_){
-            showFormError($('#regError'),'Сервер недоступен, попробуйте позже');
-            return;
-          }
-        }else{ throw err; }
-      }
-      const { data, error } = res;
-      if(error){
-        outcome = 'server_error';
-        if(error.message==='User already registered'){
-          showFieldError($('#regEmail'),'Пользователь с этой почтой уже существует');
-          $('#regAnnounce').textContent='Пользователь с этой почтой уже существует';
-        }else{
-          showFormError($('#regError'), formatAuthError(error));
-        }
-      }else if(data.user && data.session){
-        signed='yes';
-        const { data:{ session } } = await sb.auth.getSession();
-        if(session){
-          await sb.from('profiles').upsert({ id:session.user.id, nickname:name });
-          $('#chipEmail').textContent = session.user.email;
-          show('#screen-lobby');
-        }
-      }else if(data.user){
-        sessionStorage.setItem('pendingProfileName', name);
-        $('#regAnnounce').textContent='Проверьте почту и подтвердите';
-        $('#resendConfirmBtn').hidden=false;
-        $('#resendHint').hidden=false;
-      }
-    }catch(err){
-      if(err.name!=='AbortError'){
-        outcome = err.message==='timeout'? 'timeout' : (err instanceof TypeError ? 'network' : 'server_error');
-        showFormError($('#regError'), formatAuthError(err));
-      }else{
-        outcome='aborted';
-      }
-    }finally{
-      dbgAuth('signUp result', `signed_up_session=${signed}`, outcome);
-      setRegState(false);
-      regCtrl=null;
-    }
-  };
-  regForm.addEventListener('submit', handleReg);
-  regBtn.addEventListener('click', handleReg);
-  regCancelBtn?.addEventListener('click', ()=>{
-    regCtrl?.abort();
-    clearFormError($('#regError'));
-    $('#regAnnounce').textContent='';
-    setRegState(false);
-  });
-}
-
-$('#resendConfirmBtn')?.addEventListener('click', async ()=>{
-  if(Date.now()-lastResend<30000) return;
-  lastResend = Date.now();
-  const email = $('#regEmail').value.trim().toLowerCase();
-  try{
-    const sb = await ensureSupabase();
-    await sb.auth.resend({ type:'signup', email });
-    $('#regAnnounce').textContent='Письмо отправлено';
-    dbgAuth('resend');
-  }catch(ex){
-    showFormError($('#regError'), formatAuthError(ex));
+    showFormError(document.getElementById('newPassError'), formatAuthError(ex));
   }
 });
 
@@ -593,6 +449,7 @@ $('#resendConfirmBtn')?.addEventListener('click', async ()=>{
   } else {
     localStorage.removeItem(SESSION_KEY);
     show('#screen-auth');
+    setAuthState('login');
   }
 })();
 
@@ -742,6 +599,7 @@ ensureSupabase().then(async sb => {
     }
   } else {
     show('#screen-auth');
+    setAuthState('login');
   }
   sb.auth.onAuthStateChange(async (event, session)=>{
     if(event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN'){
@@ -765,9 +623,10 @@ ensureSupabase().then(async sb => {
     currentUser = session?.user || null;
     toggleAuthButtons(!currentUser);
     if(event === 'PASSWORD_RECOVERY'){
-      $('#authFormLogin').hidden=true;
-      $('#authFormRegister').hidden=true;
-      $('#newPassForm').hidden=false;
+      document.getElementById('paneLogin').hidden = true;
+      document.getElementById('paneSignup').hidden = true;
+      document.getElementById('paneReset').hidden = true;
+      document.getElementById('newPassForm').hidden = false;
       return;
     }
     if(event === 'SIGNED_IN' && currentUser){
@@ -1035,7 +894,7 @@ async function startCreateFlow(){
   } else {
     sessionStorage.setItem('pendingCreate', JSON.stringify(eventData));
     show('#screen-auth');
-    switchAuth('login');
+    setAuthState('login');
   }
 }
 
@@ -1316,7 +1175,8 @@ async function needLogin(){
   const qp = new URLSearchParams(location.search);
   const code = qp.get('code') || '';
   if (code) sessionStorage.setItem('pendingCode', code);
-  show('#screen-auth'); switchAuth('login');
+  show('#screen-auth');
+  setAuthState('login');
 }
 
 async function handleDeepLink(){
@@ -1325,7 +1185,7 @@ async function handleDeepLink(){
   const sb = await ensureSupabase();
   if(!sb) return;
   const { data:{ session } } = await sb.auth.getSession();
-  if(!session){ sessionStorage.setItem('pendingCode', code); show('#screen-auth'); switchAuth('login'); }
+  if(!session){ sessionStorage.setItem('pendingCode', code); show('#screen-auth'); setAuthState('login'); }
   else { joinFlow(code); }
 }
 
