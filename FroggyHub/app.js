@@ -914,6 +914,7 @@ if(editForm){
   const errEl = document.getElementById('editError');
   const params = new URLSearchParams(location.search);
   const eventId = params.get('id');
+  let currentEvent = {};
 
   async function loadDetails(){
     try{
@@ -929,6 +930,15 @@ if(editForm){
       fields.notes.value = event.notes || '';
       fields.dress.value = event.dress_code || '';
       fields.bring.value = event.bring || '';
+      currentEvent = {
+        title: fields.title.value,
+        date: fields.date.value,
+        time: fields.time.value,
+        address: fields.address.value,
+        notes: fields.notes.value,
+        dress_code: fields.dress.value,
+        bring: fields.bring.value
+      };
     }catch(err){ errEl.textContent = err.message; }
   }
 
@@ -939,6 +949,7 @@ if(editForm){
       errEl.textContent = 'Заполните обязательные поля';
       return;
     }
+    const prev = { ...currentEvent };
     const payload = {
       event_id: eventId,
       title: fields.title.value.trim(),
@@ -949,19 +960,31 @@ if(editForm){
       dress_code: fields.dress.value.trim(),
       bring: fields.bring.value.trim()
     };
-    try{
-      const res = await fetch('/.netlify/functions/update-event', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', ...(await authHeader()) },
-        body: JSON.stringify(payload)
-      });
+    currentEvent = { ...payload };
+    toast('Сохраняем...');
+    const headers = await authHeader();
+    fetch('/.netlify/functions/update-event', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', ...headers },
+      body: JSON.stringify(payload)
+    }).then(res=>{
       if(!res.ok){
-        errEl.textContent = res.status===403 ? 'Нет доступа' : res.status===404 ? 'Событие не найдено' : 'Ошибка обновления';
-        return;
+        throw new Error(res.status===403 ? 'Нет доступа' : res.status===404 ? 'Событие не найдено' : 'Ошибка обновления');
       }
       toast('Событие обновлено');
       setTimeout(()=>{ location.href = `event-analytics.html?id=${encodeURIComponent(eventId)}`; }, 500);
-    }catch(err){ errEl.textContent = err.message; }
+    }).catch(err=>{
+      currentEvent = prev;
+      fields.title.value = prev.title;
+      fields.date.value = prev.date;
+      fields.time.value = prev.time;
+      fields.address.value = prev.address;
+      fields.notes.value = prev.notes;
+      fields.dress.value = prev.dress_code;
+      fields.bring.value = prev.bring;
+      errEl.textContent = err.message;
+      toast(err.message);
+    });
   });
 
   loadDetails();
