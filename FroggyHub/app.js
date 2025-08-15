@@ -276,6 +276,8 @@ function show(idToShow){
 // --- Auth state management ---
 let authState = 'login';
 let loginBtn, regBtn;
+const resetEmailBlock = document.getElementById('resetEmailBlock');
+const resetPassBlock = document.getElementById('resetPassBlock');
 function updateRegBtnState(){
   if(!regBtn) return;
   const { ok } = validateAuthForm({
@@ -289,6 +291,7 @@ function updateRegBtnState(){
 }
 
 function setAuthState(state){
+  const prev = authState;
   authState = state;
   const panes = { login: document.getElementById('paneLogin'), signup: document.getElementById('paneSignup'), reset: document.getElementById('paneReset') };
   Object.entries(panes).forEach(([name,pane])=>{
@@ -300,6 +303,10 @@ function setAuthState(state){
       if(!active){
         pane.querySelectorAll('.is-invalid').forEach(el=>el.classList.remove('is-invalid'));
         pane.querySelectorAll('.form-error').forEach(el=>el.textContent='');
+        pane.querySelectorAll('input').forEach(inp=>{
+          if(name==='login' && prev==='login' && state==='reset' && inp.id==='loginEmail') return;
+          inp.value='';
+        });
       }
     }
   });
@@ -318,6 +325,14 @@ function setAuthState(state){
   const panel = panes[state];
   const focusMap = { login:'loginEmail', signup:'regName', reset:'resetEmail' };
   document.getElementById(focusMap[state])?.focus({ preventScroll:true });
+  if(prev==='login' && state==='reset'){
+    const email = document.getElementById('loginEmail')?.value;
+    if(email) document.getElementById('resetEmail').value = email;
+  }
+  if(state==='reset'){
+    resetEmailBlock.hidden = false;
+    resetPassBlock.hidden = true;
+  }
   if(state==='signup'){
     if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.removeAttribute('aria-disabled'); }
     if(regBtn){ regBtn.textContent='Зарегистрироваться'; }
@@ -341,9 +356,13 @@ document.getElementById('tabSignup')?.addEventListener('click', async ()=>{
 document.getElementById('showReset')?.addEventListener('click',()=>setAuthState('reset'));
 document.getElementById('backToLogin')?.addEventListener('click',()=>setAuthState('login'));
 
-const initialParams = new URLSearchParams(location.search || location.hash.slice(1));
-const initState = initialParams.get('auth') || sessionStorage.getItem('auth_state') || 'login';
-setAuthState(initState);
+setAuthState('login');
+const urlParams = new URLSearchParams(location.hash.slice(1) || location.search);
+if(urlParams.get('type') === 'recovery'){
+  setAuthState('reset');
+  resetEmailBlock.hidden = true;
+  resetPassBlock.hidden = false;
+}
 
 // --- Login ---
 loginBtn = document.getElementById('loginBtn');
@@ -428,7 +447,6 @@ resetBtn?.addEventListener('click', async (e)=>{
     const sb = await ensureSupabase();
     await withTimeout(sb.auth.resetPasswordForEmail(email),15000,ctrl);
     toast('Письмо отправлено');
-    setAuthState('login');
   }catch(err){
     showFormError(document.getElementById('resetError'), formatAuthError(err));
   }finally{
@@ -436,22 +454,25 @@ resetBtn?.addEventListener('click', async (e)=>{
   }
 });
 
-// --- Set new password ---
-document.getElementById('setNewPassBtn')?.addEventListener('click', async ()=>{
-  clearFormError(document.getElementById('newPassError'));
-  const p1 = document.getElementById('newPass').value;
-  const p2 = document.getElementById('newPass2').value;
-  if(!p1 || p1.length<4){ showFormError(document.getElementById('newPassError'),'Пароль слишком короткий'); return; }
-  if(p1 !== p2){ showFormError(document.getElementById('newPassError'),'Пароли не совпадают'); return; }
+const resetSetBtn = document.getElementById('resetSet');
+resetSetBtn?.addEventListener('click', async ()=>{
+  clearFormError(document.getElementById('resetError'));
+  const p1 = document.getElementById('resetPass').value;
+  const p2 = document.getElementById('resetPass2').value;
+  if(!p1 || p1.length<4){ showFormError(document.getElementById('resetError'),'Пароль слишком короткий'); return; }
+  if(p1 !== p2){ showFormError(document.getElementById('resetError'),'Пароли не совпадают'); return; }
+  const orig = resetSetBtn.textContent;
+  resetSetBtn.disabled=true; resetSetBtn.textContent='Сохраняем…';
   try{
     const sb = await ensureSupabase();
     const { error } = await sb.auth.updateUser({ password:p1 });
     if(error) throw error;
-    toast('Пароль обновлён');
-    document.getElementById('newPassForm').hidden=true;
-    show('#screen-lobby');
+    toast('Пароль изменён');
+    setAuthState('login');
   }catch(ex){
-    showFormError(document.getElementById('newPassError'), formatAuthError(ex));
+    showFormError(document.getElementById('resetError'), formatAuthError(ex));
+  }finally{
+    resetSetBtn.disabled=false; resetSetBtn.textContent=orig;
   }
 });
 
@@ -651,10 +672,10 @@ ensureSupabase().then(async sb => {
     currentUser = session?.user || null;
     toggleAuthButtons(!currentUser);
     if(event === 'PASSWORD_RECOVERY'){
-      document.getElementById('paneLogin').hidden = true;
-      document.getElementById('paneSignup').hidden = true;
-      document.getElementById('paneReset').hidden = true;
-      document.getElementById('newPassForm').hidden = false;
+      setAuthState('reset');
+      resetEmailBlock.hidden = true;
+      resetPassBlock.hidden = false;
+      show('#screen-auth');
       return;
     }
     if(event === 'SIGNED_IN' && currentUser){
