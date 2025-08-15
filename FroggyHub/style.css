@@ -19,6 +19,7 @@
   --shore:#173826;
   --soil:#0d2218;
   --shadow:0 10px 26px rgba(0,0,0,.5);
+  --danger:#ff6b6b;
 }
 
 *{box-sizing:border-box}
@@ -49,8 +50,22 @@ body{
     border:1px solid var(--input-border);
     background:var(--input-bg); color:var(--text);
   }
+  input.is-invalid, textarea.is-invalid{
+    border-color:var(--danger);
+    box-shadow:0 0 0 1px var(--danger);
+  }
+  input.is-invalid:focus-visible, textarea.is-invalid:focus-visible{
+    outline-color:var(--danger);
+  }
 /* Всегда 16px+ на инпутах, чтобы мобильный браузер не зумил */
 input, textarea, select { font-size: 16px; }
+
+.field-error{color:var(--danger);font-size:.88rem;margin-top:6px;}
+.form-error{color:var(--danger);font-size:.95rem;margin-top:8px;}
+
+@keyframes shake{0%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}100%{transform:translateX(0);}}
+.shake{animation:shake .15s linear;}
+@media (prefers-reduced-motion: reduce){.shake{animation:none;}}
 
 .btn{
   display:inline-flex;align-items:center;justify-content:center;
