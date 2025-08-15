@@ -6,8 +6,24 @@ const saveUsers = () => localStorage.setItem(USERS_KEY, JSON.stringify(users));
 const setSession = (email) => localStorage.setItem(SESSION_KEY, email);
 const getSession = () => localStorage.getItem(SESSION_KEY);
 
+async function hashPassword(pass){
+  const enc=new TextEncoder().encode(pass);
+  const buf=await crypto.subtle.digest('SHA-256',enc);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 /* ---------- УТИЛИТЫ ---------- */
 const $ = (s) => document.querySelector(s);
+function trapFocus(node){
+  const f=node.querySelectorAll('button, [href], input, textarea, [tabindex]:not([tabindex="-1"])');
+  if(!f.length) return;
+  const first=f[0], last=f[f.length-1];
+  node.addEventListener('keydown',e=>{
+    if(e.key!=='Tab') return;
+    if(e.shiftKey && document.activeElement===first){ last.focus(); e.preventDefault(); }
+    else if(!e.shiftKey && document.activeElement===last){ first.focus(); e.preventDefault(); }
+  });
+}
 function show(idToShow){
   ['#screen-auth','#screen-lobby','#screen-app'].forEach(id=>{
     const el=$(id); if(!el) return; el.hidden = (id!==idToShow);
@@ -25,30 +41,36 @@ $('#tabRegister')?.addEventListener('click', ()=>{
 });
 
 /* ---------- ЛОГИН ---------- */
-$('#authFormLogin')?.addEventListener('submit', (e)=>{
+$('#authFormLogin')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const email = $('#loginEmail').value.trim().toLowerCase();
   const pass  = $('#loginPass').value;
-  if(!users[email]) return alert('Пользователь не найден.');
-  if(users[email].pass !== pass) return alert('Неверный пароль.');
+  const err = $('#loginError');
+  if(err) err.textContent='';
+  if(!users[email]){ err.textContent='Пользователь не найден.'; return; }
+  const passHash = await hashPassword(pass);
+  if(users[email].pass !== passHash){ err.textContent='Неверный пароль.'; return; }
   setSession(email);
   $('#chipEmail').textContent = email;
   show('#screen-lobby');
 });
 
 /* ---------- РЕГИСТРАЦИЯ ---------- */
-$('#authFormRegister')?.addEventListener('submit', (e)=>{
+$('#authFormRegister')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const name = $('#regName').value.trim();
   const email = $('#regEmail').value.trim().toLowerCase();
   const pass = $('#regPass').value;
   const pass2 = $('#regPass2').value;
+  const err = $('#regError');
+  if(err) err.textContent='';
 
-  if(!name || !email || !pass || !pass2) return alert('Заполните все поля.');
-  if(pass !== pass2) return alert('Пароли не совпадают.');
-  if(users[email]) return alert('Такой пользователь уже существует.');
+  if(!name || !email || !pass || !pass2){ err.textContent='Заполните все поля.'; return; }
+  if(pass !== pass2){ err.textContent='Пароли не совпадают.'; return; }
+  if(users[email]){ err.textContent='Такой пользователь уже существует.'; return; }
 
-  users[email] = { pass, name }; // в базу: никнейм, почта (ключ), пароль
+  const passHash = await hashPassword(pass);
+  users[email] = { pass: passHash, name }; // в базу: никнейм, почта (ключ), пароль
   saveUsers();
   setSession(email);
   $('#chipEmail').textContent = email;
@@ -81,8 +103,39 @@ $('#goCreate')?.addEventListener('click', ()=>{
 $('#goJoinByCode')?.addEventListener('click', ()=>{
   show('#screen-app');
   setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('join-code');
-  const code=$('#lobbyJoinCode').value.trim(); if(code) $('#joinCodeInput').value=code;
+  const code=$('#lobbyJoinCode').value.trim();
+  if(code){
+    $('#joinCodeInput').value=code;
+    $('#joinCodeInput').dispatchEvent(new Event('input'));
+  }
 });
+
+const lobbyCodeInput=document.getElementById('lobbyJoinCode');
+const lobbyJoinBtn=document.getElementById('goJoinByCode');
+if(lobbyCodeInput && lobbyJoinBtn){
+  lobbyJoinBtn.disabled=true;
+  lobbyCodeInput.addEventListener('input',()=>{
+    lobbyCodeInput.value=lobbyCodeInput.value.replace(/\D/g,'').slice(0,6);
+    lobbyJoinBtn.disabled = lobbyCodeInput.value.length!==6;
+  });
+}
+
+const codeInput=document.getElementById('joinCodeInput');
+const joinBtn=document.getElementById('joinCodeBtn');
+if(codeInput && joinBtn){
+  joinBtn.disabled=true;
+  codeInput.addEventListener('input',()=>{
+    codeInput.value=codeInput.value.replace(/\D/g,'').slice(0,6);
+    joinBtn.disabled = codeInput.value.length!==6;
+  });
+}
+
+const params=new URLSearchParams(location.search);
+const preCode=params.get('code');
+if(preCode){
+  show('#screen-app'); setScene('pond'); renderPads(); showSlide('join-code');
+  if(codeInput){ codeInput.value=preCode; codeInput.dispatchEvent(new Event('input')); }
+}
 
 /* ---------- ПРУД / ЛЯГУШКА ---------- */
 const FROG_IDLE="assets/frog_idle.png";
@@ -202,6 +255,7 @@ $('#formCreate')?.addEventListener('submit',(e)=>{
 
 const wlGrid=$('#wlGrid'), editor=$('#cellEditor');
 const cellTitle=$('#cellTitle'), cellUrl=$('#cellUrl'); let currentCellId=null;
+if(editor) trapFocus(editor);
 
 function renderGrid(){
   wlGrid.innerHTML=''; wlGrid.style.gridTemplateColumns=`repeat(5,1fr)`;
@@ -213,7 +267,12 @@ function renderGrid(){
     div.addEventListener('click',()=>openEditor(cell.id)); wlGrid.appendChild(div);
   });
 }
-function openEditor(id){ currentCellId=id; const c=eventData.wishlist.find(x=>x.id===id); cellTitle.value=c.title||''; cellUrl.value=c.url||''; editor.showModal?editor.showModal():editor.setAttribute('open',''); }
+function openEditor(id){
+  currentCellId=id; const c=eventData.wishlist.find(x=>x.id===id);
+  cellTitle.value=c.title||''; cellUrl.value=c.url||'';
+  editor.showModal?editor.showModal():editor.setAttribute('open','');
+  cellTitle.focus();
+}
 $('#saveCell')?.addEventListener('click',()=>{ const c=eventData.wishlist.find(x=>x.id===currentCellId); c.title=cellTitle.value.trim(); c.url=cellUrl.value.trim(); save(); renderGrid(); });
 $('#clearWL')?.addEventListener('click',()=>{ eventData.wishlist.forEach(c=>{c.title='';c.url='';c.claimedBy='';}); save(); renderGrid(); });
 $('#addItem')?.addEventListener('click',()=>{ const nextId=eventData.wishlist.length?Math.max(...eventData.wishlist.map(i=>i.id))+1:1; eventData.wishlist.push({id:nextId,title:'',url:'',claimedBy:''}); save(); renderGrid(); });
@@ -233,13 +292,27 @@ function renderAdmin(){
 }
 $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene()));
 
+$('#copyCodeBtn')?.addEventListener('click',async ()=>{
+  const code=eventData.code;
+  if(!code) return;
+  try{
+    await navigator.clipboard.writeText(`${location.origin}/?code=${code}`);
+    const btn=$('#copyCodeBtn'); if(btn){
+      const txt=btn.textContent; btn.textContent='Скопировано!';
+      setTimeout(()=>btn.textContent=txt,2000);
+    }
+  }catch(e){
+  }
+});
+
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
 $('#joinCodeBtn')?.addEventListener('click',()=>{
   const v=($('#joinCodeInput').value||'').trim();
-  if(!v) return alert('Введите код');
-  if(!eventData.code) return alert('Код ещё не создан');
+  const err=$('#joinCodeError'); if(err) err.textContent='';
+  if(!v){ err.textContent='Введите код'; return; }
+  if(!eventData.code){ err.textContent='Код ещё не создан'; return; }
   if(v===eventData.code){ withTransition(()=>{ showSlide('join-1'); }); }
-  else alert('Неверный код');
+  else { err.textContent='Неверный код'; }
 });
 
 /* RSVP + подарок */
