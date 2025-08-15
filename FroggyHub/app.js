@@ -3,66 +3,58 @@ const DEBUG_AUTH = !!window.DEBUG_AUTH;
 const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[supabase]', ...args); };
 const DEBUG_EVENTS = !!window.DEBUG_EVENTS;
 
-async function probe(url){
+function probeDirect(url){
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 1500);
-  try {
-    const res = await fetch(url + '/auth/v1/health', { method: 'HEAD', signal: ctrl.signal });
-    clearTimeout(t);
-    return res.ok;
-  } catch (_) {
-    clearTimeout(t);
-    return false;
-  }
+  const timer = setTimeout(() => ctrl.abort(), 1500);
+  return fetch(url + '/auth/v1/health', { method: 'HEAD', signal: ctrl.signal })
+    .then(res => { clearTimeout(timer); return res.ok; })
+    .catch(() => { clearTimeout(timer); return false; });
 }
 
 async function ensureSupabase(){
   if(window.__supabaseClient){ return window.__supabaseClient; }
 
   if(!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY){
-    toast('Не настроены ключи Supabase. Обратитесь к администратору.');
-    return null;
+    throw new Error('Supabase URL or anon key not configured');
   }
 
-  let createClient = window.createSupabaseClient;
-  if(!createClient){
-    if(document.readyState === 'loading'){
-      await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once:true }));
-    }
-    createClient = window.createSupabaseClient;
-    if(!createClient){
-      toast('Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.');
-      return null;
-    }
+  while(typeof window.createClient !== 'function'){
+    await new Promise(r => setTimeout(r,50));
   }
 
   let mode = sessionStorage.getItem('sb_mode');
-  if(!mode){
-    const ok = await probe(window.SUPABASE_URL);
-    mode = ok ? 'direct' : 'proxy';
+  let baseUrl;
+  if(mode){
+    baseUrl = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
+  }else{
+    const ok = await probeDirect(window.SUPABASE_URL);
+    if(ok){
+      baseUrl = window.SUPABASE_URL;
+      mode = 'direct';
+    }else{
+      baseUrl = window.PROXY_SUPABASE_URL;
+      mode = 'proxy';
+    }
     sessionStorage.setItem('sb_mode', mode);
   }
-  const baseUrl = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
-  const client = createClient(baseUrl, window.SUPABASE_ANON_KEY, { auth:{ persistSession:true } });
-  window.__supabaseClient = client;
-  window.supabase = client;
-  console.debug('[sb] mode', sessionStorage.getItem('sb_mode'));// TODO: remove debug before release
-  return client;
+
+  const sb = window.createClient(baseUrl, window.SUPABASE_ANON_KEY, {
+    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+  });
+  window.__supabaseClient = sb;
+  window.supabase = sb;
+  return sb;
 }
 
-let retryInit = false; // TODO: remove debug before release
-function handleSbError(msg){
-  if(msg && msg.includes('supabase') && !retryInit){
-    toast('Клиент авторизации ещё не готов, повторяем…');
-    retryInit = true;
-    ensureSupabase();
-  }
+async function switchToProxyAndRetry(action){
+  sessionStorage.setItem('sb_mode','proxy');
+  window.__supabaseClient = null;
+  const sb = await ensureSupabase();
+  const result = await action(sb);
+  return { result, sb };
 }
-window.addEventListener('error', e => handleSbError(e.message)); // TODO: remove debug before release
-window.addEventListener('unhandledrejection', e => {
-  const m = (e.reason && e.reason.message) || String(e.reason);
-  handleSbError(m);
-}); // TODO: remove debug before release
+
+window.ensureSupabase = ensureSupabase;
 
 function sendAuthTelemetry(kind, mode){
   try{
@@ -160,30 +152,6 @@ function applyValidationErrors(mode, errors){
   }
 }
 
-async function attemptWithProxyFallback(fn){
-  try{
-    const result = await fn();
-    return { result, usedFallback:false };
-  }catch(e){
-    if(e instanceof TypeError && /Failed to fetch/i.test(e.message) && sessionStorage.getItem('sb_mode')!=='proxy'){
-      sessionStorage.setItem('sb_mode','proxy');
-      window.__supabaseClient = null;
-      await ensureSupabase();
-      sessionBanner.textContent = 'Переключили подключение на резервный домен.';
-      sessionBanner.hidden = false;
-      try{
-        const result = await fn();
-        return { result, usedFallback:true };
-      }catch(e2){
-        e2.usedFallback = true;
-        throw e2;
-      }
-    }
-    e.usedFallback = false;
-    throw e;
-  }
-}
-
 /* ---------- ПОЛЬЗОВАТЕЛИ / СЕССИЯ ---------- */
 const USERS_KEY = 'froggyhub_users_v1';
 const SESSION_KEY = 'froggyhub_session_email';
@@ -218,38 +186,6 @@ function timingSafeEqual(aHex, bHex){
 async function sha256(pass){
   const buf=await crypto.subtle.digest('SHA-256', enc.encode(pass));
   return toHex(buf);
-}
-
-async function signUp(nickname,email,password){
-  const sb = await ensureSupabase();
-  if(sb){
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if(error) throw error;
-    const user=data.user;
-    if(user){ await sb.from('profiles').upsert({ id:user.id, nickname }); }
-    return user;
-  }
-  if(users[email]) throw new Error('Такой пользователь уже существует.');
-  const saltHex = toHex(randBytes(16));
-  const iterations = 150_000;
-  const passHash = await pbkdf2Hash(password, saltHex, iterations);
-  users[email] = { name, passHash, salt: saltHex, iters: iterations };
-  saveUsers();
-  return { email };
-}
-
-async function signIn(email,password){
-  const sb = await ensureSupabase();
-  if(sb){
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if(error) throw error;
-    return data.user;
-  }
-  const u = users[email];
-  if(!u) throw new Error('Пользователь не найден.');
-  const calc = await pbkdf2Hash(password, u.salt, u.iters || 150_000);
-  if(!timingSafeEqual(calc, u.passHash)) throw new Error('Неверный пароль.');
-  return { email };
 }
 
 async function signOut(){
@@ -347,33 +283,43 @@ if(loginForm && loginBtn){
     clearFieldError($('#loginPass'));
     clearFormError($('#loginError'));
     $('#loginAnnounce').textContent='';
-    const info = $('#loginInfo');
-    if(info){ info.hidden=true; info.textContent=''; }
     const { ok, errors } = validateAuthForm({ email: $('#loginEmail').value, password: $('#loginPass').value }, 'login');
     if(!ok){ applyValidationErrors('login', errors); return; }
     const email = $('#loginEmail').value.trim().toLowerCase();
-    const pass  = $('#loginPass').value;
+    const password  = $('#loginPass').value;
     loginBtn.disabled = true; loginBtn.textContent='Входим…'; loginBtn.style.cursor='progress';
     try{
-      const { result:user, usedFallback } = await attemptWithProxyFallback(()=>signIn(email, pass));
-      dbgAuth('signInWithPassword', user?.id, sessionStorage.getItem('sb_mode'));
-      currentUser = user;
-      setSession(email);
-      $('#chipEmail').textContent = email;
-      show('#screen-lobby');
-      clearFormError($('#loginError'));
-    }catch(ex){
-      dbgAuth('signIn error', ex?.status, ex?.message, sessionStorage.getItem('sb_mode'));
-      const msg = formatAuthError(ex);
-      if(ex?.status===400 || ex?.status===401 || ex?.message==='Invalid login credentials'){
-        showFieldError($('#loginPass'), msg);
-        $('#loginAnnounce').textContent = msg;
-      }else{
-        showFormError($('#loginError'), msg);
+      const sb = await ensureSupabase();
+      let { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if(error && (error.status===400 || error.status===401)){
+        showFieldError($('#loginPass'),'Неверная почта или пароль');
+        $('#loginAnnounce').textContent='Неверная почта или пароль';
+      }else if(error){
+        throw error;
+      }else if(data.user){
+        await sb.auth.getSession();
+        const { data:{ user } } = await sb.auth.getUser();
+        if(user){ $('#chipEmail').textContent = user.email; show('#screen-lobby'); }
       }
-      if(ex.usedFallback){
-        showFormError($('#loginError'), 'Мы переключили подключение на резервный домен. Попробуйте ещё раз.');
-        loginBtn.focus();
+    }catch(ex){
+      if(ex instanceof TypeError){
+        try{
+          const { result:{ data, error }, sb: sb2 } = await switchToProxyAndRetry(s=>s.auth.signInWithPassword({ email, password }));
+          if(error && (error.status===400 || error.status===401)){
+            showFieldError($('#loginPass'),'Неверная почта или пароль');
+            $('#loginAnnounce').textContent='Неверная почта или пароль';
+          }else if(error){
+            showFormError($('#loginError'), formatAuthError(error));
+          }else if(data.user){
+            await sb2.auth.getSession();
+            const { data:{ user } } = await sb2.auth.getUser();
+            if(user){ $('#chipEmail').textContent = user.email; show('#screen-lobby'); }
+          }
+        }catch(err2){
+          showFormError($('#loginError'), formatAuthError(err2));
+        }
+      }else{
+        showFormError($('#loginError'), formatAuthError(ex));
       }
     }finally{
       loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.style.cursor='';
@@ -420,27 +366,53 @@ if(regForm && regBtn){
     const pass = $('#regPass').value;
     regBtn.disabled=true; regBtn.textContent='Регистрируем…'; regBtn.style.cursor='progress';
     try{
-      await attemptWithProxyFallback(()=>signUp(name,email,pass));
-      const { result:user, usedFallback } = await attemptWithProxyFallback(()=>signIn(email,pass));
-      dbgAuth('signUp', user?.id, sessionStorage.getItem('sb_mode'));
-      currentUser = user;
-      setSession(email);
-      $('#chipEmail').textContent = email;
-      show('#screen-lobby');
-    }catch(ex){
-      dbgAuth('signUp error', ex?.status, ex?.message, sessionStorage.getItem('sb_mode'));
-      const msg = formatAuthError(ex);
-      if(ex?.message==='User already registered'){
-        showFieldError($('#regEmail'), msg);
-        $('#regAnnounce').textContent = msg;
-      }else if(ex?.status===429 || /rate limit/i.test(ex?.message)){
-        showFormError($('#regError'), msg);
-      }else{
-        showFormError($('#regError'), msg);
+      const sb = await ensureSupabase();
+      let { data, error } = await sb.auth.signUp({ email, password: pass });
+      if(error){
+        if(error.message==='User already registered'){
+          showFieldError($('#regEmail'), 'Пользователь с этой почтой уже существует');
+          $('#regAnnounce').textContent = 'Пользователь с этой почтой уже существует';
+        }else{
+          showFormError($('#regError'), formatAuthError(error));
+        }
+      }else if(!data.session){
+        $('#regAnnounce').textContent = 'Проверьте почту для подтверждения';
+      }else if(data.user){
+        const { data:{ user } } = await sb.auth.getUser();
+        if(user){
+          await sb.from('profiles').upsert({ id:user.id, nickname:name });
+          await sb.auth.getSession();
+          $('#chipEmail').textContent = user.email;
+          show('#screen-lobby');
+        }
       }
-      if(ex.usedFallback){
-        showFormError($('#regError'), 'Мы переключили подключение на резервный домен. Попробуйте ещё раз.');
-        regBtn.focus();
+    }catch(ex){
+      if(ex instanceof TypeError){
+        try{
+          const { result:{ data, error }, sb: sb2 } = await switchToProxyAndRetry(s=>s.auth.signUp({ email, password: pass }));
+          if(error){
+            if(error.message==='User already registered'){
+              showFieldError($('#regEmail'), 'Пользователь с этой почтой уже существует');
+              $('#regAnnounce').textContent = 'Пользователь с этой почтой уже существует';
+            }else{
+              showFormError($('#regError'), formatAuthError(error));
+            }
+          }else if(!data.session){
+            $('#regAnnounce').textContent = 'Проверьте почту для подтверждения';
+          }else if(data.user){
+            const { data:{ user } } = await sb2.auth.getUser();
+            if(user){
+              await sb2.from('profiles').upsert({ id:user.id, nickname:name });
+              await sb2.auth.getSession();
+              $('#chipEmail').textContent = user.email;
+              show('#screen-lobby');
+            }
+          }
+        }catch(err2){
+          showFormError($('#regError'), formatAuthError(err2));
+        }
+      }else{
+        showFormError($('#regError'), formatAuthError(ex));
       }
     }finally{
       regBtn.disabled=false; regBtn.textContent='Зарегистрироваться'; regBtn.style.cursor='';
@@ -516,16 +488,17 @@ async function persistCookieChoice(choice, banner, status){
   if(isSavingConsent) return;
   isSavingConsent = true;
   try{
-    if(currentUser){
-      const sb = await ensureSupabase();
-      if(sb){
-        await sb.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+    const sb = await ensureSupabase();
+    if(sb){
+      const { data:{ user } } = await sb.auth.getUser();
+      if(user){
+        await sb.from('cookie_consents').upsert({ user_id: user.id, choice });
         localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
         localStorage.removeItem(COOKIE_TEMP_KEY);
+      }else{
+        localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+        localStorage.setItem(COOKIE_TEMP_KEY, JSON.stringify(choice));
       }
-    } else {
-      localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
-      localStorage.setItem(COOKIE_TEMP_KEY, JSON.stringify(choice));
     }
     applyCookieChoice(choice);
     toast('Настройки сохранены');
@@ -558,14 +531,17 @@ async function initCookieBanner(){
   const stored = localStorage.getItem(COOKIE_CHOICE_KEY);
   if(stored){
     try{ choice = JSON.parse(stored); }catch(_){ choice=null; }
-  } else if(currentUser){
+  } else {
     try{
       const sb = await ensureSupabase();
       if(sb){
-        const { data } = await sb.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
-        if(data?.choice){
-          choice = data.choice;
-          localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+        const { data:{ user } } = await sb.auth.getUser();
+        if(user){
+          const { data } = await sb.from('cookie_consents').select('choice').eq('user_id', user.id).single();
+          if(data?.choice){
+            choice = data.choice;
+            localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+          }
         }
       }
     }catch(e){ console.warn('cookie load', e); }
@@ -606,6 +582,8 @@ ensureSupabase().then(async sb => {
   currentUser = session?.user || null;
   toggleAuthButtons(!currentUser);
   if(currentUser){
+    $('#chipEmail').textContent = currentUser.email || '';
+    show('#screen-lobby');
     const pending = sessionStorage.getItem('pendingCreate');
     if(pending){
       Object.assign(eventData, JSON.parse(pending));
@@ -613,6 +591,8 @@ ensureSupabase().then(async sb => {
       save();
       startCreateFlow();
     }
+  } else {
+    show('#screen-auth');
   }
   sb.auth.onAuthStateChange(async (event, session)=>{
     currentUser = session?.user || null;
@@ -626,11 +606,14 @@ ensureSupabase().then(async sb => {
       sessionBanner.hidden = true;
     }
     if(event === 'SIGNED_IN' && currentUser){
+      $('#chipEmail').textContent = currentUser.email || '';
+      show('#screen-lobby');
       const temp = localStorage.getItem(COOKIE_TEMP_KEY);
-      if(temp){
+      const uid = session?.user?.id;
+      if(temp && uid){
         try{
           const choice = JSON.parse(temp);
-          await sb.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+          await sb.from('cookie_consents').upsert({ user_id: uid, choice });
           localStorage.setItem(COOKIE_CHOICE_KEY, temp);
           localStorage.removeItem(COOKIE_TEMP_KEY);
           applyCookieChoice(choice);
@@ -638,9 +621,9 @@ ensureSupabase().then(async sb => {
         }catch(e){ console.warn('cookie sync', e); }
       }
       const stored = localStorage.getItem(COOKIE_CHOICE_KEY);
-      if(!stored){
+      if(!stored && uid){
         try{
-          const { data } = await sb.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
+          const { data } = await sb.from('cookie_consents').select('choice').eq('user_id', uid).single();
           if(data?.choice){
             localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(data.choice));
             applyCookieChoice(data.choice);
@@ -996,7 +979,9 @@ function mapStatusToMessage(res){
 }
 
 async function verifyCode(code){
-  const params = new URLSearchParams({ code, userId: currentUser?.id || '' });
+  const sb = await ensureSupabase();
+  const { data:{ user } } = await sb.auth.getUser();
+  const params = new URLSearchParams({ code, userId: user?.id || '' });
   const res = await fetch('/.netlify/functions/event-by-code?'+params.toString());
   if (!res.ok){
     throw new Error(mapStatusToMessage(res));
@@ -1039,7 +1024,8 @@ async function subscribeEventRealtime(eventId, { onWishlist, onGuests } = {}) {
   if(!sb) return;
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){ console.warn('Realtime: auth required'); return; }
-  const isOwner = currentUser?.id && eventData.owner_id && currentUser.id === eventData.owner_id;
+  const { data:{ user } } = await sb.auth.getUser();
+  const isOwner = user?.id && eventData.owner_id && user.id === eventData.owner_id;
   const sanitizeWishlist = (r)=> r ? ({ id:r.id, title:r.title, url:r.url, claimed_by:r.claimed_by || r.taken_by || r.reserved_by }) : null;
   const sanitizeGuest = (r)=> r ? ({ name:r.name, rsvp:r.rsvp }) : null;
   if (rtChannel) { sb.removeChannel(rtChannel); rtChannel = null; }
@@ -1141,10 +1127,12 @@ $('#joinCodeBtn')?.addEventListener('click', () => {
 
 async function joinCurrentEvent(){
   try{
+    const sb = await ensureSupabase();
+    const { data:{ user } } = await sb.auth.getUser();
     await fetch('/.netlify/functions/join-by-code',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ code:eventData.join_code, userId: currentUser?.id })
+      body:JSON.stringify({ code:eventData.join_code, userId: user?.id })
     });
   }catch(_){ }
 }
