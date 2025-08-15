@@ -198,6 +198,128 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
   }
 })();
 
+/* ---------- COOKIE CONSENT ---------- */
+let cookieChoice = { necessary: true, analytics: false };
+let analyticsTag = null;
+
+function applyCookieChoice(choice = {}) {
+  cookieChoice = { necessary: true, analytics: !!choice.analytics };
+  if (cookieChoice.analytics) {
+    if (!analyticsTag) {
+      const src = window.ANALYTICS_SRC || '';
+      if (src) {
+        analyticsTag = document.createElement('script');
+        analyticsTag.id = 'analyticsTag';
+        analyticsTag.src = src;
+        analyticsTag.async = true;
+        document.head.appendChild(analyticsTag);
+      }
+    }
+  } else {
+    analyticsTag?.remove();
+    analyticsTag = null;
+  }
+}
+
+async function initCookieBanner() {
+  const banner = document.getElementById('cookieBanner');
+  if (!banner || !window.supabase) return;
+  const analyticsCb = document.getElementById('ccAnalytics');
+  const btnAll = document.getElementById('ccAcceptAll');
+  const btnSave = document.getElementById('ccSave');
+  const statusEl = document.getElementById('cookieStatus');
+
+  const showBanner = () => { banner.hidden = false; trapFocus(banner); banner.focus(); };
+  const readChoice = () => ({ necessary: true, analytics: !!analyticsCb.checked });
+  const persistChoice = async (choice) => {
+    try {
+      if (currentUser) {
+        await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+      } else {
+        localStorage.setItem('cookie_consent_temp', JSON.stringify(choice));
+      }
+      applyCookieChoice(choice);
+      banner.hidden = true;
+      statusEl.textContent = 'Сохранено';
+    } catch (e) {
+      console.warn('cookie consent save', e);
+      statusEl.textContent = 'Ошибка';
+    }
+  };
+
+  btnAll?.addEventListener('click', () => {
+    analyticsCb.checked = true;
+    persistChoice({ necessary: true, analytics: true });
+  });
+  btnSave?.addEventListener('click', () => persistChoice(readChoice()));
+
+  const { data } = await window.supabase.auth.getSession();
+  const user = data.session?.user;
+  if (user) currentUser = user;
+
+  if (user) {
+    try {
+      const { data: cons } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', user.id).single();
+      if (cons) {
+        analyticsCb.checked = !!cons.choice.analytics;
+        applyCookieChoice(cons.choice);
+      } else {
+        const temp = localStorage.getItem('cookie_consent_temp');
+        if (temp) {
+          const choice = JSON.parse(temp);
+          analyticsCb.checked = !!choice.analytics;
+          await window.supabase.from('cookie_consents').upsert({ user_id: user.id, choice });
+          localStorage.removeItem('cookie_consent_temp');
+          applyCookieChoice(choice);
+        } else {
+          showBanner();
+        }
+      }
+    } catch (e) {
+      console.warn('cookie consent load', e);
+      showBanner();
+    }
+  } else {
+    const temp = localStorage.getItem('cookie_consent_temp');
+    if (temp) {
+      const choice = JSON.parse(temp);
+      analyticsCb.checked = !!choice.analytics;
+      applyCookieChoice(choice);
+    } else {
+      showBanner();
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initCookieBanner);
+
+window.supabase?.auth.onAuthStateChange(async (event, session) => {
+  const user = session?.user;
+  if (event === 'SIGNED_IN' && user) {
+    currentUser = user;
+    const temp = localStorage.getItem('cookie_consent_temp');
+    if (temp) {
+      const choice = JSON.parse(temp);
+      try { await window.supabase.from('cookie_consents').upsert({ user_id: user.id, choice }); } catch (e) { console.warn('cookie migrate', e); }
+      localStorage.removeItem('cookie_consent_temp');
+      applyCookieChoice(choice);
+    } else {
+      try {
+        const { data } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', user.id).single();
+        if (data) applyCookieChoice(data.choice);
+      } catch (e) { console.warn('cookie fetch', e); }
+    }
+  }
+  if (event === 'SIGNED_OUT') {
+    const temp = localStorage.getItem('cookie_consent_temp');
+    if (temp) {
+      applyCookieChoice(JSON.parse(temp));
+    } else {
+      applyCookieChoice({ necessary: true, analytics: false });
+    }
+  }
+});
+
 /* ---------- ВЫХОД ---------- */
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
   await signOut();

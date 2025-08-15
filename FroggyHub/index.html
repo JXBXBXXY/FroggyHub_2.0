@@ -269,6 +269,28 @@
       window.SUPABASE_ANON_KEY
     );
   </script>
+  <div id="cookieBanner" class="panel" role="dialog" aria-modal="true" aria-labelledby="cookieTitle" hidden tabindex="-1">
+    <h2 id="cookieTitle">Мы используем файлы cookie. Выберите, с чем согласны.</h2>
+    <div class="cb-grid">
+      <div class="cb-options">
+        <label>
+          <input type="checkbox" id="ccNecessary" checked disabled aria-describedby="necDesc">
+          Необходимые
+        </label>
+        <p id="necDesc" class="hint">Обязательны для работы сайта</p>
+        <label>
+          <input type="checkbox" id="ccAnalytics" aria-describedby="anDesc">
+          Аналитика
+        </label>
+        <p id="anDesc" class="hint">Помогает улучшать сервис</p>
+      </div>
+      <div class="cb-buttons">
+        <button type="button" class="btn primary" id="ccAcceptAll">Принять все</button>
+        <button type="button" class="btn ghost" id="ccSave">Сохранить выбор</button>
+        <p id="cookieStatus" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
