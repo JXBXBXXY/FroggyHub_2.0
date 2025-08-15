@@ -1,0 +1,17 @@
+{
+  "name": "froggyhub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "serve:functions": "netlify functions:serve",
+    "test": "echo 'No tests specified'"
+  },
+  "dependencies": {
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^16.0.0"
+  }
+}

@@ -429,7 +429,7 @@ $('#joinCodeBtn')?.addEventListener('click',async()=>{
   const err=$('#joinCodeError'); if(err) err.textContent='';
   if(!v){ err.textContent='Введите код'; return; }
   try{
-    const res = await fetch(`/api/event-by-code?code=${v}`);
+    const res = await fetch(`/.netlify/functions/event-by-code?code=${encodeURIComponent(v)}`);
     if(!res.ok) throw new Error('Неверный код');
     const data = await res.json();
     Object.assign(eventData, data);
@@ -442,7 +442,7 @@ $('#joinCodeBtn')?.addEventListener('click',async()=>{
 async function joinCurrentEvent(){
   if(!currentUser) return;
   try{
-    await fetch('/api/join-by-code',{
+    await fetch('/.netlify/functions/join-by-code',{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({ code:eventData.code, name:currentGuestName, user_id:currentUser.id })
