@@ -4,31 +4,64 @@ const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[supabase]', ...ar
 
 async function probe(url){
   const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(),1500);
-  try{
-    const res = await fetch(url + '/auth/v1/health',{ method:'GET', signal: ctrl.signal });
+  const t = setTimeout(() => ctrl.abort(), 1500);
+  try {
+    const res = await fetch(url + '/auth/v1/health', { method: 'HEAD', signal: ctrl.signal });
     clearTimeout(t);
     return res.ok;
-  }catch(_){
+  } catch (_) {
     clearTimeout(t);
     return false;
   }
 }
 
-async function initSupabase(){
-  const createClient = window.createSupabaseClient;
-  if(!createClient){ return; }
-  let mode = sessionStorage.getItem('supabase_mode') || 'direct';
-  let url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
-  if(!(await probe(url))){
-    mode = mode === 'direct' ? 'proxy' : 'direct';
-    url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
-    sessionStorage.setItem('supabase_mode', mode);
-    sendAuthTelemetry('auth_proxy_fallback', mode);
+async function ensureSupabase(){
+  if(window.__supabaseClient){ return window.__supabaseClient; }
+
+  if(!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY){
+    toast('Не настроены ключи Supabase. Обратитесь к администратору.');
+    return null;
   }
-  dbgAuth('mode:', mode);
-  window.supabase = createClient(url, window.SUPABASE_ANON_KEY);
+
+  let createClient = window.createSupabaseClient;
+  if(!createClient){
+    if(document.readyState === 'loading'){
+      await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once:true }));
+    }
+    createClient = window.createSupabaseClient;
+    if(!createClient){
+      toast('Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.');
+      return null;
+    }
+  }
+
+  let mode = sessionStorage.getItem('sb_mode');
+  if(!mode){
+    const ok = await probe(window.SUPABASE_URL);
+    mode = ok ? 'direct' : 'proxy';
+    sessionStorage.setItem('sb_mode', mode);
+  }
+  const baseUrl = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
+  const client = createClient(baseUrl, window.SUPABASE_ANON_KEY, { auth:{ persistSession:true } });
+  window.__supabaseClient = client;
+  window.supabase = client;
+  console.debug('[sb] mode', sessionStorage.getItem('sb_mode'));// TODO: remove debug before release
+  return client;
 }
+
+let retryInit = false; // TODO: remove debug before release
+function handleSbError(msg){
+  if(msg && msg.includes('supabase') && !retryInit){
+    toast('Клиент авторизации ещё не готов, повторяем…');
+    retryInit = true;
+    ensureSupabase();
+  }
+}
+window.addEventListener('error', e => handleSbError(e.message)); // TODO: remove debug before release
+window.addEventListener('unhandledrejection', e => {
+  const m = (e.reason && e.reason.message) || String(e.reason);
+  handleSbError(m);
+}); // TODO: remove debug before release
 
 function sendAuthTelemetry(kind, mode){
   try{
@@ -36,17 +69,11 @@ function sendAuthTelemetry(kind, mode){
     fetch('/.netlify/functions/auth-telemetry',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ kind, mode: mode || sessionStorage.getItem('supabase_mode') || 'direct', ua:navigator.userAgent, ts:Date.now() }),
+      body: JSON.stringify({ kind, mode: mode || sessionStorage.getItem('sb_mode') || 'direct', ua:navigator.userAgent, ts:Date.now() }),
       keepalive:true
     }).catch(()=>{});
   }catch(_){ /* ignore */ }
 }
-
-async function ensureSupabase(){
-  if(!window.supabase){ await initSupabase(); }
-}
-
-initSupabase();
 
 function mapAuthError(ex){
   console.error(ex);
@@ -98,12 +125,12 @@ async function sha256(pass){
 }
 
 async function signUp(nickname,email,password){
-  await ensureSupabase();
-  if(window.supabase){
-    const { data, error } = await window.supabase.auth.signUp({ email, password });
+  const sb = await ensureSupabase();
+  if(sb){
+    const { data, error } = await sb.auth.signUp({ email, password });
     if(error) throw error;
     const user=data.user;
-    if(user){ await window.supabase.from('profiles').upsert({ id:user.id, nickname }); }
+    if(user){ await sb.from('profiles').upsert({ id:user.id, nickname }); }
     return user;
   }
   if(users[email]) throw new Error('Такой пользователь уже существует.');
@@ -116,9 +143,9 @@ async function signUp(nickname,email,password){
 }
 
 async function signIn(email,password){
-  await ensureSupabase();
-  if(window.supabase){
-    const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+  const sb = await ensureSupabase();
+  if(sb){
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if(error) throw error;
     return data.user;
   }
@@ -130,8 +157,9 @@ async function signIn(email,password){
 }
 
 async function signOut(){
-  if(window.supabase){
-    await window.supabase.auth.signOut();
+  const sb = await ensureSupabase();
+  if(sb){
+    await sb.auth.signOut();
   }
   localStorage.removeItem(SESSION_KEY);
 }
@@ -244,8 +272,9 @@ $('#loginOtpBtn')?.addEventListener('click', async ()=>{
   if(info){ info.hidden=false; info.textContent=''; }
   if(!email){ if(err) err.textContent='Введите почту'; return; }
   try{
-    await ensureSupabase();
-    await window.supabase.auth.signInWithOtp({ email });
+    const sb = await ensureSupabase();
+    if(!sb) throw new Error('init failed');
+    await sb.auth.signInWithOtp({ email });
     if(info){ info.textContent='Мы отправили письмо. Откройте ссылку на этом устройстве.'; }
   }catch(ex){
     const msg = mapAuthError(ex);
@@ -279,8 +308,9 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
 
 /* ---------- АВТОВХОД ---------- */
 (async function autoLogin() {
-  if(window.supabase){
-    const { data } = await window.supabase.auth.getSession();
+  const sb = await ensureSupabase();
+  if(sb){
+    const { data } = await sb.auth.getSession();
     const supUser = data.session?.user;
     const emailSup = supUser?.email;
     if(emailSup){
@@ -343,9 +373,12 @@ async function persistCookieChoice(choice, banner, status){
   isSavingConsent = true;
   try{
     if(currentUser){
-      await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
-      localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
-      localStorage.removeItem(COOKIE_TEMP_KEY);
+      const sb = await ensureSupabase();
+      if(sb){
+        await sb.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+        localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+        localStorage.removeItem(COOKIE_TEMP_KEY);
+      }
     } else {
       localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
       localStorage.setItem(COOKIE_TEMP_KEY, JSON.stringify(choice));
@@ -383,10 +416,13 @@ async function initCookieBanner(){
     try{ choice = JSON.parse(stored); }catch(_){ choice=null; }
   } else if(currentUser){
     try{
-      const { data } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
-      if(data?.choice){
-        choice = data.choice;
-        localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+      const sb = await ensureSupabase();
+      if(sb){
+        const { data } = await sb.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
+        if(data?.choice){
+          choice = data.choice;
+          localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+        }
       }
     }catch(e){ console.warn('cookie load', e); }
   }
@@ -420,31 +456,34 @@ async function initCookieBanner(){
 
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
-window.supabase?.auth.onAuthStateChange(async (event, session)=>{
-  currentUser = session?.user || null;
-  if(event === 'SIGNED_IN' && currentUser){
-    const temp = localStorage.getItem(COOKIE_TEMP_KEY);
-    if(temp){
-      try{
-        const choice = JSON.parse(temp);
-        await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
-        localStorage.setItem(COOKIE_CHOICE_KEY, temp);
-        localStorage.removeItem(COOKIE_TEMP_KEY);
-        applyCookieChoice(choice);
-        return;
-      }catch(e){ console.warn('cookie sync', e); }
+ensureSupabase().then(sb => {
+  if(!sb) return;
+  sb.auth.onAuthStateChange(async (event, session)=>{
+    currentUser = session?.user || null;
+    if(event === 'SIGNED_IN' && currentUser){
+      const temp = localStorage.getItem(COOKIE_TEMP_KEY);
+      if(temp){
+        try{
+          const choice = JSON.parse(temp);
+          await sb.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+          localStorage.setItem(COOKIE_CHOICE_KEY, temp);
+          localStorage.removeItem(COOKIE_TEMP_KEY);
+          applyCookieChoice(choice);
+          return;
+        }catch(e){ console.warn('cookie sync', e); }
+      }
+      const stored = localStorage.getItem(COOKIE_CHOICE_KEY);
+      if(!stored){
+        try{
+          const { data } = await sb.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
+          if(data?.choice){
+            localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(data.choice));
+            applyCookieChoice(data.choice);
+          }
+        }catch(e){ console.warn('cookie sync', e); }
+      }
     }
-    const stored = localStorage.getItem(COOKIE_CHOICE_KEY);
-    if(!stored){
-      try{
-        const { data } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
-        if(data?.choice){
-          localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(data.choice));
-          applyCookieChoice(data.choice);
-        }
-      }catch(e){ console.warn('cookie sync', e); }
-    }
-  }
+  });
 });
 /* ---------- ВЫХОД ---------- */
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
@@ -635,30 +674,30 @@ let eventData = JSON.parse(localStorage.getItem(STORAGE)||'null') || {
 const save=()=>localStorage.setItem(STORAGE,JSON.stringify(eventData));
 
 function genCode(){ return Math.floor(100000 + Math.random()*900000).toString(); }
-async function uniqueCode(){
+async function uniqueCode(sb){
   for(let i=0;i<5;i++){
     const c=genCode();
-    const { data } = await supabase.from('events').select('id').eq('join_code', c).maybeSingle();
+    const { data } = await sb.from('events').select('id').eq('join_code', c).maybeSingle();
     if(!data) return c;
   }
   throw new Error('Не удалось сгенерировать код');
 }
 
-async function createEvent({ title, date, time, address, dress, bring, notes, wishlist }){
-  const user = (await supabase.auth.getUser()).data.user;
-  const join_code = await uniqueCode();
+async function createEvent(sb, { title, date, time, address, dress, bring, notes, wishlist }){
+  const user = (await sb.auth.getUser()).data.user;
+  const join_code = await uniqueCode(sb);
   const ttlDays = 14;
   const code_expires_at = new Date(Date.now() + ttlDays*24*60*60*1000).toISOString();
   const event_at = new Date(`${date}T${time}:00`).toISOString();
   const payload = { owner_id: user.id, title, address, dress, bring, notes, join_code, code_expires_at, event_at };
   console.debug('createEvent payload', payload);
-  const { data, error } = await supabase.from('events').insert([payload]).select('*').single();
+  const { data, error } = await sb.from('events').insert([payload]).select('*').single();
   if(error){ console.debug('createEvent error', error); throw error; }
   console.debug('createEvent response', data);
   const items = (wishlist||[]).filter(i=>i.title||i.url).map(it=>({
     event_id: data.id, title: it.title, url: it.url
   }));
-  if(items.length){ await supabase.from('wishlist_items').insert(items); }
+  if(items.length){ await sb.from('wishlist_items').insert(items); }
   return data;
 }
 
@@ -708,7 +747,15 @@ $('#formDetails')?.addEventListener('submit', async (e)=>{
   const status=$('#createEventStatus');
   status.textContent='';
   try{
-    const ev = await createEvent(eventData);
+    const sb = await ensureSupabase();
+    if(!sb){
+      const btn = e.submitter; btn?.setAttribute('disabled','');
+      setTimeout(()=>btn&&btn.removeAttribute('disabled'),2000);
+      status.textContent='Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.';
+      return;
+    }
+    console.debug('[create-event] sb ready'); // TODO: remove debug before release
+    const ev = await createEvent(sb, eventData);
     Object.assign(eventData, ev);
     save();
     status.textContent='Событие создано';
@@ -741,9 +788,13 @@ $('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.join_code
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
 async function authHeader(){
-  const { data } = await supabase.auth.getSession();
-  const t = data?.session?.access_token;
-  return t ? { Authorization: 'Bearer '+t } : {};
+  const sb = await ensureSupabase();
+  if(sb){
+    const { data } = await sb.auth.getSession();
+    const t = data?.session?.access_token;
+    return t ? { Authorization: 'Bearer '+t } : {};
+  }
+  return {};
 }
 
 function mapStatusToMessage(res){
@@ -768,7 +819,9 @@ async function joinFlow(code){
   try{
     const event = await verifyCode(code); // проверка и загрузка данных
     Object.assign(eventData, event);
-    let { data:{ user } } = await supabase.auth.getUser();
+    const sb = await ensureSupabase();
+    if(!sb) throw new Error('Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.');
+    let { data:{ user } } = await sb.auth.getUser();
     let name = user?.user_metadata?.name;
     if(!name) name = (prompt('Как вас называть?') || '').trim();
     if(!name) { toast('Введите имя'); return; }
@@ -793,13 +846,15 @@ async function joinFlow(code){
 let rtChannel;
 
 async function subscribeEventRealtime(eventId, { onWishlist, onGuests } = {}) {
-  const { data:{ session } } = await supabase.auth.getSession();
+  const sb = await ensureSupabase();
+  if(!sb) return;
+  const { data:{ session } } = await sb.auth.getSession();
   if(!session){ console.warn('Realtime: auth required'); return; }
   const isOwner = currentUser?.id && eventData.owner_id && currentUser.id === eventData.owner_id;
   const sanitizeWishlist = (r)=> r ? ({ id:r.id, title:r.title, url:r.url, claimed_by:r.claimed_by || r.taken_by || r.reserved_by }) : null;
   const sanitizeGuest = (r)=> r ? ({ name:r.name, rsvp:r.rsvp }) : null;
-  if (rtChannel) { supabase.removeChannel(rtChannel); rtChannel = null; }
-  rtChannel = supabase
+  if (rtChannel) { sb.removeChannel(rtChannel); rtChannel = null; }
+  rtChannel = sb
     .channel('event-' + eventId)
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'wishlist_items', filter: 'event_id=eq.' + eventId
@@ -819,7 +874,9 @@ async function subscribeEventRealtime(eventId, { onWishlist, onGuests } = {}) {
 }
 
 async function renderWishlist(eventId){
-  const { data } = await supabase.from('wishlist_items').select('id,title,url,claimed_by').eq('event_id', eventId).order('id');
+  const sb = await ensureSupabase();
+  if(!sb) return;
+  const { data } = await sb.from('wishlist_items').select('id,title,url,claimed_by').eq('event_id', eventId).order('id');
   eventData.wishlist = (data || []).map(it=>({ id:it.id, title:it.title, url:it.url, claimedBy:it.claimed_by || '' }));
   if(!$('#slide-join-wishlist').hidden) renderGuestWishlist();
   if(!$('#slide-create-wishlist').hidden) renderGrid();
@@ -828,13 +885,17 @@ async function renderWishlist(eventId){
 }
 
 async function renderGuests(eventId){
-  const { data } = await supabase.from('guests').select('name,rsvp').eq('event_id', eventId);
+  const sb = await ensureSupabase();
+  if(!sb) return;
+  const { data } = await sb.from('guests').select('name,rsvp').eq('event_id', eventId);
   eventData.guests = data || [];
   if(document.body.classList.contains('scene-final')) toFinalScene();
 }
 
 async function loadEvent(eventId){
-  const ev = await supabase.from('events').select('*').eq('id', eventId).single();
+  const sb = await ensureSupabase();
+  if(!sb) return;
+  const ev = await sb.from('events').select('*').eq('id', eventId).single();
   if(ev.data){
     Object.assign(eventData, ev.data);
     if(ev.data.event_at){
@@ -850,7 +911,7 @@ async function loadEvent(eventId){
   });
 }
 
-function cleanupRealtime(){ if (rtChannel) { supabase.removeChannel(rtChannel); rtChannel = null; } }
+function cleanupRealtime(){ if (rtChannel) { window.__supabaseClient?.removeChannel(rtChannel); rtChannel = null; } }
 window.addEventListener('beforeunload', cleanupRealtime);
 
 async function needLogin(){
@@ -863,7 +924,9 @@ async function needLogin(){
 async function handleDeepLink(){
   const code = (new URLSearchParams(location.search).get('code') || '').replace(/\D/g,'').slice(0,6);
   if(!code) return;
-  const { data:{ session } } = await supabase.auth.getSession();
+  const sb = await ensureSupabase();
+  if(!sb) return;
+  const { data:{ session } } = await sb.auth.getSession();
   if(!session){ sessionStorage.setItem('pendingCode', code); show('#screen-auth'); switchAuth('login'); }
   else { joinFlow(code); }
 }
@@ -871,8 +934,11 @@ async function handleDeepLink(){
 window.addEventListener('DOMContentLoaded', async () => {
   const pending = sessionStorage.getItem('pendingCode');
   if(pending){
-    const { data:{ session } } = await supabase.auth.getSession();
-    if(session){ sessionStorage.removeItem('pendingCode'); joinFlow(pending); }
+    const sb = await ensureSupabase();
+    if(sb){
+      const { data:{ session } } = await sb.auth.getSession();
+      if(session){ sessionStorage.removeItem('pendingCode'); joinFlow(pending); }
+    }
   } else {
     handleDeepLink();
   }
