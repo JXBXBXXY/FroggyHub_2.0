@@ -22,13 +22,12 @@
         </div>
       </div>
 
-      <div class="tabs" role="tablist">
-        <button class="tab active" id="tabLogin" role="tab" aria-controls="authFormLogin" aria-selected="true">Войти</button>
-        <button class="tab" id="tabRegister" role="tab" aria-controls="authFormRegister" aria-selected="false">Регистрация</button>
+      <div id="authTabs" class="tabs" role="tablist">
+        <button class="tab active" id="tabLogin" role="tab" aria-controls="paneLogin" aria-selected="true">Войти</button>
+        <button class="tab" id="tabSignup" role="tab" aria-controls="paneSignup" aria-selected="false">Регистрация</button>
       </div>
 
-      <!-- ЛОГИН -->
-      <form id="authFormLogin" class="grid" autocomplete="on" role="tabpanel" aria-labelledby="tabLogin">
+      <section id="paneLogin" class="grid" role="tabpanel" aria-labelledby="tabLogin">
         <label>Почта
           <input id="loginEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
         </label>
@@ -36,28 +35,11 @@
           <input id="loginPass" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
         </label>
         <button type="button" class="btn primary" id="loginBtn">Войти</button>
-        <button type="button" class="btn" id="loginOtpBtn">Войти по ссылке на e‑mail</button>
-        <button type="button" class="btn" id="resetPassBtn">Забыли пароль?</button>
+        <button type="button" class="btn" id="showReset" aria-controls="paneReset">Забыли пароль?</button>
         <div id="loginError" class="form-error" aria-live="polite"></div>
-        <p id="loginInfo" class="hint" hidden></p>
-        <div id="loginAnnounce" class="visually-hidden" aria-live="assertive"></div>
-        <p class="hint">Нет аккаунта? Перейдите на вкладку «Регистрация».</p>
-        <input type="submit" hidden>
-      </form>
+      </section>
 
-      <form id="newPassForm" class="grid" hidden>
-        <label>Новый пароль
-          <input id="newPass" type="password" minlength="4" required autocomplete="new-password">
-        </label>
-        <label>Повторите пароль
-          <input id="newPass2" type="password" minlength="4" required autocomplete="new-password">
-        </label>
-        <button type="button" class="btn primary" id="setNewPassBtn">Сменить пароль</button>
-        <div id="newPassError" class="form-error" aria-live="polite"></div>
-      </form>
-
-      <!-- РЕГИСТРАЦИЯ -->
-      <form id="authFormRegister" class="grid" hidden autocomplete="off" role="tabpanel" aria-labelledby="tabRegister">
+      <section id="paneSignup" class="grid" role="tabpanel" aria-labelledby="tabSignup" hidden inert>
         <label>Имя / Никнейм
           <input id="regName" type="text" placeholder="Как вас называть?" required>
         </label>
@@ -71,12 +53,27 @@
           <input id="regPass2" type="password" placeholder="повторите пароль" minlength="4" required autocomplete="new-password">
         </label>
         <button type="button" class="btn primary" id="regBtn">Зарегистрироваться</button>
-        <button type="button" class="btn ghost small" id="regCancelBtn" hidden>Отмена</button>
         <div id="regError" class="form-error" aria-live="polite"></div>
-        <div id="regAnnounce" class="visually-hidden" aria-live="assertive"></div>
-        <button type="button" class="btn" id="resendConfirmBtn" hidden>Переотправить письмо</button>
-        <p id="resendHint" class="hint" hidden>Ссылка действует 1 час</p>
-        <input type="submit" hidden>
+      </section>
+
+      <section id="paneReset" class="grid" role="tabpanel" aria-labelledby="tabLogin" hidden inert>
+        <label>Почта
+          <input id="resetEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
+        </label>
+        <button type="button" class="btn primary" id="resetSend">Отправить ссылку для сброса</button>
+        <button type="button" class="btn" id="backToLogin">Назад к входу</button>
+        <div id="resetError" class="form-error" aria-live="polite"></div>
+      </section>
+
+      <form id="newPassForm" class="grid" hidden>
+        <label>Новый пароль
+          <input id="newPass" type="password" minlength="4" required autocomplete="new-password">
+        </label>
+        <label>Повторите пароль
+          <input id="newPass2" type="password" minlength="4" required autocomplete="new-password">
+        </label>
+        <button type="button" class="btn primary" id="setNewPassBtn">Сменить пароль</button>
+        <div id="newPassError" class="form-error" aria-live="polite"></div>
       </form>
     </div>
   </div>
