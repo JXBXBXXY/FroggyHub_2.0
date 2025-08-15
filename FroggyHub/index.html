@@ -21,13 +21,13 @@
         </div>
       </div>
 
-      <div class="tabs">
-        <button class="tab active" id="tabLogin">Войти</button>
-        <button class="tab" id="tabRegister">Регистрация</button>
+      <div class="tabs" role="tablist">
+        <button class="tab active" id="tabLogin" role="tab" aria-controls="authFormLogin" aria-selected="true">Войти</button>
+        <button class="tab" id="tabRegister" role="tab" aria-controls="authFormRegister" aria-selected="false">Регистрация</button>
       </div>
 
       <!-- ЛОГИН -->
-      <form id="authFormLogin" class="grid" autocomplete="on">
+      <form id="authFormLogin" class="grid" autocomplete="on" role="tabpanel" aria-labelledby="tabLogin">
         <label>Почта
           <input id="loginEmail" type="email" placeholder="you@email.com" required>
         </label>
@@ -40,7 +40,7 @@
       </form>
 
       <!-- РЕГИСТРАЦИЯ -->
-      <form id="authFormRegister" class="grid" hidden autocomplete="off">
+      <form id="authFormRegister" class="grid" hidden autocomplete="off" role="tabpanel" aria-labelledby="tabRegister">
         <label>Имя / Никнейм
           <input id="regName" type="text" placeholder="Как вас называть?" required>
         </label>
@@ -255,6 +255,18 @@
     </div>
   </div>
 
+  <script>
+    // TODO: заполнить для проды через переменные окружения Netlify
+    window.SUPABASE_URL = "https://<YOUR-PROJECT-REF>.supabase.co";
+    window.SUPABASE_ANON_KEY = "<YOUR-ANON-KEY>";
+  </script>
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    window.supabase = createClient(
+      window.SUPABASE_URL,
+      window.SUPABASE_ANON_KEY
+    );
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

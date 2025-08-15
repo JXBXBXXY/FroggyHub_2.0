@@ -37,6 +37,7 @@ body{
   padding:20px;
   box-shadow:var(--shadow);
   margin:18px 0;
+  overflow-wrap:anywhere;
 }
 .card.inner{border-radius:14px;padding:16px;margin-top:14px}
 
@@ -137,8 +138,8 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
   pointer-events:none;
   z-index:5;
 }
-.final-left{flex:1; min-height:64vh}
-.final-right{width:min(780px, 48vw); display:flex; justify-content:flex-end}
+.final-left{flex:1; min-height:64vh; min-width:0}
+.final-right{width:min(780px, 48vw); display:flex; justify-content:flex-end; min-width:0}
 .final-card{
   pointer-events:auto;
   width:100%;
@@ -147,6 +148,7 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
   border-radius:22px;
   box-shadow:0 20px 60px rgba(0,0,0,.45);
   padding:18px 18px 22px;
+  overflow-wrap:anywhere;
   backdrop-filter:blur(4px) saturate(120%);
 }
 .final-header{display:grid; gap:8px; margin-bottom:10px}
@@ -187,7 +189,7 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
 .pill.secondary{background:linear-gradient(180deg,#ffd973,#f0b429);color:#2b2300}
 
 /* Панель шагов */
-.panel{position:relative;padding:22px;margin:18px 5vw 40px;border-radius:22px;background:var(--panel);border:1px solid var(--panel-bd);box-shadow:var(--shadow)}
+.panel{position:relative;padding:22px;margin:18px 5vw 40px;border-radius:22px;background:var(--panel);border:1px solid var(--panel-bd);box-shadow:var(--shadow);overflow-wrap:anywhere}
 .bubble{background:rgba(20,70,45,.6);border:1px solid #2a7c56;border-radius:16px;padding:12px;margin-bottom:12px}
 .bubble-head{font-weight:800;color:#93e8b6;margin-bottom:4px}
 
@@ -214,7 +216,6 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
 /* Позиции в финале: всё слева */
 body.scene-final .big-clock{left:25%; top:18%}
 body.scene-final .stump{display:block; left:25%; top:67%}
-body.scene-final #frog{left:25%; top:61%}
 
 /* Жёсткие правила сцен */
 body.scene-final .pads{display:none}
@@ -226,7 +227,7 @@ body.scene-intro .speech{display:block}
   .final-left{display:none}
   .final-right{width:100%}
   body.scene-final .big-clock{left:50%; top:14%}
-  body.scene-final .stump, body.scene-final #frog{left:50%}
+  body.scene-final .stump{left:50%}
   .dashboard{grid-template-columns:1fr}
   .final-main .meta{grid-template-columns:1fr}
 }
@@ -238,3 +239,15 @@ body.scene-final .final-layout{ display:flex; }/* в финале — видна
 /* На всякий случай: на интро/пруду принудительно скрыть */
 body.scene-intro .final-layout,
 body.scene-pond  .final-layout{ display:none !important; }
+
+@media (max-width:640px){
+  body{font-size:clamp(14px,4vw,16px)}
+  .card{padding:16px;margin:14px 0}
+  .card.inner{padding:12px}
+  .final-card{padding:14px}
+  .panel{padding:16px;margin:12px 5vw}
+  .grid{gap:10px}
+  .grid>*{min-width:0}
+  input,textarea{min-width:0}
+  .bar-actions,.btn-group{flex-direction:column}
+}
