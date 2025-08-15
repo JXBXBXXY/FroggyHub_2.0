@@ -266,7 +266,7 @@ async function load(){
     }));
     setWishlist(wlInit);
 
-    subscribeRealtime();
+    await subscribeRealtime();
   }catch(err){
     errorEl.textContent = err.message;
   }
@@ -329,8 +329,10 @@ async function handleWishlistChange(payload){
   updateGiftStats();
 }
 
-function subscribeRealtime(){
+async function subscribeRealtime(){
   if(!window.supabase || !eventId) return;
+  const { data:{ session } } = await window.supabase.auth.getSession();
+  if(!session){ console.warn('Realtime: auth required'); return; }
   if(rtChannel) window.supabase.removeChannel(rtChannel);
   rtChannel = window.supabase
     .channel('analytics-' + eventId)
@@ -338,7 +340,9 @@ function subscribeRealtime(){
     .on('postgres_changes',{ event:'*', schema:'public', table:'wishlist_items', filter:'event_id=eq.'+eventId }, handleWishlistChange)
     .subscribe(status => {
       if(status === 'SUBSCRIBED') { retryDelay = 1000; }
-      else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)) {
+      else if(status === 'CHANNEL_ERROR') {
+        console.warn('Realtime channel not connected: insufficient rights');
+      } else if(['TIMED_OUT','CLOSED'].includes(status)) {
         const delay = Math.min(retryDelay, 30000);
         retryDelay = Math.min(retryDelay*2, 30000);
         setTimeout(subscribeRealtime, delay);

@@ -41,6 +41,11 @@ alter table public.participants enable row level security;
 create policy "self participant" on public.participants
   for all using (auth.uid() = user_id);
 
+create policy "participants owner select" on public.participants
+  for select using (
+    auth.uid() = (select owner_id from public.events e where e.id = participants.event_id)
+  );
+
 -- wishlist_items
 create table public.wishlist_items (
   id uuid primary key default gen_random_uuid(),

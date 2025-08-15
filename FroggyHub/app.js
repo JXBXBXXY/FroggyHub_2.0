@@ -697,17 +697,30 @@ async function joinFlow(code){
 
 let rtChannel;
 
-function subscribeEventRealtime(eventId, { onWishlist, onGuests } = {}) {
+async function subscribeEventRealtime(eventId, { onWishlist, onGuests } = {}) {
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(!session){ console.warn('Realtime: auth required'); return; }
+  const isOwner = currentUser?.id && eventData.owner_id && currentUser.id === eventData.owner_id;
+  const sanitizeWishlist = (r)=> r ? ({ id:r.id, title:r.title, url:r.url, claimed_by:r.claimed_by || r.taken_by || r.reserved_by }) : null;
+  const sanitizeGuest = (r)=> r ? ({ name:r.name, rsvp:r.rsvp }) : null;
   if (rtChannel) { supabase.removeChannel(rtChannel); rtChannel = null; }
   rtChannel = supabase
     .channel('event-' + eventId)
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'wishlist_items', filter: 'event_id=eq.' + eventId
-    }, (payload) => { onWishlist?.(payload); })
+    }, (payload) => {
+      const data = isOwner ? payload : { eventType: payload.eventType, new: sanitizeWishlist(payload.new), old: sanitizeWishlist(payload.old) };
+      onWishlist?.(data);
+    })
     .on('postgres_changes', {
       event: '*', schema: 'public', table: 'guests', filter: 'event_id=eq.' + eventId
-    }, (payload) => { onGuests?.(payload); })
-    .subscribe();
+    }, (payload) => {
+      const data = isOwner ? payload : { eventType: payload.eventType, new: sanitizeGuest(payload.new), old: sanitizeGuest(payload.old) };
+      onGuests?.(data);
+    })
+    .subscribe(status => {
+      if(status === 'CHANNEL_ERROR') console.warn('Realtime channel not connected: insufficient rights');
+    });
 }
 
 async function renderWishlist(eventId){
@@ -736,7 +749,7 @@ async function loadEvent(eventId){
     }
   }
   await Promise.all([renderWishlist(eventId), renderGuests(eventId)]);
-  subscribeEventRealtime(eventId, {
+  await subscribeEventRealtime(eventId, {
     onWishlist: () => renderWishlist(eventId),
     onGuests:   () => renderGuests(eventId),
   });
