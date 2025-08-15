@@ -102,13 +102,15 @@ function toast(msg){
 }
 function trapFocus(node){
   const f=node.querySelectorAll('button, [href], input, textarea, [tabindex]:not([tabindex="-1"])');
-  if(!f.length) return;
+  if(!f.length) return () => {};
   const first=f[0], last=f[f.length-1];
-  node.addEventListener('keydown',e=>{
+  const handler=e=>{
     if(e.key!=='Tab') return;
     if(e.shiftKey && document.activeElement===first){ last.focus(); e.preventDefault(); }
     else if(!e.shiftKey && document.activeElement===last){ first.focus(); e.preventDefault(); }
-  });
+  };
+  node.addEventListener('keydown',handler);
+  return ()=>node.removeEventListener('keydown',handler);
 }
 function show(idToShow){
   ['#screen-auth','#screen-lobby','#screen-app'].forEach(id=>{
@@ -205,9 +207,11 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
 })();
 
 /* ---------- COOKIE CONSENT ---------- */
+const COOKIE_CHOICE_KEY = 'cookie_choice';
+const COOKIE_TEMP_KEY = 'cookie_consent_temp';
 let analyticsTag = null;
-function applyCookieConsent(consented){
-  if(consented){
+function applyCookieChoice(choice){
+  if(choice?.analytics){
     if(!analyticsTag){
       const src = window.ANALYTICS_SRC || '';
       if(src){
@@ -223,49 +227,100 @@ function applyCookieConsent(consented){
   }
 }
 
+let isSavingConsent = false;
+let saveConsentTimer = null;
+let releaseCookieTrap = null;
+let lastFocusEl = null;
+
+function hideCookieBanner(banner){
+  banner.hidden = true;
+  banner.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('cookie-open');
+  releaseCookieTrap?.();
+  releaseCookieTrap = null;
+  lastFocusEl?.focus();
+  lastFocusEl = null;
+  console.debug('[cookies] hidden'); // TODO: remove debug
+}
+
+async function persistCookieChoice(choice, banner, status){
+  if(isSavingConsent) return;
+  isSavingConsent = true;
+  try{
+    if(currentUser){
+      await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+      localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+      localStorage.removeItem(COOKIE_TEMP_KEY);
+    } else {
+      localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+      localStorage.setItem(COOKIE_TEMP_KEY, JSON.stringify(choice));
+    }
+    applyCookieChoice(choice);
+    toast('Настройки сохранены');
+    console.debug('[cookies] saved', choice); // TODO: remove debug
+    hideCookieBanner(banner);
+    status.textContent = '';
+  } catch(e){
+    console.warn('cookie save', e);
+    status.textContent = 'Не удалось сохранить';
+  } finally {
+    isSavingConsent = false;
+  }
+}
+
+function queueCookieSave(choice, banner, status){
+  if(isSavingConsent) return;
+  clearTimeout(saveConsentTimer);
+  saveConsentTimer = setTimeout(()=>persistCookieChoice(choice, banner, status),300);
+}
+
 async function initCookieBanner(){
   const banner = document.getElementById('cookieBanner');
   if(!banner) return;
+  const analyticsCb = document.getElementById('cookieAnalytics');
   const accept = document.getElementById('cookieAccept');
   const decline = document.getElementById('cookieDecline');
   const status = document.getElementById('cookieStatus');
 
-  async function persist(consented){
-    try{
-      localStorage.setItem('cookieConsent', consented);
-      if(currentUser){
-        await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, consented });
-      }
-      applyCookieConsent(consented);
-      status.textContent = 'Сохранено';
-    }catch(e){
-      console.warn('cookie save', e);
-      status.textContent = 'Не удалось сохранить';
-    }
-    banner.hidden = true;
-  }
-
-  accept?.addEventListener('click', ()=>persist(true));
-  decline?.addEventListener('click', ()=>persist(false));
-
-  const stored = localStorage.getItem('cookieConsent');
-  if(stored !== null){
-    applyCookieConsent(stored === 'true');
+  let choice=null;
+  const stored = localStorage.getItem(COOKIE_CHOICE_KEY);
+  if(stored){
+    try{ choice = JSON.parse(stored); }catch(_){ choice=null; }
   } else if(currentUser){
     try{
-      const { data } = await window.supabase.from('cookie_consents').select('consented').eq('user_id', currentUser.id).single();
-      if(data){
-        applyCookieConsent(data.consented);
-        localStorage.setItem('cookieConsent', data.consented);
-      } else {
-        banner.hidden = false; trapFocus(banner);
+      const { data } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
+      if(data?.choice){
+        choice = data.choice;
+        localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
       }
-    } catch(e){
-      console.warn('cookie load', e); banner.hidden = false; trapFocus(banner);
-    }
-  } else {
-    banner.hidden = false; trapFocus(banner);
+    }catch(e){ console.warn('cookie load', e); }
   }
+
+  console.debug('[cookies] init/loaded choice', choice); // TODO: remove debug
+
+  if(choice){
+    analyticsCb.checked = !!choice.analytics;
+    applyCookieChoice(choice);
+    return;
+  }
+
+  lastFocusEl = document.activeElement;
+  banner.hidden = false;
+  banner.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('cookie-open');
+  releaseCookieTrap = trapFocus(banner);
+
+  const saveCurrent = () => {
+    const c = { necessary:true, analytics: analyticsCb.checked };
+    queueCookieSave(c, banner, status);
+  };
+
+  analyticsCb?.addEventListener('change', saveCurrent);
+  accept?.addEventListener('click', () => {
+    analyticsCb.checked = true;
+    saveCurrent();
+  });
+  decline?.addEventListener('click', saveCurrent);
 }
 
 document.addEventListener('DOMContentLoaded', initCookieBanner);
@@ -273,14 +328,26 @@ document.addEventListener('DOMContentLoaded', initCookieBanner);
 window.supabase?.auth.onAuthStateChange(async (event, session)=>{
   currentUser = session?.user || null;
   if(event === 'SIGNED_IN' && currentUser){
-    const local = localStorage.getItem('cookieConsent');
-    if(local !== null){
-      try{ await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, consented: local === 'true' }); } catch(e){ console.warn('cookie sync', e); }
-    } else {
+    const temp = localStorage.getItem(COOKIE_TEMP_KEY);
+    if(temp){
       try{
-        const { data } = await window.supabase.from('cookie_consents').select('consented').eq('user_id', currentUser.id).single();
-        if(data){ localStorage.setItem('cookieConsent', data.consented); applyCookieConsent(data.consented); }
-      } catch(e){ console.warn('cookie sync', e); }
+        const choice = JSON.parse(temp);
+        await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, choice });
+        localStorage.setItem(COOKIE_CHOICE_KEY, temp);
+        localStorage.removeItem(COOKIE_TEMP_KEY);
+        applyCookieChoice(choice);
+        return;
+      }catch(e){ console.warn('cookie sync', e); }
+    }
+    const stored = localStorage.getItem(COOKIE_CHOICE_KEY);
+    if(!stored){
+      try{
+        const { data } = await window.supabase.from('cookie_consents').select('choice').eq('user_id', currentUser.id).single();
+        if(data?.choice){
+          localStorage.setItem(COOKIE_CHOICE_KEY, JSON.stringify(data.choice));
+          applyCookieChoice(data.choice);
+        }
+      }catch(e){ console.warn('cookie sync', e); }
     }
   }
 });

@@ -243,7 +243,9 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 .error{color:#ff6b6b;font-size:.9rem;min-height:1.2em}
 
 /* Cookie banner */
-#cookieBanner{position:fixed;left:0;right:0;bottom:0;z-index:1100;max-width:1100px;margin:0 auto 12px;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:var(--panel);border:1px solid var(--panel-bd);box-shadow:var(--shadow);display:grid;gap:12px;}
+#cookieBanner{position:fixed;left:0;right:0;bottom:0;max-width:1100px;margin:0 auto 12px;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:var(--panel);border:1px solid var(--panel-bd);box-shadow:var(--shadow);display:grid;gap:12px;}
+#cookieBanner:not([hidden]){z-index:1100;}
+#cookieBanner[hidden]{display:none;pointer-events:none;opacity:0;}
 #cookieBanner .cookie-actions{display:flex;justify-content:flex-end;gap:12px;}
 #cookieBanner .cookie-text{display:grid;gap:8px;}
 @media (min-width:960px){#cookieBanner{grid-template-columns:1fr auto;align-items:center;}#cookieBanner .cookie-actions{flex-direction:row;}}
