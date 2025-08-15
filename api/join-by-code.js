@@ -15,7 +15,7 @@ export async function handler(event) {
     const { data: eventRow } = await client
       .from('events')
       .select('id')
-      .eq('code', code)
+      .eq('join_code', code)
       .single();
     if (!eventRow) return { statusCode: 404, body: 'Event not found' };
 

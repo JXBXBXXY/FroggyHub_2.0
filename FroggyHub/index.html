@@ -208,6 +208,7 @@
             <label>Как пройти / комментарии <textarea id="eventNotes" rows="3"></textarea></label>
             <button class="btn" type="submit">Сгенерировать код</button>
           </form>
+          <p id="createEventStatus" class="error" role="status" aria-live="polite"></p>
         </section>
 
         <!-- СОЗДАТЬ: админ -->
@@ -269,11 +270,18 @@
       window.SUPABASE_ANON_KEY
     );
   </script>
-  <div id="cookie-banner" hidden>
-  <p>Мы используем cookies. Согласны?</p>
-  <button id="cookie-accept">Да</button>
-  <button id="cookie-decline">Нет</button>
-</div>
+  <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
+    <div class="cookie-text">
+      <p>Мы используем cookies. Согласны?</p>
+      <label><input type="checkbox" id="cookieAnalytics"> Аналитика</label>
+      <div id="cookieStatus" class="visually-hidden" aria-live="polite"></div>
+    </div>
+    <div class="cookie-actions">
+      <button id="cookieAccept" type="button" class="btn yes">Принять все</button>
+      <button id="cookieDecline" type="button" class="btn ghost">Сохранить выбор</button>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <script src="app.js"></script>
 </body>
 </html>
