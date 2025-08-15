@@ -32,7 +32,18 @@ for (const f of clientFiles) {
   hit ? fail(`secret-like pattern in ${f}: ${hit}`) : ok(`no secrets in ${f}`);
 }
 
-// 3) Import functions and test early guards (no DB call)
+// 3) Basic auth markup sanity checks
+const html = fs.readFileSync(path.join(PUBLISH_DIR,'index.html'),'utf8');
+html.includes('class="tab active" id="tabLogin"')
+  ? ok('login tab active by default') : fail('login tab not active');
+/id="paneSignup"[^>]*hidden/.test(html)
+  ? ok('signup pane hidden by default') : fail('signup pane should be hidden');
+/id="paneReset"[^>]*hidden/.test(html)
+  ? ok('reset pane hidden by default') : fail('reset pane should be hidden');
+/id="newPassForm"[^>]*hidden/.test(html)
+  ? ok('new password form hidden by default') : fail('new password form should be hidden');
+
+// 4) Import functions and test early guards (no DB call)
 const imp = async (p) => (await import(pathToFileURL(path.resolve(p)).href));
 
 const testEventByCode = async () => {

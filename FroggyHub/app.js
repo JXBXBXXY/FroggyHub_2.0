@@ -275,6 +275,19 @@ function show(idToShow){
 
 // --- Auth state management ---
 let authState = 'login';
+let loginBtn, regBtn;
+function updateRegBtnState(){
+  if(!regBtn) return;
+  const { ok } = validateAuthForm({
+    nickname: document.getElementById('regName')?.value,
+    email: document.getElementById('regEmail')?.value,
+    password: document.getElementById('regPass')?.value,
+    password2: document.getElementById('regPass2')?.value
+  }, 'signup');
+  if(ok){ regBtn.disabled=false; regBtn.removeAttribute('aria-disabled'); }
+  else { regBtn.disabled=true; regBtn.setAttribute('aria-disabled','true'); }
+}
+
 function setAuthState(state){
   authState = state;
   const panes = { login: document.getElementById('paneLogin'), signup: document.getElementById('paneSignup'), reset: document.getElementById('paneReset') };
@@ -303,7 +316,16 @@ function setAuthState(state){
   params.set('auth', state);
   history.replaceState(null,'', location.pathname + '?' + params.toString() + location.hash);
   const panel = panes[state];
-  panel?.querySelector('input')?.focus({ preventScroll:true });
+  const focusMap = { login:'loginEmail', signup:'regName', reset:'resetEmail' };
+  document.getElementById(focusMap[state])?.focus({ preventScroll:true });
+  if(state==='signup'){
+    if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.removeAttribute('aria-disabled'); }
+    if(regBtn){ regBtn.textContent='Зарегистрироваться'; }
+    updateRegBtnState();
+  }else{
+    if(regBtn){ regBtn.disabled=false; regBtn.textContent='Зарегистрироваться'; regBtn.removeAttribute('aria-disabled'); }
+    if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.removeAttribute('aria-disabled'); }
+  }
   panel?.scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
@@ -324,7 +346,7 @@ const initState = initialParams.get('auth') || sessionStorage.getItem('auth_stat
 setAuthState(initState);
 
 // --- Login ---
-const loginBtn = document.getElementById('loginBtn');
+loginBtn = document.getElementById('loginBtn');
 loginBtn?.addEventListener('click', async (e)=>{
   e.preventDefault();
   clearFieldError(document.getElementById('loginEmail'));
@@ -335,7 +357,7 @@ loginBtn?.addEventListener('click', async (e)=>{
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPass').value;
   const orig = loginBtn.textContent;
-  loginBtn.disabled = true; loginBtn.textContent='Входим…';
+  loginBtn.disabled = true; loginBtn.setAttribute('aria-disabled','true'); loginBtn.textContent='Входим…';
   const ctrl = new AbortController();
   try{
     const sb = await ensureSupabase();
@@ -345,12 +367,12 @@ loginBtn?.addEventListener('click', async (e)=>{
   }catch(err){
     showFormError(document.getElementById('loginError'), formatAuthError(err));
   }finally{
-    loginBtn.disabled=false; loginBtn.textContent=orig;
+    loginBtn.disabled=false; loginBtn.removeAttribute('aria-disabled'); loginBtn.textContent=orig;
   }
 });
 
 // --- Signup ---
-const regBtn = document.getElementById('regBtn');
+regBtn = document.getElementById('regBtn');
 regBtn?.addEventListener('click', async (e)=>{
   e.preventDefault();
   clearFieldError(document.getElementById('regName'));
@@ -364,7 +386,7 @@ regBtn?.addEventListener('click', async (e)=>{
   const email = document.getElementById('regEmail').value.trim().toLowerCase();
   const pass = document.getElementById('regPass').value;
   const orig = regBtn.textContent;
-  regBtn.disabled = true; regBtn.textContent='Регистрируем…';
+  regBtn.disabled = true; regBtn.setAttribute('aria-disabled','true'); regBtn.textContent='Регистрируем…';
   const ctrl = new AbortController();
   try{
     const sb = await ensureSupabase();
@@ -382,9 +404,15 @@ regBtn?.addEventListener('click', async (e)=>{
   }catch(err){
     showFormError(document.getElementById('regError'), formatAuthError(err));
   }finally{
-    regBtn.disabled=false; regBtn.textContent=orig;
+    regBtn.textContent=orig;
+    updateRegBtnState();
   }
 });
+
+['regName','regEmail','regPass','regPass2'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input', updateRegBtnState);
+});
+updateRegBtnState();
 
 // --- Password reset ---
 const resetBtn = document.getElementById('resetSend');
