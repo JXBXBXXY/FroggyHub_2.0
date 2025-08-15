@@ -47,6 +47,13 @@ Some regions block direct access to `*.supabase.co`. The app can automatically f
 - The proxy must not expose a `SERVICE_ROLE` key – only the anonymous key is used in the browser.
 - To disable the proxy, remove the fallback code and the `/supabase` rules when regional restrictions are not an issue.
 
+## Email confirmation
+
+- Enable at **Project Settings → Auth → Email confirmations** in Supabase.
+- When enabled, a session is not created until the user clicks the link in the email.
+- **Redirect URLs** must include `https://froggyhubapp.netlify.app` and preview domains.
+- Emails may arrive with a delay – the UI must not wait for the session.
+
 ## Testing checklist
 - Apply the SQL migrations.
 - Create users and profiles, create an event, join via code from another user.
@@ -69,3 +76,7 @@ Some regions block direct access to `*.supabase.co`. The app can automatically f
 - `autoRefreshToken` keeps the session alive for over an hour during activity.
 - Throttling limits password attempts and falls back to OTP after repeated failures.
 - Logout clears session, temp data and proxy mode.
+- Registration with confirmation **OFF** creates a session immediately, upserts profile and redirects to the lobby.
+- Registration with confirmation **ON** shows the “Check your inbox” screen and a “Resend” button without hanging.
+- Mobile users in restricted regions hit a timeout first, switch to the proxy and complete registration or email delivery.
+- Cancelling during “Регистрируем…” returns the UI to idle state.
