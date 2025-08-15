@@ -229,6 +229,25 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 
 .error{color:#ff6b6b;font-size:.9rem;min-height:1.2em}
 
+/* ===== COOKIE BANNER ===== */
+#cookieBanner{
+  position:fixed;
+  left:5vw; right:5vw; bottom:0;
+  background:var(--panel);
+  border:1px solid var(--panel-bd);
+  border-radius:22px 22px 0 0;
+  box-shadow:var(--shadow);
+  padding:20px;
+  z-index:1000;
+}
+#cookieBanner .cb-grid{display:grid;gap:16px}
+#cookieBanner .cb-options{display:grid;gap:8px}
+#cookieBanner .cb-options label{display:flex;align-items:center;gap:8px}
+#cookieBanner .cb-buttons{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+@media (min-width:760px){
+  #cookieBanner .cb-grid{grid-template-columns:1fr auto;align-items:center}
+}
+
 /* на финале скрыть нижние элементы шагов */
 body.scene-final #slides,
 body.scene-final .pads{ display:none !important; }
