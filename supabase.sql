@@ -12,23 +12,23 @@ create policy "profiles owner" on public.profiles
 create table public.events (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles(id) on delete cascade,
-  code text unique not null,
+  join_code text unique not null,
   title text not null,
-  event_date date,
+  event_at timestamptz,
   created_at timestamptz default now()
 );
 alter table public.events enable row level security;
-create policy "select own/participant events" on public.events
+create policy "events insert" on public.events
+  for insert with check (auth.uid() = owner_id);
+create policy "events select" on public.events
   for select using (
-    owner_id = auth.uid()
-    or id in (select event_id from public.participants where user_id = auth.uid())
+    auth.uid() = owner_id
+    or exists(select 1 from public.participants p where p.event_id = id and p.user_id = auth.uid())
   );
-create policy "insert events" on public.events
-  for insert with check (owner_id = auth.uid());
-create policy "update own events" on public.events
-  for update using (owner_id = auth.uid());
-create policy "delete own events" on public.events
-  for delete using (owner_id = auth.uid());
+create policy "events update" on public.events
+  for update using (auth.uid() = owner_id);
+create policy "events delete" on public.events
+  for delete using (auth.uid() = owner_id);
 
 -- participants
 create table public.participants (

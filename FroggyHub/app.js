@@ -88,12 +88,18 @@ async function shareInvite(code){
     } catch (_) {}
   }
   await navigator.clipboard.writeText(link);
-  alert('Ссылка скопирована: ' + link);
+  toast('Ссылка скопирована: ' + link);
 }
 
 /* ---------- УТИЛИТЫ ---------- */
 const $ = (s) => document.querySelector(s);
-const toast = (msg) => alert(msg);
+const toastEl = document.getElementById('toast');
+function toast(msg){
+  if(!toastEl){ alert(msg); return; }
+  toastEl.textContent = msg;
+  toastEl.hidden = false;
+  setTimeout(()=>{ toastEl.hidden = true; }, 4000);
+}
 function trapFocus(node){
   const f=node.querySelectorAll('button, [href], input, textarea, [tabindex]:not([tabindex="-1"])');
   if(!f.length) return;
@@ -218,10 +224,11 @@ function applyCookieConsent(consented){
 }
 
 async function initCookieBanner(){
-  const banner = document.getElementById('cookie-banner');
+  const banner = document.getElementById('cookieBanner');
   if(!banner) return;
-  const accept = document.getElementById('cookie-accept');
-  const decline = document.getElementById('cookie-decline');
+  const accept = document.getElementById('cookieAccept');
+  const decline = document.getElementById('cookieDecline');
+  const status = document.getElementById('cookieStatus');
 
   async function persist(consented){
     try{
@@ -230,7 +237,11 @@ async function initCookieBanner(){
         await window.supabase.from('cookie_consents').upsert({ user_id: currentUser.id, consented });
       }
       applyCookieConsent(consented);
-    }catch(e){ console.warn('cookie save', e); }
+      status.textContent = 'Сохранено';
+    }catch(e){
+      console.warn('cookie save', e);
+      status.textContent = 'Не удалось сохранить';
+    }
     banner.hidden = true;
   }
 
@@ -457,22 +468,31 @@ let eventData = JSON.parse(localStorage.getItem(STORAGE)||'null') || {
   id:Math.random().toString(36).slice(2,8),
   title:'',date:'',time:'',address:'',dress:'',bring:'',notes:'',
   wishlist:Array.from({length:25},(_,i)=>({id:i+1,title:'',url:'',claimedBy:''})),
-  guests:[], code:null
+  guests:[], join_code:null
 };
 const save=()=>localStorage.setItem(STORAGE,JSON.stringify(eventData));
 
 function genCode(){ return Math.floor(100000 + Math.random()*900000).toString(); }
+async function uniqueCode(){
+  for(let i=0;i<5;i++){
+    const c=genCode();
+    const { data } = await supabase.from('events').select('id').eq('join_code', c).maybeSingle();
+    if(!data) return c;
+  }
+  throw new Error('Не удалось сгенерировать код');
+}
 
 async function createEvent({ title, date, time, address, dress, bring, notes, wishlist }){
   const user = (await supabase.auth.getUser()).data.user;
-  const code = genCode();
+  const join_code = await uniqueCode();
   const ttlDays = 14;
   const code_expires_at = new Date(Date.now() + ttlDays*24*60*60*1000).toISOString();
-  const { data, error } = await supabase.from('events').insert([{
-    owner: user.id, title, date, time, address, dress, bring, notes,
-    code, code_expires_at
-  }]).select('*').single();
-  if(error) throw error;
+  const event_at = new Date(`${date}T${time}:00`).toISOString();
+  const payload = { owner_id: user.id, title, address, dress, bring, notes, join_code, code_expires_at, event_at };
+  console.debug('createEvent payload', payload);
+  const { data, error } = await supabase.from('events').insert([payload]).select('*').single();
+  if(error){ console.debug('createEvent error', error); throw error; }
+  console.debug('createEvent response', data);
   const items = (wishlist||[]).filter(i=>i.title||i.url).map(it=>({
     event_id: data.id, title: it.title, url: it.url
   }));
@@ -483,8 +503,12 @@ async function createEvent({ title, date, time, address, dress, bring, notes, wi
 /* шаги создания */
 $('#formCreate')?.addEventListener('submit',(e)=>{
   e.preventDefault();
-  const title=$('#eventTitle').value.trim(), date=$('#eventDate').value, time=$('#eventTime').value, address=$('#eventAddress').value.trim();
-  if(!title||!date||!time) return alert('Заполните название, дату и время');
+  const title=$('#eventTitle').value.trim();
+  const date=$('#eventDate').value.trim();
+  const time=$('#eventTime').value.trim();
+  const address=$('#eventAddress').value.trim();
+  if(!title||!date||!time){ toast('Заполните название, дату и время'); return; }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)){ toast('Неверный формат даты или времени'); return; }
   Object.assign(eventData,{title,date,time,address}); save();
   withTransition(()=>{ showSlide('create-wishlist'); renderGrid(); });
 });
@@ -519,15 +543,21 @@ editor?.addEventListener('click',e=>{ const r=editor.getBoundingClientRect(); if
 $('#formDetails')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   Object.assign(eventData,{dress:$('#eventDress').value.trim(),bring:$('#eventBring').value.trim(),notes:$('#eventNotes').value.trim()});
+  const status=$('#createEventStatus');
+  status.textContent='';
   try{
     const ev = await createEvent(eventData);
     Object.assign(eventData, ev);
     save();
+    status.textContent='Событие создано';
     withTransition(()=>{ showSlide('admin'); renderAdmin(); });
-  }catch(_){ toast('Не удалось создать событие'); }
+  }catch(err){
+    console.debug('createEvent handler', err);
+    status.textContent = err.message || 'Не удалось создать событие';
+  }
 });
 function renderAdmin(){
-  $('#eventCode').textContent=eventData.code||'—';
+  $('#eventCode').textContent=eventData.join_code||'—';
   const exp=$('#codeExpire');
   if(exp){
     if(eventData.code_expires_at){
@@ -540,7 +570,7 @@ function renderAdmin(){
 }
 $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene()));
 
-$('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.code));
+$('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.join_code));
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
 async function authHeader(){
@@ -625,7 +655,14 @@ async function renderGuests(eventId){
 
 async function loadEvent(eventId){
   const ev = await supabase.from('events').select('*').eq('id', eventId).single();
-  if(ev.data) Object.assign(eventData, ev.data);
+  if(ev.data){
+    Object.assign(eventData, ev.data);
+    if(ev.data.event_at){
+      const d=new Date(ev.data.event_at);
+      eventData.date = d.toISOString().slice(0,10);
+      eventData.time = d.toISOString().slice(11,16);
+    }
+  }
   await Promise.all([renderWishlist(eventId), renderGuests(eventId)]);
   subscribeEventRealtime(eventId, {
     onWishlist: () => renderWishlist(eventId),
@@ -672,7 +709,7 @@ async function joinCurrentEvent(){
     await fetch('/.netlify/functions/join-by-code',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ code:eventData.code, userId: currentUser?.id })
+      body:JSON.stringify({ code:eventData.join_code, userId: currentUser?.id })
     });
   }catch(_){ }
 }
@@ -680,14 +717,14 @@ async function joinCurrentEvent(){
 let currentGuestName='';
 document.querySelectorAll('[data-rsvp]')?.forEach(b=>b.addEventListener('click',e=>{
   const code=e.currentTarget.dataset.rsvp, name=($('#guestName').value||'').trim();
-  if(!name) return alert('Введите имя');
+  if(!name) return toast('Введите имя');
   currentGuestName=name;
   const ex=eventData.guests.find(g=>g.name.toLowerCase()===name.toLowerCase());
   if(ex) ex.rsvp=code; else eventData.guests.push({name,rsvp:code});
   save(); croak();
 }));
 $('#toGuestWishlist')?.addEventListener('click',()=>{
-  const name=($('#guestName').value||'').trim(); if(!name) return alert('Введите имя');
+  const name=($('#guestName').value||'').trim(); if(!name) return toast('Введите имя');
   currentGuestName=name; withTransition(()=>{ showSlide('join-wishlist'); renderGuestWishlist(); });
 });
 const guestGifts=$('#guestGifts');
@@ -706,7 +743,7 @@ function renderGuestWishlist(){
   }).join('');
   guestGifts.querySelectorAll('.choose').forEach(b=>b.addEventListener('click',e=>{
     const id=+e.currentTarget.dataset.id; const it=eventData.wishlist.find(x=>x.id===id);
-    if(it.claimedBy && it.claimedBy.toLowerCase()!==currentGuestName.toLowerCase()) return alert('Этот подарок уже выбрали');
+    if(it.claimedBy && it.claimedBy.toLowerCase()!==currentGuestName.toLowerCase()) return toast('Этот подарок уже выбрали');
     eventData.wishlist.forEach(x=>{ if(x.claimedBy && x.claimedBy.toLowerCase()===currentGuestName.toLowerCase()) x.claimedBy=''; });
     it.claimedBy=currentGuestName; save(); renderGuestWishlist();
   }));
@@ -756,11 +793,11 @@ function toFinalScene(){
   `;
   $('#fShare').innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div>Код события: <span class="pill-mini" style="background:#1b4a33">${eventData.code||'—'}</span></div>
+      <div>Код события: <span class="pill-mini" style="background:#1b4a33">${eventData.join_code||'—'}</span></div>
       <button class="btn small" id="copyCodeBtn">Поделиться</button>
     </div>
   `;
-  document.getElementById('copyCodeBtn')?.addEventListener('click', () => shareInvite(eventData.code));
+  document.getElementById('copyCodeBtn')?.addEventListener('click', () => shareInvite(eventData.join_code));
 
   function tickClock(){
     const dt = getEventDate();
