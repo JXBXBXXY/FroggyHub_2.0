@@ -80,3 +80,11 @@ Some regions block direct access to `*.supabase.co`. The app can automatically f
 - Registration with confirmation **ON** shows the “Check your inbox” screen and a “Resend” button without hanging.
 - Mobile users in restricted regions hit a timeout first, switch to the proxy and complete registration or email delivery.
 - Cancelling during “Регистрируем…” returns the UI to idle state.
+
+## Быстрый чек авторизации
+
+- Переключение «Регистрация» → кнопка кликается, активируется только при валидных полях.
+- Логин: при неверном пароле — кнопка возвращается из «Входим…».
+- Таймаут сети → кнопка не зависает, срабатывает прокси‑ретрай один раз.
+- Баннер cookies скрыт → форма кликабельна.
+- На мобиле вкладки меняются, всё кликается.
