@@ -133,11 +133,14 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
 /* ФИНАЛ: две колонки */
 .final-layout{
   position:absolute; inset:0;
-  display:flex; align-items:center; gap:26px;
+  display:none;
+  align-items:center;
+  gap:26px;
   padding:0 6vw;
   pointer-events:none;
   z-index:5;
 }
+body.scene-final .final-layout{display:flex;}
 .final-left{flex:1; min-height:64vh; min-width:0}
 .final-right{width:min(780px, 48vw); display:flex; justify-content:flex-end; min-width:0}
 .final-card{
@@ -224,6 +227,7 @@ body.scene-pond .speech, body.scene-final .speech{display:none}
 body.scene-intro .speech{display:block}
 
 @media (max-width:960px){
+  .final-layout{flex-direction:column}
   .final-left{display:none}
   .final-right{width:100%}
   body.scene-final .big-clock{left:50%; top:14%}
@@ -232,13 +236,6 @@ body.scene-intro .speech{display:block}
   .final-main .meta{grid-template-columns:1fr}
 }
 @media (max-width:760px){ .row2{grid-template-columns:1fr} }
-/* Финальная карточка показывается только на сцене final */
-.final-layout{ display:none; }                 /* по умолчанию скрыта */
-body.scene-final .final-layout{ display:flex; }/* в финале — видна как flex-контейнер */
-
-/* На всякий случай: на интро/пруду принудительно скрыть */
-body.scene-intro .final-layout,
-body.scene-pond  .final-layout{ display:none !important; }
 
 @media (max-width:640px){
   body{font-size:clamp(14px,4vw,16px)}

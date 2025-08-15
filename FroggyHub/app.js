@@ -5,6 +5,7 @@ const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
 const saveUsers = () => localStorage.setItem(USERS_KEY, JSON.stringify(users));
 const setSession = (email) => localStorage.setItem(SESSION_KEY, email);
 const getSession = () => localStorage.getItem(SESSION_KEY);
+let currentUser = null;
 
 const enc = new TextEncoder();
 const toHex = (buf) => [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -35,12 +36,11 @@ async function sha256(pass){
 
 async function signUp(name,email,password){
   if(window.supabase){
-    const { data, error } = await window.supabase.auth.signUp({ email, password });
-    if(error) throw new Error(error.message);
-    if(data.user){
-      await window.supabase.from('profiles').upsert({ id:data.user.id, name });
-    }
-    return data.user;
+    const { data, error } = await window.supabase.auth.signUp({ email, password, options:{ data:{ name } } });
+    if(error) throw error;
+    const user=data.user;
+    if(user){ await window.supabase.from('profiles').upsert({ id:user.id, name }); }
+    return user;
   }
   if(users[email]) throw new Error('Такой пользователь уже существует.');
   const saltHex = toHex(randBytes(16));
@@ -54,7 +54,7 @@ async function signUp(name,email,password){
 async function signIn(email,password){
   if(window.supabase){
     const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
-    if(error) throw new Error(error.message);
+    if(error) throw error;
     return data.user;
   }
   const u = users[email];
@@ -110,20 +110,27 @@ function show(idToShow){
 }
 
 /* ---------- ВКЛАДКИ ВХОД/РЕГ ---------- */
-$('#tabLogin')?.addEventListener('click', ()=>{
-  $('#authFormLogin').hidden=false; $('#authFormRegister').hidden=true;
-  $('#tabLogin').classList.add('active'); $('#tabRegister').classList.remove('active');
-  $('#tabLogin').setAttribute('aria-selected','true');
-  $('#tabRegister').setAttribute('aria-selected','false');
-  $('#loginEmail').focus();
-});
-$('#tabRegister')?.addEventListener('click', ()=>{
-  $('#authFormLogin').hidden=true; $('#authFormRegister').hidden=false;
-  $('#tabRegister').classList.add('active'); $('#tabLogin').classList.remove('active');
-  $('#tabRegister').setAttribute('aria-selected','true');
-  $('#tabLogin').setAttribute('aria-selected','false');
-  $('#regName').focus();
-});
+function switchAuth(mode){
+  const loginForm=$('#authFormLogin');
+  const regForm=$('#authFormRegister');
+  const tabLogin=$('#tabLogin');
+  const tabRegister=$('#tabRegister');
+  const showLogin = mode==='login';
+  if(loginForm&&regForm){
+    loginForm.hidden=!showLogin;
+    regForm.hidden=showLogin;
+  }
+  if(tabLogin&&tabRegister){
+    tabLogin.classList.toggle('active',showLogin);
+    tabRegister.classList.toggle('active',!showLogin);
+    tabLogin.setAttribute('aria-selected',showLogin?'true':'false');
+    tabRegister.setAttribute('aria-selected',showLogin?'false':'true');
+  }
+  const focusEl = showLogin ? loginForm?.querySelector('input') : regForm?.querySelector('input');
+  focusEl?.focus();
+}
+$('#tabLogin')?.addEventListener('click',()=>switchAuth('login'));
+$('#tabRegister')?.addEventListener('click',()=>switchAuth('register'));
 
 /* ---------- ЛОГИН ---------- */
 $('#authFormLogin')?.addEventListener('submit', async (e)=>{
@@ -133,7 +140,8 @@ $('#authFormLogin')?.addEventListener('submit', async (e)=>{
   const err = $('#loginError');
   if(err) err.textContent='';
   try{
-    await signIn(email, pass);
+    const user = await signIn(email, pass);
+    currentUser = user;
     setSession(email);
     $('#chipEmail').textContent = email;
     show('#screen-lobby');
@@ -155,7 +163,8 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
   if(pass !== pass2){ err.textContent='Пароли не совпадают.'; return; }
   try{
     await signUp(name,email,pass);
-    await signIn(email,pass);
+    const user = await signIn(email,pass);
+    currentUser = user;
     setSession(email);
     $('#chipEmail').textContent = email;
     show('#screen-lobby');
@@ -168,8 +177,10 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
 (async function autoLogin() {
   if(window.supabase){
     const { data } = await window.supabase.auth.getSession();
-    const emailSup = data.session?.user?.email;
+    const supUser = data.session?.user;
+    const emailSup = supUser?.email;
     if(emailSup){
+      currentUser = supUser;
       setSession(emailSup);
       $('#chipEmail').textContent = emailSup;
       show('#screen-lobby');
@@ -189,7 +200,9 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
 /* ---------- ВЫХОД ---------- */
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
   await signOut();
+  currentUser = null;
   show('#screen-auth');
+  switchAuth('login');
 });
 
 /* ---------- ЛОББИ: переходы ---------- */
@@ -326,7 +339,7 @@ function placeFrogOnStump(){
   const rect=stump.getBoundingClientRect();
   const stage=document.body.getBoundingClientRect();
   const x=rect.left+rect.width/2-stage.left;
-  const y=rect.top+rect.height/2-rect.height*0.12-stage.top;
+  const y=rect.top+rect.height*0.42-stage.top;
   frog.style.left=x+'px';
   frog.style.top=y+'px';
 }
@@ -411,14 +424,31 @@ $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene
 $('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.code));
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
-$('#joinCodeBtn')?.addEventListener('click',()=>{
+$('#joinCodeBtn')?.addEventListener('click',async()=>{
   const v=($('#joinCodeInput').value||'').trim();
   const err=$('#joinCodeError'); if(err) err.textContent='';
   if(!v){ err.textContent='Введите код'; return; }
-  if(!eventData.code){ err.textContent='Код ещё не создан'; return; }
-  if(v===eventData.code){ withTransition(()=>{ showSlide('join-1'); }); }
-  else { err.textContent='Неверный код'; }
+  try{
+    const res = await fetch(`/api/event-by-code?code=${v}`);
+    if(!res.ok) throw new Error('Неверный код');
+    const data = await res.json();
+    Object.assign(eventData, data);
+    withTransition(()=>{ showSlide('join-1'); });
+  }catch(ex){
+    if(err) err.textContent = ex.message || 'Ошибка';
+  }
 });
+
+async function joinCurrentEvent(){
+  if(!currentUser) return;
+  try{
+    await fetch('/api/join-by-code',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({ code:eventData.code, name:currentGuestName, user_id:currentUser.id })
+    });
+  }catch(_){ }
+}
 
 /* RSVP + подарок */
 let currentGuestName='';
@@ -459,8 +489,8 @@ function renderGuestWishlist(){
     if(it.claimedBy && it.claimedBy.toLowerCase()===currentGuestName.toLowerCase()){ it.claimedBy=''; save(); renderGuestWishlist(); }
   }));
 }
-$('#skipWishlist')?.addEventListener('click',()=>withTransition(()=>toFinalScene()));
-$('#toGuestFinal')?.addEventListener('click',()=>withTransition(()=>toFinalScene()));
+$('#skipWishlist')?.addEventListener('click',async()=>{ await joinCurrentEvent(); withTransition(()=>toFinalScene()); });
+$('#toGuestFinal')?.addEventListener('click',async()=>{ await joinCurrentEvent(); withTransition(()=>toFinalScene()); });
 
 /* ---------- ФИНАЛ: две колонки ---------- */
 let finalTimer = null;
