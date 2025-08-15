@@ -108,42 +108,29 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
   *{scroll-behavior:auto !important;transition:none !important}
 }
 
-.stump{display:none;position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);max-width:60vmin;height:auto;pointer-events:none;opacity:.9;z-index:2}
+#stumpImg{display:none;position:relative;width:min(420px,70vw);height:auto;margin:0 auto;}
 #frog{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease,transform .2s ease;z-index:3}
-#frog img{width:140px;height:auto;display:block}
+#frog img{width:100%;height:auto;display:block}
 #frog.jump{animation:jump .55s ease}
-@keyframes jump{0%{transform:translate(-50%,-50%)}35%{transform:translate(-50%,-85%)}100%{transform:translate(-50%,-50%)}}
+@keyframes jump{0%{transform:translate(-50%,-50%)}35%{transform:translate(-50%,-85%)}100%{transform:translate(-50%,-50%)} }
+body.scene-final #stumpImg{display:block}
+body.scene-final #frog{width:min(140px,20vw);transform:translate(-50%,-78%);will-change:top,left,transform;z-index:2}
 
-/* Большие часы — в финале слева */
-.big-clock{
-  position:absolute; left:50%; top:12%;
-  transform:translate(-50%,-50%);
-  text-align:center;
-  z-index:6;
-  color:#dfffe6;
-  text-shadow:0 4px 24px rgba(0,0,0,.6);
-  font-weight:900;
-  letter-spacing:.02em;
-  user-select:none;
-  pointer-events:none;
+/* Большие часы */
+#bigClock{
+  position:relative; z-index:1; line-height:1;
+  font-size:clamp(48px, 12vw, 180px); margin:16px 0 20px;
 }
-.big-clock .hm{font-size:clamp(52px, 11vw, 140px); line-height:.9}
-.big-clock .days{font-size:.5em; opacity:.9; margin-top:6px}
+#bigClock .days{ display:block; font-size:clamp(12px, 2.8vw, 20px); opacity:.85; margin-top:6px; }
 
-/* ФИНАЛ: две колонки */
-.final-layout{
-  position:absolute; inset:0;
-  display:none;
-  align-items:center;
-  gap:26px;
-  padding:0 6vw;
-  pointer-events:none;
-  z-index:5;
-}
-body.scene-final .final-layout{display:flex;}
-.final-left{flex:1; min-height:64vh; min-width:0}
-.final-right{width:min(780px, 48vw); display:flex; justify-content:flex-end; min-width:0}
+/* ===== FINAL LAYOUT ===== */
+#finalLayout{ display:flex; align-items:flex-start; gap:32px; }
+#finalLeft{ flex:1 1 50%; min-width:320px; position:relative; }
+#finalRight{ flex:1 1 50%; min-width:320px; }
+
+/* правая карточка поверх фона */
 .final-card{
+  position:relative; z-index:3; overflow-wrap:anywhere;
   pointer-events:auto;
   width:100%;
   background:rgba(15,48,32,.8);
@@ -151,9 +138,10 @@ body.scene-final .final-layout{display:flex;}
   border-radius:22px;
   box-shadow:0 20px 60px rgba(0,0,0,.45);
   padding:18px 18px 22px;
-  overflow-wrap:anywhere;
   backdrop-filter:blur(4px) saturate(120%);
 }
+.final-card *, .form-row *{ min-width:0; }
+
 .final-header{display:grid; gap:8px; margin-bottom:10px}
 .final-header .title{font-size:clamp(26px,3.4vw,40px); font-weight:900}
 /* chips под заголовком убраны */
@@ -216,32 +204,31 @@ body.scene-final .final-layout{display:flex;}
 
 .error{color:#ff6b6b;font-size:.9rem;min-height:1.2em}
 
-/* Позиции в финале: всё слева */
-body.scene-final .big-clock{left:25%; top:18%}
-body.scene-final .stump{display:block; left:25%; top:67%}
-
-/* Жёсткие правила сцен */
-body.scene-final .pads{display:none}
-body.scene-final #slides{display:none}
+/* на финале скрыть нижние элементы шагов */
+body.scene-final #slides,
+body.scene-final .pads{ display:none !important; }
 body.scene-pond .speech, body.scene-final .speech{display:none}
 body.scene-intro .speech{display:block}
 
-@media (max-width:960px){
-  .final-layout{flex-direction:column}
-  .final-left{display:none}
-  .final-right{width:100%}
-  body.scene-final .big-clock{left:50%; top:14%}
-  body.scene-final .stump{left:50%}
+/* ===== BREAKPOINTS ===== */
+@media (max-width: 960px){
+  #finalLayout{ flex-direction:column; align-items:stretch; gap:18px; }
+  #finalLeft{ order:0; text-align:center; }
+  #finalRight{ order:1; width:100%; }
+  #bigClock{ margin-bottom:12px; }
   .dashboard{grid-template-columns:1fr}
   .final-main .meta{grid-template-columns:1fr}
 }
 @media (max-width:760px){ .row2{grid-template-columns:1fr} }
 
-@media (max-width:640px){
+@media (max-width: 640px){
+  .container{ padding:16px; }
+  .final-card{ padding:14px; border-radius:14px; }
+  input, textarea, button{ font-size:16px; }
+  .pill, .btn{ padding:12px 14px; }
   body{font-size:clamp(14px,4vw,16px)}
   .card{padding:16px;margin:14px 0}
   .card.inner{padding:12px}
-  .final-card{padding:14px}
   .panel{padding:16px;margin:12px 5vw}
   .grid{gap:10px}
   .grid>*{min-width:0}

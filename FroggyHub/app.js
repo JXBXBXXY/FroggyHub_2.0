@@ -93,6 +93,7 @@ async function shareInvite(code){
 
 /* ---------- УТИЛИТЫ ---------- */
 const $ = (s) => document.querySelector(s);
+const toast = (msg) => alert(msg);
 function trapFocus(node){
   const f=node.querySelectorAll('button, [href], input, textarea, [tabindex]:not([tabindex="-1"])');
   if(!f.length) return;
@@ -240,13 +241,6 @@ if(codeInput && joinBtn){
   });
 }
 
-const qp = new URLSearchParams(location.search);
-const pre = qp.get('code');
-if(pre && codeInput && joinBtn){
-  show('#screen-app'); setScene('pond'); renderPads(); showSlide('join-code');
-  codeInput.value = pre.replace(/\D/g,'').slice(0,6);
-  joinBtn.disabled = codeInput.value.length !== 6;
-}
 
 /* ---------- ПРУД / ЛЯГУШКА ---------- */
 const FROG_IDLE="assets/frog_idle.png";
@@ -269,28 +263,31 @@ stumpImg?.addEventListener('load',()=>{
 });
 
 function setScene(scene){
-  // классы сцены
   document.body.classList.remove('scene-intro','scene-pond','scene-final');
   document.body.classList.add(`scene-${scene}`);
 
-  // что показываем/прячем
-  const slidesEl = document.getElementById('slides');
-  const padsWrap = document.getElementById('pads');
-  const speech   = document.getElementById('speech');
-  const bigClock = document.getElementById('bigClock');
-  const finalLay = document.getElementById('finalLayout');
+  $('#slides').hidden = (scene !== 'pond');
+  $('#finalLayout').style.display = (scene === 'final') ? 'flex' : 'none';
+  $('#bigClock').hidden = (scene !== 'final');
 
-  slidesEl.hidden    = (scene !== 'pond');     // панель шагов только на пруду
-  padsWrap.style.display = (scene==='pond') ? 'block' : 'none';
-  speech.style.display   = (scene==='intro') ? 'block' : 'none';
-
-  // финальные элементы
-  bigClock.hidden = (scene !== 'final');
-  finalLay.style.display = (scene === 'final') ? 'flex' : 'none';
-  if (scene === 'final') {
+  if (scene === 'final'){
     placeFrogOnStump();
     window.scrollTo(0,0);
   }
+}
+
+window.addEventListener('resize', () => {
+  if (document.body.classList.contains('scene-final')) placeFrogOnStump();
+});
+
+/* Лягушка на пне */
+function placeFrogOnStump(){
+  const stump = $('#stumpImg'); const frog = $('#frog');
+  if(!stump || !frog) return;
+  const r = stump.getBoundingClientRect();
+  const top  = r.top  + window.scrollY + r.height * 0.58; // чуть ниже центра текстуры
+  const left = r.left + window.scrollX + r.width  * 0.50;
+  frog.style.top = `${top}px`; frog.style.left = `${left}px`;
 }
 
 const stepToPad = {
@@ -333,16 +330,6 @@ function frogJumpToPad(index, forceJump=false){
   lastPadIndex = index;
 }
 
-function placeFrogOnStump(){
-  const stump=document.getElementById('stumpImg');
-  if(!stump || stump.offsetParent===null) return;
-  const rect=stump.getBoundingClientRect();
-  const stage=document.body.getBoundingClientRect();
-  const x=rect.left+rect.width/2-stage.left;
-  const y=rect.top+rect.height*0.42-stage.top;
-  frog.style.left=x+'px';
-  frog.style.top=y+'px';
-}
 function withTransition(next){ root.classList.add('fading'); setTimeout(()=>{ next&&next(); root.classList.remove('fading'); }, 450); }
 function showSlide(id){
   document.querySelectorAll('#slides > section').forEach(s=>s.hidden=true);
@@ -424,28 +411,86 @@ $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene
 $('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.code));
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
-$('#joinCodeBtn')?.addEventListener('click',async()=>{
-  const v=($('#joinCodeInput').value||'').trim();
-  const err=$('#joinCodeError'); if(err) err.textContent='';
-  if(!v){ err.textContent='Введите код'; return; }
+async function authHeader(){
+  const { data } = await supabase.auth.getSession();
+  const t = data?.session?.access_token;
+  return t ? { Authorization: 'Bearer '+t } : {};
+}
+
+async function verifyCode(code){
+  const res = await fetch('/.netlify/functions/event-by-code?code='+code, { headers: await authHeader() });
+  if (res.status === 400) throw new Error('Неверный формат кода');
+  if (res.status === 401) throw new Error('Нужно войти');
+  if (res.status === 404) throw new Error('Код не найден');
+  if (!res.ok)          throw new Error('Ошибка сервера');
+  return res.json();
+}
+
+async function joinFlow(code){
   try{
-    const res = await fetch(`/.netlify/functions/event-by-code?code=${encodeURIComponent(v)}`);
-    if(!res.ok) throw new Error('Неверный код');
-    const data = await res.json();
-    Object.assign(eventData, data);
-    withTransition(()=>{ showSlide('join-1'); });
-  }catch(ex){
-    if(err) err.textContent = ex.message || 'Ошибка';
+    const event = await verifyCode(code); // проверка и загрузка данных
+    Object.assign(eventData, event);
+    let { data:{ user } } = await supabase.auth.getUser();
+    let name = user?.user_metadata?.name;
+    if(!name) name = (prompt('Как вас называть?') || '').trim();
+    if(!name) { toast('Введите имя'); return; }
+
+    const res = await fetch('/.netlify/functions/join-by-code', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ code, name })
+    });
+    if (res.status === 401) { await needLogin(); return; }
+    if (!res.ok) { toast('Не удалось присоединиться'); return; }
+
+    const { event_id } = await res.json();
+    await loadEvent(event_id);
+    setScene('final');
+  }catch(e){ toast(e.message || 'Сеть недоступна'); }
+}
+
+async function loadEvent(id){
+  // данные события уже в eventData после verifyCode
+  // сюда можно добавить дополнительную загрузку по id
+}
+
+async function needLogin(){
+  const qp = new URLSearchParams(location.search);
+  const code = qp.get('code') || '';
+  if (code) sessionStorage.setItem('pendingCode', code);
+  show('#screen-auth'); switchAuth('login');
+}
+
+async function handleDeepLink(){
+  const code = (new URLSearchParams(location.search).get('code') || '').replace(/\D/g,'').slice(0,6);
+  if(!code) return;
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(!session){ sessionStorage.setItem('pendingCode', code); show('#screen-auth'); switchAuth('login'); }
+  else { joinFlow(code); }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const pending = sessionStorage.getItem('pendingCode');
+  if(pending){
+    const { data:{ session } } = await supabase.auth.getSession();
+    if(session){ sessionStorage.removeItem('pendingCode'); joinFlow(pending); }
+  } else {
+    handleDeepLink();
   }
 });
 
+$('#joinCodeBtn')?.addEventListener('click', () => {
+  const code = ($('#joinCodeInput').value || '').replace(/\D/g,'').slice(0,6);
+  if(code.length !== 6) return toast('Нужен 6-значный код');
+  joinFlow(code);
+});
+
 async function joinCurrentEvent(){
-  if(!currentUser) return;
   try{
     await fetch('/.netlify/functions/join-by-code',{
       method:'POST',
-      headers:{'content-type':'application/json'},
-      body:JSON.stringify({ code:eventData.code, name:currentGuestName, user_id:currentUser.id })
+      headers:{'Content-Type':'application/json', ...(await authHeader())},
+      body:JSON.stringify({ code:eventData.code, name:currentGuestName })
     });
   }catch(_){ }
 }
@@ -560,8 +605,6 @@ function toFinalScene(){
       const keep = lastPadIndex;
       renderPads();
       immediatePlaceFrog(keep);
-    } else if(document.body.classList.contains('scene-final')){
-      placeFrogOnStump();
     }
   });
 })();
