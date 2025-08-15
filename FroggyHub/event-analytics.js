@@ -17,6 +17,7 @@ const giftFreeCountEl = document.getElementById('giftFreeCount');
 const giftTakenCountEl = document.getElementById('giftTakenCount');
 const giftFreeBar = document.getElementById('giftFreeBar');
 const giftTakenBar = document.getElementById('giftTakenBar');
+const toastEl = document.getElementById('toast');
 
 const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
@@ -26,6 +27,26 @@ const visitors = new Map();       // key: user_id
 const visitorEls = new Map();
 const wishlist = new Map();       // key: item id
 const wishlistEls = new Map();
+const wishlistPending = new Map();
+
+let currentUserId = null;
+let currentUserProfile = null;
+
+if(window.supabase){
+  const { data:{ user } } = await window.supabase.auth.getUser();
+  currentUserId = user?.id || null;
+  if(currentUserId){
+    const { data } = await window.supabase.from('profiles').select('nickname, avatar_url').eq('id', currentUserId).single();
+    currentUserProfile = { nickname:data?.nickname||'', avatar_url:data?.avatar_url||'' };
+  }
+}
+
+function toast(msg){
+  if(!toastEl){ alert(msg); return; }
+  toastEl.textContent = msg;
+  toastEl.hidden = false;
+  setTimeout(()=>{ toastEl.hidden = true; }, 4000);
+}
 
 let rtChannel = null;
 let retryDelay = 1000; // start with 1s
@@ -126,6 +147,7 @@ function insertWishlist(i){
   li.className = 'wl-item';
   li.dataset.id = i.id;
   li.innerHTML = wishlistHtml(i);
+  li.onclick = () => toggleWishlist(i.id);
   let placed = false;
   for (const el of wishlistList.children) {
     if (i.id < el.dataset.id) { wishlistList.insertBefore(li, el); placed = true; break; }
@@ -138,6 +160,7 @@ function updateWishlist(i){
   const li = wishlistEls.get(i.id);
   if (!li) { insertWishlist(i); return; }
   li.innerHTML = wishlistHtml(i);
+  li.onclick = () => toggleWishlist(i.id);
 }
 
 function removeWishlist(id){
@@ -176,6 +199,31 @@ function updateGiftStats(){
   const total = free + taken || 1;
   giftFreeBar.style.width = (free/total*100) + '%';
   giftTakenBar.style.width = (taken/total*100) + '%';
+}
+
+async function toggleWishlist(id){
+  const item = wishlist.get(id);
+  if(!item || !currentUserId) return;
+  const prev = { ...item };
+  const ts = Date.now();
+  wishlistPending.set(id,{ prev, ts });
+  item.taken_by = item.taken_by ? null : { ...currentUserProfile };
+  updateWishlist(item);
+  updateGiftStats();
+  const { error } = await window.supabase
+    .from('wishlist_items')
+    .update({ taken_by: item.taken_by ? currentUserId : null })
+    .eq('id', id);
+  if(error){
+    const pend = wishlistPending.get(id);
+    if(pend){
+      wishlist.set(id, pend.prev);
+      updateWishlist(pend.prev);
+      updateGiftStats();
+      wishlistPending.delete(id);
+    }
+    toast(error.message || 'Ошибка обновления');
+  }
 }
 
 async function load(){
@@ -256,8 +304,14 @@ async function handleParticipantChange(payload){
 
 async function handleWishlistChange(payload){
   const ev = payload.eventType;
+  const id = payload.new?.id || payload.old?.id;
+  const commitTs = Date.parse(payload.commit_timestamp || '');
+  const pend = wishlistPending.get(id);
+  if(pend){
+    if(commitTs && commitTs <= pend.ts) return;
+    wishlistPending.delete(id);
+  }
   if(ev === 'DELETE'){
-    const id = payload.old?.id;
     wishlist.delete(id);
     removeWishlist(id);
     updateGiftStats();
