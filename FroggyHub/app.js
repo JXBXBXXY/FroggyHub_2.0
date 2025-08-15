@@ -68,6 +68,15 @@ function sendAuthTelemetry(kind, mode){
   }catch(_){ /* ignore */ }
 }
 
+function withTimeout(promise, ms, ctrl){
+  return new Promise((resolve, reject)=>{
+    const timer = setTimeout(()=>{ ctrl?.abort(); reject(new Error('timeout')); }, ms);
+    const onAbort = ()=>{ clearTimeout(timer); reject(new DOMException('Aborted','AbortError')); };
+    ctrl?.signal.addEventListener('abort', onAbort, { once:true });
+    promise.then(v=>{ clearTimeout(timer); resolve(v); }, e=>{ clearTimeout(timer); reject(e); });
+  });
+}
+
 function formatAuthError(e){
   console.error(e);
   const msg = e?.message || '';
@@ -451,9 +460,23 @@ $('#setNewPassBtn')?.addEventListener('click', async ()=>{
 /* ---------- РЕГИСТРАЦИЯ ---------- */
 const regForm = $('#authFormRegister');
 const regBtn = $('#regBtn');
+const regCancelBtn = $('#regCancelBtn');
+let regCtrl = null;
+let lastResend = 0;
 if(regForm && regBtn){
+  const setRegState = (loading)=>{
+    if(loading){
+      regBtn.disabled=true; regBtn.textContent='Регистрируем…'; regBtn.style.cursor='progress';
+      regCancelBtn.hidden=false; regCancelBtn.disabled=false;
+    }else{
+      regBtn.disabled=false; regBtn.textContent='Зарегистрироваться'; regBtn.style.cursor='';
+      regCancelBtn.hidden=true;
+    }
+  };
+  const doSignUp = (sb,email,pass,ctrl)=>withTimeout(sb.auth.signUp({ email, password:pass }),15000,ctrl);
   const handleReg = async (e)=>{
     e.preventDefault();
+    if(regBtn.disabled) return;
     clearFieldError($('#regName'));
     clearFieldError($('#regEmail'));
     clearFieldError($('#regPass'));
@@ -465,74 +488,84 @@ if(regForm && regBtn){
     const name = $('#regName').value.trim();
     const email = $('#regEmail').value.trim().toLowerCase();
     const pass = $('#regPass').value;
-    regBtn.disabled=true; regBtn.textContent='Регистрируем…'; regBtn.style.cursor='progress';
+    regCtrl = new AbortController();
+    setRegState(true);
+    let signed='no';
+    let outcome='ok';
     try{
-      const sb = await ensureSupabase();
-      let { data, error } = await sb.auth.signUp({ email, password: pass });
+      let sb = await ensureSupabase();
+      dbgAuth('signUp start', email.replace(/^(.{2}).+(@.*)$/,'$1***$2'), sessionStorage.getItem('sb_mode')||'direct');
+      let res;
+      try{
+        res = await doSignUp(sb,email,pass,regCtrl);
+      }catch(err){
+        if(err.name==='AbortError'){ outcome='aborted'; return; }
+        if(err.message==='timeout' || (err instanceof TypeError && /Failed to fetch/i.test(err.message))){
+          outcome = err.message==='timeout'? 'timeout':'network';
+          try{
+            const { result, sb:sb2 } = await switchToProxyAndRetry(s=>doSignUp(s,email,pass,regCtrl));
+            sb = sb2; res = result;
+          }catch(_){
+            showFormError($('#regError'),'Сервер недоступен, попробуйте позже');
+            return;
+          }
+        }else{ throw err; }
+      }
+      const { data, error } = res;
       if(error){
+        outcome = 'server_error';
         if(error.message==='User already registered'){
-          showFieldError($('#regEmail'), 'Пользователь с этой почтой уже существует');
-          $('#regAnnounce').textContent = 'Пользователь с этой почтой уже существует';
+          showFieldError($('#regEmail'),'Пользователь с этой почтой уже существует');
+          $('#regAnnounce').textContent='Пользователь с этой почтой уже существует';
         }else{
           showFormError($('#regError'), formatAuthError(error));
         }
-      }else if(!data.session){
-        $('#regAnnounce').textContent = 'Проверьте почту для подтверждения';
-        $('#resendConfirmBtn').hidden=false;
-        $('#resendHint').hidden=false;
-      }else if(data.user){
-        const { data:{ user } } = await sb.auth.getUser();
-        if(user){
-          await sb.from('profiles').upsert({ id:user.id, nickname:name });
-          await sb.auth.getSession();
-          $('#chipEmail').textContent = user.email;
+      }else if(data.user && data.session){
+        signed='yes';
+        const { data:{ session } } = await sb.auth.getSession();
+        if(session){
+          await sb.from('profiles').upsert({ id:session.user.id, nickname:name });
+          $('#chipEmail').textContent = session.user.email;
           show('#screen-lobby');
         }
+      }else if(data.user){
+        sessionStorage.setItem('pendingProfileName', name);
+        $('#regAnnounce').textContent='Проверьте почту и подтвердите';
+        $('#resendConfirmBtn').hidden=false;
+        $('#resendHint').hidden=false;
       }
-    }catch(ex){
-      if(ex instanceof TypeError){
-        try{
-          const { result:{ data, error }, sb: sb2 } = await switchToProxyAndRetry(s=>s.auth.signUp({ email, password: pass }));
-          if(error){
-            if(error.message==='User already registered'){
-              showFieldError($('#regEmail'), 'Пользователь с этой почтой уже существует');
-              $('#regAnnounce').textContent = 'Пользователь с этой почтой уже существует';
-            }else{
-              showFormError($('#regError'), formatAuthError(error));
-            }
-          }else if(!data.session){
-            $('#regAnnounce').textContent = 'Проверьте почту для подтверждения';
-            $('#resendConfirmBtn').hidden=false;
-            $('#resendHint').hidden=false;
-          }else if(data.user){
-            const { data:{ user } } = await sb2.auth.getUser();
-            if(user){
-              await sb2.from('profiles').upsert({ id:user.id, nickname:name });
-              await sb2.auth.getSession();
-              $('#chipEmail').textContent = user.email;
-              show('#screen-lobby');
-            }
-          }
-        }catch(err2){
-          showFormError($('#regError'), formatAuthError(err2));
-        }
+    }catch(err){
+      if(err.name!=='AbortError'){
+        outcome = err.message==='timeout'? 'timeout' : (err instanceof TypeError ? 'network' : 'server_error');
+        showFormError($('#regError'), formatAuthError(err));
       }else{
-        showFormError($('#regError'), formatAuthError(ex));
+        outcome='aborted';
       }
     }finally{
-      regBtn.disabled=false; regBtn.textContent='Зарегистрироваться'; regBtn.style.cursor='';
+      dbgAuth('signUp result', `signed_up_session=${signed}`, outcome);
+      setRegState(false);
+      regCtrl=null;
     }
   };
   regForm.addEventListener('submit', handleReg);
   regBtn.addEventListener('click', handleReg);
+  regCancelBtn?.addEventListener('click', ()=>{
+    regCtrl?.abort();
+    clearFormError($('#regError'));
+    $('#regAnnounce').textContent='';
+    setRegState(false);
+  });
 }
 
 $('#resendConfirmBtn')?.addEventListener('click', async ()=>{
+  if(Date.now()-lastResend<30000) return;
+  lastResend = Date.now();
   const email = $('#regEmail').value.trim().toLowerCase();
   try{
     const sb = await ensureSupabase();
     await sb.auth.resend({ type:'signup', email });
-    toast('Письмо отправлено');
+    $('#regAnnounce').textContent='Письмо отправлено';
+    dbgAuth('resend');
   }catch(ex){
     showFormError($('#regError'), formatAuthError(ex));
   }
@@ -740,6 +773,11 @@ ensureSupabase().then(async sb => {
     if(event === 'SIGNED_IN' && currentUser){
       $('#chipEmail').textContent = currentUser.email || '';
       show('#screen-lobby');
+      const pendingProfile = sessionStorage.getItem('pendingProfileName');
+      if(pendingProfile){
+        try{ await sb.from('profiles').upsert({ id: currentUser.id, nickname: pendingProfile }); }catch(e){ console.warn('profile upsert', e); }
+        sessionStorage.removeItem('pendingProfileName');
+      }
       const hash = location.hash || '';
       if(hash.includes('error=')){
         const code = new URLSearchParams(hash.slice(1)).get('error');
