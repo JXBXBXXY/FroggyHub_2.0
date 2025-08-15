@@ -37,11 +37,23 @@
         </label>
         <button type="button" class="btn primary" id="loginBtn">Войти</button>
         <button type="button" class="btn" id="loginOtpBtn">Войти по ссылке на e‑mail</button>
+        <button type="button" class="btn" id="resetPassBtn">Забыли пароль?</button>
         <div id="loginError" class="form-error" aria-live="polite"></div>
         <p id="loginInfo" class="hint" hidden></p>
         <div id="loginAnnounce" class="visually-hidden" aria-live="assertive"></div>
         <p class="hint">Нет аккаунта? Перейдите на вкладку «Регистрация».</p>
         <input type="submit" hidden>
+      </form>
+
+      <form id="newPassForm" class="grid" hidden>
+        <label>Новый пароль
+          <input id="newPass" type="password" minlength="4" required autocomplete="new-password">
+        </label>
+        <label>Повторите пароль
+          <input id="newPass2" type="password" minlength="4" required autocomplete="new-password">
+        </label>
+        <button type="button" class="btn primary" id="setNewPassBtn">Сменить пароль</button>
+        <div id="newPassError" class="form-error" aria-live="polite"></div>
       </form>
 
       <!-- РЕГИСТРАЦИЯ -->
@@ -61,6 +73,8 @@
         <button type="button" class="btn primary" id="regBtn">Зарегистрироваться</button>
         <div id="regError" class="form-error" aria-live="polite"></div>
         <div id="regAnnounce" class="visually-hidden" aria-live="assertive"></div>
+        <button type="button" class="btn" id="resendConfirmBtn" hidden>Переотправить письмо</button>
+        <p id="resendHint" class="hint" hidden>Ссылка действует 1 час</p>
         <input type="submit" hidden>
       </form>
     </div>
@@ -273,6 +287,19 @@
   <script defer type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
   <script defer src="app.js"></script>
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
+  <dialog id="otpModal">
+    <form method="dialog" class="grid">
+      <p>Войти по ссылке</p>
+      <label>Почта
+        <input id="otpEmail" type="email" required>
+      </label>
+      <div class="row2">
+        <button class="btn primary" id="otpSendBtn" type="button">Отправить ссылку</button>
+        <button class="btn" value="cancel">Отмена</button>
+      </div>
+      <p id="otpStatus" class="hint" aria-live="polite"></p>
+    </form>
+  </dialog>
     <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
       <div class="cookie-text">
         <p>Мы используем cookies. Согласны?</p>

@@ -160,6 +160,9 @@ const saveUsers = () => localStorage.setItem(USERS_KEY, JSON.stringify(users));
 const setSession = (email) => localStorage.setItem(SESSION_KEY, email);
 const getSession = () => localStorage.getItem(SESSION_KEY);
 let currentUser = null;
+let lastSession = null;
+let rebindTried = false;
+let manualSignOut = false;
 
 const enc = new TextEncoder();
 const toHex = (buf) => [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -188,12 +191,23 @@ async function sha256(pass){
   return toHex(buf);
 }
 
-async function signOut(){
+async function logout(msg){
   const sb = await ensureSupabase();
-  if(sb){
-    await sb.auth.signOut();
-  }
+  manualSignOut = true;
+  try{ await sb.auth.signOut(); }catch(_){ }
+  manualSignOut = false;
+  sessionStorage.removeItem('sb_mode');
+  sessionStorage.removeItem('pendingCreate');
+  localStorage.removeItem(COOKIE_TEMP_KEY);
   localStorage.removeItem(SESSION_KEY);
+  if(msg){
+    sessionBanner.textContent = msg;
+    sessionBanner.hidden = false;
+  }else{
+    sessionBanner.hidden = true;
+  }
+  show('#screen-auth');
+  switchAuth('login');
 }
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -277,12 +291,36 @@ $('#tabRegister')?.addEventListener('click',()=>switchAuth('register'));
 const loginForm = $('#authFormLogin');
 const loginBtn = $('#loginBtn');
 if(loginForm && loginBtn){
+  let loginFails = 0;
+  let throttleTimer = null;
+  function startThrottle(ms){
+    loginBtn.disabled = true;
+    let secs = Math.ceil(ms/1000);
+    loginBtn.textContent = `Подождите ${secs}`;
+    throttleTimer = setInterval(()=>{
+      secs--;
+      if(secs <= 0){
+        clearInterval(throttleTimer); throttleTimer=null;
+        loginBtn.disabled=false; loginBtn.textContent='Войти';
+        sessionStorage.removeItem('loginThrottle');
+      }else{
+        loginBtn.textContent = `Подождите ${secs}`;
+      }
+    },1000);
+  }
   const handleLogin = async (e)=>{
     e.preventDefault();
     clearFieldError($('#loginEmail'));
     clearFieldError($('#loginPass'));
     clearFormError($('#loginError'));
     $('#loginAnnounce').textContent='';
+    const throttle = JSON.parse(sessionStorage.getItem('loginThrottle')||'null');
+    const now = Date.now();
+    if(throttle && throttle.count>=3 && now - throttle.ts < 30000){
+      startThrottle(30000 - (now - throttle.ts));
+      showFormError($('#loginError'), 'Слишком много попыток, попробуйте позже');
+      return;
+    }
     const { ok, errors } = validateAuthForm({ email: $('#loginEmail').value, password: $('#loginPass').value }, 'login');
     if(!ok){ applyValidationErrors('login', errors); return; }
     const email = $('#loginEmail').value.trim().toLowerCase();
@@ -292,17 +330,26 @@ if(loginForm && loginBtn){
       const sb = await ensureSupabase();
       let { data, error } = await sb.auth.signInWithPassword({ email, password });
       if(error && (error.status===400 || error.status===401)){
+        loginFails++;
         showFieldError($('#loginPass'),'Неверная почта или пароль');
         $('#loginAnnounce').textContent='Неверная почта или пароль';
+        if(loginFails>=2){
+          $('#otpEmail').value = email; $('#otpModal').showModal();
+        }
       }else if(error){
+        loginFails = /Failed to fetch|timeout/i.test(error.message) ? loginFails+1 : 0;
+        if(loginFails>=2){ $('#otpEmail').value=email; $('#otpModal').showModal(); }
         throw error;
       }else if(data.user){
+        loginFails=0;
+        sessionStorage.removeItem('loginThrottle');
         await sb.auth.getSession();
         const { data:{ user } } = await sb.auth.getUser();
         if(user){ $('#chipEmail').textContent = user.email; show('#screen-lobby'); }
       }
     }catch(ex){
       if(ex instanceof TypeError){
+        loginFails++;
         try{
           const { result:{ data, error }, sb: sb2 } = await switchToProxyAndRetry(s=>s.auth.signInWithPassword({ email, password }));
           if(error && (error.status===400 || error.status===401)){
@@ -311,18 +358,27 @@ if(loginForm && loginBtn){
           }else if(error){
             showFormError($('#loginError'), formatAuthError(error));
           }else if(data.user){
+            loginFails=0;
+            sessionStorage.removeItem('loginThrottle');
             await sb2.auth.getSession();
             const { data:{ user } } = await sb2.auth.getUser();
             if(user){ $('#chipEmail').textContent = user.email; show('#screen-lobby'); }
           }
         }catch(err2){
+          loginFails++;
           showFormError($('#loginError'), formatAuthError(err2));
         }
       }else{
         showFormError($('#loginError'), formatAuthError(ex));
       }
+      if(loginFails>=2){ $('#otpEmail').value=email; $('#otpModal').showModal(); }
     }finally{
       loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.style.cursor='';
+      let t = JSON.parse(sessionStorage.getItem('loginThrottle')||'null');
+      if(t && now - t.ts < 30000){ t.count++; }
+      else{ t = { count:1, ts:now }; }
+      sessionStorage.setItem('loginThrottle', JSON.stringify(t));
+      if(t.count>=3){ startThrottle(30000); }
     }
   };
   loginForm.addEventListener('submit', handleLogin);
@@ -344,6 +400,51 @@ $('#loginOtpBtn')?.addEventListener('click', async ()=>{
     const msg = formatAuthError(ex);
     showFormError($('#loginError'), msg);
     if(info) info.hidden=true;
+  }
+});
+
+$('#otpSendBtn')?.addEventListener('click', async ()=>{
+  const email = $('#otpEmail').value.trim().toLowerCase();
+  const status = $('#otpStatus');
+  status.textContent='';
+  if(!email){ status.textContent='Введите почту'; return; }
+  try{
+    const sb = await ensureSupabase();
+    await sb.auth.signInWithOtp({ email });
+    status.textContent='Письмо отправлено';
+  }catch(ex){
+    status.textContent = formatAuthError(ex);
+  }
+});
+
+$('#resetPassBtn')?.addEventListener('click', async ()=>{
+  const email = $('#loginEmail').value.trim().toLowerCase();
+  clearFormError($('#loginError'));
+  if(!email){ showFormError($('#loginError'),'Введите почту'); return; }
+  try{
+    const sb = await ensureSupabase();
+    await sb.auth.resetPasswordForEmail(email);
+    $('#loginInfo').hidden=false; $('#loginInfo').textContent='Ссылка для сброса отправлена';
+  }catch(ex){
+    showFormError($('#loginError'), formatAuthError(ex));
+  }
+});
+
+$('#setNewPassBtn')?.addEventListener('click', async ()=>{
+  clearFormError($('#newPassError'));
+  const p1 = $('#newPass').value;
+  const p2 = $('#newPass2').value;
+  if(!p1 || p1.length<4){ showFormError($('#newPassError'),'Пароль слишком короткий'); return; }
+  if(p1 !== p2){ showFormError($('#newPassError'),'Пароли не совпадают'); return; }
+  try{
+    const sb = await ensureSupabase();
+    const { error } = await sb.auth.updateUser({ password:p1 });
+    if(error) throw error;
+    toast('Пароль обновлён');
+    $('#newPassForm').hidden=true;
+    show('#screen-lobby');
+  }catch(ex){
+    showFormError($('#newPassError'), formatAuthError(ex));
   }
 });
 
@@ -377,6 +478,8 @@ if(regForm && regBtn){
         }
       }else if(!data.session){
         $('#regAnnounce').textContent = 'Проверьте почту для подтверждения';
+        $('#resendConfirmBtn').hidden=false;
+        $('#resendHint').hidden=false;
       }else if(data.user){
         const { data:{ user } } = await sb.auth.getUser();
         if(user){
@@ -399,6 +502,8 @@ if(regForm && regBtn){
             }
           }else if(!data.session){
             $('#regAnnounce').textContent = 'Проверьте почту для подтверждения';
+            $('#resendConfirmBtn').hidden=false;
+            $('#resendHint').hidden=false;
           }else if(data.user){
             const { data:{ user } } = await sb2.auth.getUser();
             if(user){
@@ -421,6 +526,17 @@ if(regForm && regBtn){
   regForm.addEventListener('submit', handleReg);
   regBtn.addEventListener('click', handleReg);
 }
+
+$('#resendConfirmBtn')?.addEventListener('click', async ()=>{
+  const email = $('#regEmail').value.trim().toLowerCase();
+  try{
+    const sb = await ensureSupabase();
+    await sb.auth.resend({ type:'signup', email });
+    toast('Письмо отправлено');
+  }catch(ex){
+    showFormError($('#regError'), formatAuthError(ex));
+  }
+});
 
 /* ---------- АВТОВХОД ---------- */
 (async function autoLogin() {
@@ -595,19 +711,47 @@ ensureSupabase().then(async sb => {
     show('#screen-auth');
   }
   sb.auth.onAuthStateChange(async (event, session)=>{
+    if(event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN'){
+      lastSession = session;
+      rebindTried = false;
+    }
+    if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      toggleAuthButtons(true);
+      if(manualSignOut){ manualSignOut=false; return; }
+      if(!rebindTried && lastSession){
+        try{
+          const { error } = await sb.auth.setSession(lastSession);
+          if(!error){ return; }
+        }catch(_){ }
+        rebindTried = true;
+      }
+      await logout('Сессия истекла, войдите снова');
+      return;
+    }
     currentUser = session?.user || null;
     toggleAuthButtons(!currentUser);
-    if(event === 'SIGNED_OUT'){
-      localStorage.removeItem(SESSION_KEY);
-      sessionBanner.textContent = 'Сессия истекла, войдите снова';
-      sessionBanner.hidden = false;
-      show('#screen-auth');
-    } else {
-      sessionBanner.hidden = true;
+    if(event === 'PASSWORD_RECOVERY'){
+      $('#authFormLogin').hidden=true;
+      $('#authFormRegister').hidden=true;
+      $('#newPassForm').hidden=false;
+      return;
     }
     if(event === 'SIGNED_IN' && currentUser){
       $('#chipEmail').textContent = currentUser.email || '';
       show('#screen-lobby');
+      const hash = location.hash || '';
+      if(hash.includes('error=')){
+        const code = new URLSearchParams(hash.slice(1)).get('error');
+        sessionBanner.innerHTML = `Ошибка: ${code}. <button id="resendFromBanner" class="btn ghost">Переотправить письмо</button>`;
+        sessionBanner.hidden = false;
+        document.getElementById('resendFromBanner')?.addEventListener('click', async ()=>{
+          try{ await sb.auth.resend({ type:'signup', email: currentUser.email }); sessionBanner.textContent='Письмо отправлено'; }catch(_){ sessionBanner.textContent='Не удалось отправить'; }
+        });
+        sendAuthTelemetry('redirect_error_'+code);
+      } else {
+        sessionBanner.hidden = true;
+      }
       const temp = localStorage.getItem(COOKIE_TEMP_KEY);
       const uid = session?.user?.id;
       if(temp && uid){
@@ -642,10 +786,51 @@ ensureSupabase().then(async sb => {
 });
 /* ---------- ВЫХОД ---------- */
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-  await signOut();
+  await logout();
   currentUser = null;
-  show('#screen-auth');
-  switchAuth('login');
+});
+
+$('#changePassBtn')?.addEventListener('click', async ()=>{
+  clearFormError($('#changePassError'));
+  const curr = $('#currPass').value;
+  const np1 = $('#newProfilePass').value;
+  const np2 = $('#newProfilePass2').value;
+  if(!curr || !np1 || !np2){ showFormError($('#changePassError'),'Заполните все поля'); return; }
+  if(np1.length<4){ showFormError($('#changePassError'),'Пароль слишком короткий'); return; }
+  if(np1!==np2){ showFormError($('#changePassError'),'Пароли не совпадают'); return; }
+  try{
+    const sb = await ensureSupabase();
+    const { data:{ user } } = await sb.auth.getUser();
+    const email = user?.email;
+    if(!email) throw new Error('no_user');
+    const { error: err } = await sb.auth.signInWithPassword({ email, password: curr });
+    if(err){ showFormError($('#changePassError'),'Текущий пароль неверен'); return; }
+    const { error } = await sb.auth.updateUser({ password: np1 });
+    if(error) throw error;
+    toast('Пароль обновлён');
+    $('#currPass').value=''; $('#newProfilePass').value=''; $('#newProfilePass2').value='';
+  }catch(ex){
+    showFormError($('#changePassError'), formatAuthError(ex));
+  }
+});
+
+$('#deleteAccountBtn')?.addEventListener('click', ()=>{
+  $('#deleteConfirm').showModal();
+});
+
+$('#confirmDeleteBtn')?.addEventListener('click', async ()=>{
+  const dlg = $('#deleteConfirm');
+  try{
+    const sb = await ensureSupabase();
+    const { data:{ session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    await fetch('/.netlify/functions/delete-account', { method:'POST', headers:{ Authorization:`Bearer ${token}` } });
+    dlg.close();
+    await logout();
+  }catch(_){
+    dlg.close();
+    toast('Не удалось удалить аккаунт');
+  }
 });
 
 /* ---------- ЛОББИ: переходы ---------- */
