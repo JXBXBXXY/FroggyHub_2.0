@@ -56,3 +56,11 @@ Some regions block direct access to `*.supabase.co`. The app can automatically f
 - Creating an event while logged out shows a warning and does not throw errors.
 - Creating an event right after logging in succeeds and sets `owner_id` to the current user.
 - After the session expires, clicking “Сгенерировать код” should prompt the user to sign in again.
+
+## Auth smoke tests
+
+- Password login on the direct Supabase domain leads to the lobby.
+- When `supabase.co` is blocked, the first login attempt fails, the client switches to `/supabase` and the second attempt succeeds.
+- Sign-up with email confirmation enabled shows a “Check your inbox” message; after confirming, the session is established.
+- Logging in via email link (OTP) creates a session without a password.
+- Reloading the page preserves the session (`persistSession=true`).

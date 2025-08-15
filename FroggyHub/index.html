@@ -270,23 +270,20 @@
     window.PROXY_SUPABASE_URL = location.origin + '/supabase';
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4";
   </script>
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-    window.createSupabaseClient = createClient;
-  </script>
+  <script defer type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+  <script defer src="app.js"></script>
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
-  <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
-    <div class="cookie-text">
-      <p>Мы используем cookies. Согласны?</p>
-      <label><input type="checkbox" id="cookieAnalytics"> Аналитика</label>
-      <div id="cookieStatus" class="visually-hidden" aria-live="polite"></div>
+    <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
+      <div class="cookie-text">
+        <p>Мы используем cookies. Согласны?</p>
+        <label><input type="checkbox" id="cookieAnalytics"> Аналитика</label>
+        <div id="cookieStatus" class="visually-hidden" aria-live="polite"></div>
+      </div>
+      <div class="cookie-actions">
+        <button id="cookieAccept" type="button" class="btn yes">Принять все</button>
+        <button id="cookieDecline" type="button" class="btn ghost">Сохранить выбор</button>
+      </div>
     </div>
-    <div class="cookie-actions">
-      <button id="cookieAccept" type="button" class="btn yes">Принять все</button>
-      <button id="cookieDecline" type="button" class="btn ghost">Сохранить выбор</button>
-    </div>
-  </div>
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-  <script src="app.js"></script>
-</body>
-</html>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+  </html>
