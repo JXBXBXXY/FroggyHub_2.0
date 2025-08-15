@@ -7,6 +7,16 @@ const addrEl = document.getElementById('eventAddr');
 const visitorsList = document.getElementById('visitorsList');
 const wishlistList = document.getElementById('wishlistList');
 const errorEl = document.getElementById('error');
+const rsvpYesCountEl = document.getElementById('rsvpYesCount');
+const rsvpMaybeCountEl = document.getElementById('rsvpMaybeCount');
+const rsvpNoCountEl = document.getElementById('rsvpNoCount');
+const rsvpYesBar = document.getElementById('rsvpYesBar');
+const rsvpMaybeBar = document.getElementById('rsvpMaybeBar');
+const rsvpNoBar = document.getElementById('rsvpNoBar');
+const giftFreeCountEl = document.getElementById('giftFreeCount');
+const giftTakenCountEl = document.getElementById('giftTakenCount');
+const giftFreeBar = document.getElementById('giftFreeBar');
+const giftTakenBar = document.getElementById('giftTakenBar');
 
 const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
@@ -100,6 +110,7 @@ function setVisitors(list){
   visitors.clear(); visitorEls.clear();
   visitorsList.innerHTML = '';
   list.forEach(v => { visitors.set(v.id, v); insertVisitor(v); });
+  updateRsvpStats();
 }
 
 function wishlistHtml(i){
@@ -138,6 +149,33 @@ function setWishlist(items){
   wishlist.clear(); wishlistEls.clear();
   wishlistList.innerHTML = '';
   items.forEach(i => { wishlist.set(i.id, i); insertWishlist(i); });
+  updateGiftStats();
+}
+
+function updateRsvpStats(){
+  let yes = 0, maybe = 0, no = 0;
+  visitors.forEach(v => {
+    if(v.rsvp === 'yes') yes++;
+    else if(v.rsvp === 'maybe') maybe++;
+    else no++;
+  });
+  rsvpYesCountEl.textContent = yes;
+  rsvpMaybeCountEl.textContent = maybe;
+  rsvpNoCountEl.textContent = no;
+  const total = yes + maybe + no || 1;
+  rsvpYesBar.style.width = (yes/total*100) + '%';
+  rsvpMaybeBar.style.width = (maybe/total*100) + '%';
+  rsvpNoBar.style.width = (no/total*100) + '%';
+}
+
+function updateGiftStats(){
+  let free = 0, taken = 0;
+  wishlist.forEach(i => { if(i.taken_by) taken++; else free++; });
+  giftFreeCountEl.textContent = free;
+  giftTakenCountEl.textContent = taken;
+  const total = free + taken || 1;
+  giftFreeBar.style.width = (free/total*100) + '%';
+  giftTakenBar.style.width = (taken/total*100) + '%';
 }
 
 async function load(){
@@ -194,6 +232,7 @@ async function handleParticipantChange(payload){
     const id = payload.old?.user_id;
     visitors.delete(id);
     removeVisitor(id);
+    updateRsvpStats();
     return;
   }
   const p = payload.new;
@@ -212,6 +251,7 @@ async function handleParticipantChange(payload){
   };
   visitors.set(v.id, v);
   updateVisitor(v);
+  updateRsvpStats();
 }
 
 async function handleWishlistChange(payload){
@@ -220,6 +260,7 @@ async function handleWishlistChange(payload){
     const id = payload.old?.id;
     wishlist.delete(id);
     removeWishlist(id);
+    updateGiftStats();
     return;
   }
   const w = payload.new;
@@ -231,6 +272,7 @@ async function handleWishlistChange(payload){
   const item = { id:w.id, title:w.title, url:w.url, taken_by:taken };
   wishlist.set(item.id, item);
   updateWishlist(item);
+  updateGiftStats();
 }
 
 function subscribeRealtime(){

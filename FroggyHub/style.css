@@ -306,6 +306,20 @@ body.scene-intro .speech{display:block}
 .wl-free{color:#35c97f;}
 .wl-taken{color:#f0b429;}
 
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:.85rem}
+.badge.yes,.badge.free{background:#35c97f;color:#0a1e14}
+.badge.maybe{background:#f0b429;color:#0a1e14}
+.badge.no{background:#ff6b6b;color:#0a1e14}
+.badge.taken{background:#f0b429;color:#0a1e14}
+.progress{height:8px;background:#133b25;border-radius:6px;overflow:hidden;display:flex;margin:4px 0 12px}
+.progress>div{height:100%}
+.progress .yes{background:#35c97f}
+.progress .maybe{background:#f0b429}
+.progress .no{background:#ff6b6b}
+.progress .free{background:#35c97f}
+.progress .taken{background:#f0b429}
+
 /* Event edit form */
 .edit-form .save-row{display:flex;justify-content:flex-end;}
 @media(max-width:600px){

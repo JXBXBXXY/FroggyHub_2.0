@@ -27,12 +27,30 @@
 
     <section class="card" id="visitorsBlock" aria-labelledby="visitorsTitle">
       <h2 id="visitorsTitle">Посетители</h2>
+      <div class="stats">
+        <span class="badge yes" id="rsvpYesCount">0</span>
+        <span class="badge maybe" id="rsvpMaybeCount">0</span>
+        <span class="badge no" id="rsvpNoCount">0</span>
+      </div>
+      <div class="progress" id="rsvpProgress" aria-hidden="true">
+        <div class="yes" id="rsvpYesBar"></div>
+        <div class="maybe" id="rsvpMaybeBar"></div>
+        <div class="no" id="rsvpNoBar"></div>
+      </div>
       <ul id="visitorsList" class="ea-list" role="list" aria-describedby="visitorsHint"></ul>
       <p id="visitorsHint" class="hint">Статусы: 🟢 Иду, 🟡 Возможно, 🔴 Не иду</p>
     </section>
 
     <section class="card" id="wishlistBlock" aria-labelledby="wishlistTitle">
       <h2 id="wishlistTitle">Wishlist</h2>
+      <div class="stats">
+        <span class="badge free" id="giftFreeCount">0</span>
+        <span class="badge taken" id="giftTakenCount">0</span>
+      </div>
+      <div class="progress" id="giftProgress" aria-hidden="true">
+        <div class="free" id="giftFreeBar"></div>
+        <div class="taken" id="giftTakenBar"></div>
+      </div>
       <ul id="wishlistList" class="wl-list" role="list" aria-describedby="wishlistHint"></ul>
       <p id="wishlistHint" class="hint">🟢 свободно, 🔒 занято</p>
     </section>
