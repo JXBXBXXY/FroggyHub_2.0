@@ -7,7 +7,7 @@
     "dev": "netlify dev",
     "serve:functions": "netlify functions:serve",
     "test": "npm run test:syntax && node tools/smoke.mjs",
-    "test:syntax": "node --check FroggyHub/app.js && node --check api/join-by-code.js && node --check api/event-by-code.js && node --check FroggyHub/event-analytics.js"
+    "test:syntax": "node --check FroggyHub/app.js && node --check api/join-by-code.js && node --check api/event-by-code.js && node --check FroggyHub/event-analytics.js && node --check api/get-event-analytics.js && node --check api/update-event.js && node --check api/get-event-details.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.42.5"
