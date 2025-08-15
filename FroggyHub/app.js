@@ -1,6 +1,7 @@
 /* ---------- Supabase init with proxy fallback ---------- */
 const DEBUG_AUTH = !!window.DEBUG_AUTH;
 const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[supabase]', ...args); };
+const DEBUG_EVENTS = !!window.DEBUG_EVENTS;
 
 async function probe(url){
   const ctrl = new AbortController();
@@ -187,6 +188,13 @@ async function shareInvite(code){
 /* ---------- УТИЛИТЫ ---------- */
 const $ = (s) => document.querySelector(s);
 const toastEl = document.getElementById('toast');
+const sessionBanner = document.getElementById('sessionBanner');
+function toggleAuthButtons(disabled){
+  document.querySelectorAll('[data-requires-auth]').forEach(btn=>{
+    if(disabled) btn.setAttribute('disabled',''); else btn.removeAttribute('disabled');
+  });
+}
+toggleAuthButtons(true);
 function toast(msg){
   if(!toastEl){ alert(msg); return; }
   toastEl.textContent = msg;
@@ -456,10 +464,24 @@ async function initCookieBanner(){
 
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
-ensureSupabase().then(sb => {
+ensureSupabase().then(async sb => {
   if(!sb) return;
+  const { data:{ session } } = await sb.auth.getSession();
+  currentUser = session?.user || null;
+  toggleAuthButtons(!currentUser);
+  if(currentUser){
+    const pending = sessionStorage.getItem('pendingCreate');
+    if(pending){
+      Object.assign(eventData, JSON.parse(pending));
+      sessionStorage.removeItem('pendingCreate');
+      save();
+      startCreateFlow();
+    }
+  }
   sb.auth.onAuthStateChange(async (event, session)=>{
     currentUser = session?.user || null;
+    toggleAuthButtons(!currentUser);
+    sessionBanner.hidden = event !== 'SIGNED_OUT';
     if(event === 'SIGNED_IN' && currentUser){
       const temp = localStorage.getItem(COOKIE_TEMP_KEY);
       if(temp){
@@ -482,6 +504,13 @@ ensureSupabase().then(sb => {
           }
         }catch(e){ console.warn('cookie sync', e); }
       }
+      const pending = sessionStorage.getItem('pendingCreate');
+      if(pending){
+        Object.assign(eventData, JSON.parse(pending));
+        sessionStorage.removeItem('pendingCreate');
+        save();
+        startCreateFlow();
+      }
     }
   });
 });
@@ -494,10 +523,7 @@ document.getElementById('logoutBtn')?.addEventListener('click', async () => {
 });
 
 /* ---------- ЛОББИ: переходы ---------- */
-$('#goCreate')?.addEventListener('click', ()=>{
-  show('#screen-app');
-  setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('create-1');
-});
+$('#goCreate')?.addEventListener('click', startCreateFlow);
 $('#goJoinByCode')?.addEventListener('click', ()=>{
   show('#screen-app');
   setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('join-code');
@@ -651,12 +677,25 @@ function showSlide(id){
   if(stepToPad[id] !== undefined){ frogJumpToPad(stepToPad[id], true); }
 }
 
+async function startCreateFlow(){
+  const sb = await ensureSupabase();
+  const { data:{ user } = {} } = sb ? await sb.auth.getUser() : { data:{} };
+  if(user){
+    show('#screen-app');
+    setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('create-1');
+  } else {
+    sessionStorage.setItem('pendingCreate', JSON.stringify(eventData));
+    show('#screen-auth');
+    switchAuth('login');
+  }
+}
+
 /* интро-кнопки */
 document.getElementById('speech').querySelector('.actions').onclick=(e)=>{
   const btn=e.target.closest('button'); if(!btn) return;
   withTransition(()=>{
     if(btn.dataset.next==='create'){
-      show('#screen-app'); setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('create-1');
+      startCreateFlow();
     } else {
       show('#screen-app'); setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('join-code');
     }
@@ -683,13 +722,12 @@ async function uniqueCode(sb){
   throw new Error('Не удалось сгенерировать код');
 }
 
-async function createEvent(sb, { title, date, time, address, dress, bring, notes, wishlist }){
-  const user = (await sb.auth.getUser()).data.user;
+async function createEvent(sb, ownerId, { title, date, time, address, dress, bring, notes, wishlist }){
   const join_code = await uniqueCode(sb);
   const ttlDays = 14;
   const code_expires_at = new Date(Date.now() + ttlDays*24*60*60*1000).toISOString();
   const event_at = new Date(`${date}T${time}:00`).toISOString();
-  const payload = { owner_id: user.id, title, address, dress, bring, notes, join_code, code_expires_at, event_at };
+  const payload = { owner_id: ownerId, title, address, dress, bring, notes, join_code, code_expires_at, event_at };
   console.debug('createEvent payload', payload);
   const { data, error } = await sb.from('events').insert([payload]).select('*').single();
   if(error){ console.debug('createEvent error', error); throw error; }
@@ -743,26 +781,34 @@ editor?.addEventListener('click',e=>{ const r=editor.getBoundingClientRect(); if
 
 $('#formDetails')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
+  const btn = e.submitter; btn?.setAttribute('disabled','');
   Object.assign(eventData,{dress:$('#eventDress').value.trim(),bring:$('#eventBring').value.trim(),notes:$('#eventNotes').value.trim()});
   const status=$('#createEventStatus');
   status.textContent='';
   try{
     const sb = await ensureSupabase();
     if(!sb){
-      const btn = e.submitter; btn?.setAttribute('disabled','');
-      setTimeout(()=>btn&&btn.removeAttribute('disabled'),2000);
       status.textContent='Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.';
       return;
     }
-    console.debug('[create-event] sb ready'); // TODO: remove debug before release
-    const ev = await createEvent(sb, eventData);
+    const { data:{ user }, error } = await sb.auth.getUser();
+    if(error || !user){
+      if(DEBUG_EVENTS) console.warn('[create-event] auth', error);
+      const msg='Для создания события войдите в аккаунт';
+      status.textContent=msg;
+      toast(msg);
+      return;
+    }
+    const ev = await createEvent(sb, user.id, eventData);
     Object.assign(eventData, ev);
     save();
     status.textContent='Событие создано';
     withTransition(()=>{ showSlide('admin'); renderAdmin(); });
   }catch(err){
-    console.debug('createEvent handler', err);
+    if(DEBUG_EVENTS) console.warn('createEvent handler', err);
     status.textContent = err.message || 'Не удалось создать событие';
+  }finally{
+    btn?.removeAttribute('disabled');
   }
 });
 function renderAdmin(){

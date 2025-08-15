@@ -53,3 +53,6 @@ Some regions block direct access to `*.supabase.co`. The app can automatically f
 - Verify wishlist reservations and RLS rules for non-participants.
 - Check that cookie consent is saved and synced after sign in/out.
 - Removing an event should cascade to participants and wishlist items.
+- Creating an event while logged out shows a warning and does not throw errors.
+- Creating an event right after logging in succeeds and sets `owner_id` to the current user.
+- After the session expires, clicking “Сгенерировать код” should prompt the user to sign in again.
