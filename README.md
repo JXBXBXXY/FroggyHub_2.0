@@ -64,3 +64,8 @@ Some regions block direct access to `*.supabase.co`. The app can automatically f
 - Sign-up with email confirmation enabled shows a “Check your inbox” message; after confirming, the session is established.
 - Logging in via email link (OTP) creates a session without a password.
 - Reloading the page preserves the session (`persistSession=true`).
+- Reset password flow sends email and successfully updates the password.
+- Resend confirmation email works when the initial link expires.
+- `autoRefreshToken` keeps the session alive for over an hour during activity.
+- Throttling limits password attempts and falls back to OTP after repeated failures.
+- Logout clears session, temp data and proxy mode.
