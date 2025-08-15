@@ -565,6 +565,11 @@ function renderAdmin(){
       exp.textContent=`Код истечёт ${d.toLocaleDateString('ru-RU')}`;
     } else exp.textContent='';
   }
+  const link=$('#analyticsLink');
+  if(link){
+    link.href=`event-analytics.html?id=${encodeURIComponent(eventData.id||'')}`;
+    link.hidden=!eventData.id;
+  }
   const html=(eventData.wishlist.filter(i=>i.title||i.url).map(i=>`${i.title||'Подарок'} — ${i.claimedBy?'🔒 занято':'🟢 свободно'} ${i.url?`• <a href="${i.url}" target="_blank">ссылка</a>`:''}`)).map(s=>`<li>${s}</li>`).join('');
   $('#adminGifts').innerHTML=html||'<li>Вишлист пуст</li>';
 }
@@ -826,3 +831,71 @@ function toFinalScene(){
     }
   });
 })();
+
+/* ---------- РЕДАКТИРОВАНИЕ СОБЫТИЯ ---------- */
+const editForm = document.getElementById('editForm');
+if(editForm){
+  const fields = {
+    title: document.getElementById('editTitle'),
+    date: document.getElementById('editDate'),
+    time: document.getElementById('editTime'),
+    address: document.getElementById('editAddress'),
+    notes: document.getElementById('editNotes'),
+    dress: document.getElementById('editDress'),
+    bring: document.getElementById('editBring')
+  };
+  const errEl = document.getElementById('editError');
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get('id');
+
+  async function loadDetails(){
+    try{
+      const res = await fetch(`/.netlify/functions/get-event-details?id=${encodeURIComponent(eventId)}`, {
+        headers: await authHeader()
+      });
+      if(!res.ok) throw new Error(res.status===404 ? 'Событие не найдено' : 'Ошибка загрузки');
+      const { event } = await res.json();
+      fields.title.value = event.title || '';
+      fields.date.value = event.date || '';
+      fields.time.value = event.time || '';
+      fields.address.value = event.address || '';
+      fields.notes.value = event.notes || '';
+      fields.dress.value = event.dress_code || '';
+      fields.bring.value = event.bring || '';
+    }catch(err){ errEl.textContent = err.message; }
+  }
+
+  editForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    errEl.textContent='';
+    if(!fields.title.value.trim() || !fields.date.value || !fields.time.value){
+      errEl.textContent = 'Заполните обязательные поля';
+      return;
+    }
+    const payload = {
+      event_id: eventId,
+      title: fields.title.value.trim(),
+      date: fields.date.value,
+      time: fields.time.value,
+      address: fields.address.value.trim(),
+      notes: fields.notes.value.trim(),
+      dress_code: fields.dress.value.trim(),
+      bring: fields.bring.value.trim()
+    };
+    try{
+      const res = await fetch('/.netlify/functions/update-event', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', ...(await authHeader()) },
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        errEl.textContent = res.status===403 ? 'Нет доступа' : res.status===404 ? 'Событие не найдено' : 'Ошибка обновления';
+        return;
+      }
+      toast('Событие обновлено');
+      setTimeout(()=>{ location.href = `event-analytics.html?id=${encodeURIComponent(eventId)}`; }, 500);
+    }catch(err){ errEl.textContent = err.message; }
+  });
+
+  loadDetails();
+}
