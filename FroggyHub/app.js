@@ -33,6 +33,44 @@ async function sha256(pass){
   return toHex(buf);
 }
 
+async function signUp(name,email,password){
+  if(window.supabase){
+    const { data, error } = await window.supabase.auth.signUp({ email, password });
+    if(error) throw new Error(error.message);
+    if(data.user){
+      await window.supabase.from('profiles').upsert({ id:data.user.id, name });
+    }
+    return data.user;
+  }
+  if(users[email]) throw new Error('Такой пользователь уже существует.');
+  const saltHex = toHex(randBytes(16));
+  const iterations = 150_000;
+  const passHash = await pbkdf2Hash(password, saltHex, iterations);
+  users[email] = { name, passHash, salt: saltHex, iters: iterations };
+  saveUsers();
+  return { email };
+}
+
+async function signIn(email,password){
+  if(window.supabase){
+    const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
+    if(error) throw new Error(error.message);
+    return data.user;
+  }
+  const u = users[email];
+  if(!u) throw new Error('Пользователь не найден.');
+  const calc = await pbkdf2Hash(password, u.salt, u.iters || 150_000);
+  if(!timingSafeEqual(calc, u.passHash)) throw new Error('Неверный пароль.');
+  return { email };
+}
+
+async function signOut(){
+  if(window.supabase){
+    await window.supabase.auth.signOut();
+  }
+  localStorage.removeItem(SESSION_KEY);
+}
+
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function buildInviteUrl(code){
@@ -75,10 +113,16 @@ function show(idToShow){
 $('#tabLogin')?.addEventListener('click', ()=>{
   $('#authFormLogin').hidden=false; $('#authFormRegister').hidden=true;
   $('#tabLogin').classList.add('active'); $('#tabRegister').classList.remove('active');
+  $('#tabLogin').setAttribute('aria-selected','true');
+  $('#tabRegister').setAttribute('aria-selected','false');
+  $('#loginEmail').focus();
 });
 $('#tabRegister')?.addEventListener('click', ()=>{
   $('#authFormLogin').hidden=true; $('#authFormRegister').hidden=false;
   $('#tabRegister').classList.add('active'); $('#tabLogin').classList.remove('active');
+  $('#tabRegister').setAttribute('aria-selected','true');
+  $('#tabLogin').setAttribute('aria-selected','false');
+  $('#regName').focus();
 });
 
 /* ---------- ЛОГИН ---------- */
@@ -88,28 +132,14 @@ $('#authFormLogin')?.addEventListener('submit', async (e)=>{
   const pass  = $('#loginPass').value;
   const err = $('#loginError');
   if(err) err.textContent='';
-  const u = users[email];
-  if(!u){ err.textContent='Пользователь не найден.'; return; }
-
-  if(u.passHash){
-    const calc = await pbkdf2Hash(pass, u.salt, u.iters || 150_000);
-    if(!timingSafeEqual(calc, u.passHash)){ err.textContent='Неверный пароль.'; return; }
-  } else if(u.pass){
-    const oldHash = await sha256(pass);
-    if(oldHash !== u.pass){ err.textContent='Неверный пароль.'; return; }
-    const saltHex = toHex(randBytes(16));
-    const iters = 150_000;
-    const passHash = await pbkdf2Hash(pass, saltHex, iters);
-    users[email] = { name: u.name, passHash, salt: saltHex, iters };
-    delete users[email].pass;
-    saveUsers();
-  } else {
-    err.textContent='Неверный пароль.'; return;
+  try{
+    await signIn(email, pass);
+    setSession(email);
+    $('#chipEmail').textContent = email;
+    show('#screen-lobby');
+  }catch(ex){
+    if(err) err.textContent = ex.message || 'Ошибка входа';
   }
-
-  setSession(email);
-  $('#chipEmail').textContent = email;
-  show('#screen-lobby');
 });
 
 /* ---------- РЕГИСТРАЦИЯ ---------- */
@@ -121,23 +151,31 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
   const pass2 = $('#regPass2').value;
   const err = $('#regError');
   if(err) err.textContent='';
-
   if(!name || !email || !pass || !pass2){ err.textContent='Заполните все поля.'; return; }
   if(pass !== pass2){ err.textContent='Пароли не совпадают.'; return; }
-  if(users[email]){ err.textContent='Такой пользователь уже существует.'; return; }
-
-  const saltHex = toHex(randBytes(16));
-  const iterations = 150_000;
-  const passHash = await pbkdf2Hash(pass, saltHex, iterations);
-  users[email] = { name, passHash, salt: saltHex, iters: iterations }; // в базу: никнейм, почта (ключ), пароль
-  saveUsers();
-  setSession(email);
-  $('#chipEmail').textContent = email;
-  show('#screen-lobby');
+  try{
+    await signUp(name,email,pass);
+    await signIn(email,pass);
+    setSession(email);
+    $('#chipEmail').textContent = email;
+    show('#screen-lobby');
+  }catch(ex){
+    if(err) err.textContent = ex.message || 'Ошибка регистрации';
+  }
 });
 
 /* ---------- АВТОВХОД ---------- */
-(function autoLogin() {
+(async function autoLogin() {
+  if(window.supabase){
+    const { data } = await window.supabase.auth.getSession();
+    const emailSup = data.session?.user?.email;
+    if(emailSup){
+      setSession(emailSup);
+      $('#chipEmail').textContent = emailSup;
+      show('#screen-lobby');
+      return;
+    }
+  }
   const email = getSession();
   if (email && users[email]) {
     $('#chipEmail').textContent = email;
@@ -149,8 +187,8 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
 })();
 
 /* ---------- ВЫХОД ---------- */
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-  localStorage.removeItem(SESSION_KEY);
+document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+  await signOut();
   show('#screen-auth');
 });
 
@@ -212,6 +250,10 @@ const root=document.getElementById('root');
 const bigClock = $('#bigClock'), bigClockHM = $('#bigClockHM'), bigClockDays = $('#bigClockDays');
 const finalLayout = $('#finalLayout');
 const slidesEl = $('#slides');
+const stumpImg = document.getElementById('stumpImg');
+stumpImg?.addEventListener('load',()=>{
+  if(document.body.classList.contains('scene-final')) placeFrogOnStump();
+});
 
 function setScene(scene){
   // классы сцены
@@ -232,8 +274,10 @@ function setScene(scene){
   // финальные элементы
   bigClock.hidden = (scene !== 'final');
   finalLay.style.display = (scene === 'final') ? 'flex' : 'none';
-
-  if (scene === 'final') window.scrollTo(0,0);
+  if (scene === 'final') {
+    placeFrogOnStump();
+    window.scrollTo(0,0);
+  }
 }
 
 const stepToPad = {
@@ -274,6 +318,17 @@ function frogJumpToPad(index, forceJump=false){
     setTimeout(()=>{ frogImg.src=FROG_IDLE; },550);
   }
   lastPadIndex = index;
+}
+
+function placeFrogOnStump(){
+  const stump=document.getElementById('stumpImg');
+  if(!stump || stump.offsetParent===null) return;
+  const rect=stump.getBoundingClientRect();
+  const stage=document.body.getBoundingClientRect();
+  const x=rect.left+rect.width/2-stage.left;
+  const y=rect.top+rect.height/2-rect.height*0.12-stage.top;
+  frog.style.left=x+'px';
+  frog.style.top=y+'px';
 }
 function withTransition(next){ root.classList.add('fading'); setTimeout(()=>{ next&&next(); root.classList.remove('fading'); }, 450); }
 function showSlide(id){
@@ -471,10 +526,12 @@ function toFinalScene(){
 (function initIntro(){
   renderPads();
   window.addEventListener('resize',()=>{
-    if(document.body.classList.contains('scene-pond') || document.body.classList.contains('scene-final')){
+    if(document.body.classList.contains('scene-pond')){
       const keep = lastPadIndex;
       renderPads();
       immediatePlaceFrog(keep);
+    } else if(document.body.classList.contains('scene-final')){
+      placeFrogOnStump();
     }
   });
 })();
