@@ -1,3 +1,66 @@
+/* ---------- Supabase init with proxy fallback ---------- */
+const DEBUG_AUTH = !!window.DEBUG_AUTH;
+const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[supabase]', ...args); };
+
+async function probe(url){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(),1500);
+  try{
+    const res = await fetch(url + '/auth/v1/health',{ method:'GET', signal: ctrl.signal });
+    clearTimeout(t);
+    return res.ok;
+  }catch(_){
+    clearTimeout(t);
+    return false;
+  }
+}
+
+async function initSupabase(){
+  const createClient = window.createSupabaseClient;
+  if(!createClient){ return; }
+  let mode = sessionStorage.getItem('supabase_mode') || 'direct';
+  let url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
+  if(!(await probe(url))){
+    mode = mode === 'direct' ? 'proxy' : 'direct';
+    url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
+    sessionStorage.setItem('supabase_mode', mode);
+    sendAuthTelemetry('auth_proxy_fallback', mode);
+  }
+  dbgAuth('mode:', mode);
+  window.supabase = createClient(url, window.SUPABASE_ANON_KEY);
+}
+
+function sendAuthTelemetry(kind, mode){
+  try{
+    if(DEBUG_AUTH) return;
+    fetch('/.netlify/functions/auth-telemetry',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ kind, mode: mode || sessionStorage.getItem('supabase_mode') || 'direct', ua:navigator.userAgent, ts:Date.now() }),
+      keepalive:true
+    }).catch(()=>{});
+  }catch(_){ /* ignore */ }
+}
+
+async function ensureSupabase(){
+  if(!window.supabase){ await initSupabase(); }
+}
+
+initSupabase();
+
+function mapAuthError(ex){
+  console.error(ex);
+  const msg = ex?.message || '';
+  if(ex instanceof TypeError && msg.includes('Failed to fetch')){
+    sendAuthTelemetry('auth_failed_fetch');
+    return 'Не удалось связаться с сервером авторизации. Проверьте интернет или используйте альтернативный вход.';
+  }
+  if(/ERR_BLOCKED_BY_CLIENT|CORS|DNS/i.test(msg)){
+    return 'Доступ к домену авторизации заблокирован. Попробуйте другой интернет/домен.';
+  }
+  return msg || 'Ошибка авторизации';
+}
+
 /* ---------- ПОЛЬЗОВАТЕЛИ / СЕССИЯ ---------- */
 const USERS_KEY = 'froggyhub_users_v1';
 const SESSION_KEY = 'froggyhub_session_email';
@@ -35,6 +98,7 @@ async function sha256(pass){
 }
 
 async function signUp(nickname,email,password){
+  await ensureSupabase();
   if(window.supabase){
     const { data, error } = await window.supabase.auth.signUp({ email, password });
     if(error) throw error;
@@ -52,6 +116,7 @@ async function signUp(nickname,email,password){
 }
 
 async function signIn(email,password){
+  await ensureSupabase();
   if(window.supabase){
     const { data, error } = await window.supabase.auth.signInWithPassword({ email, password });
     if(error) throw error;
@@ -147,7 +212,9 @@ $('#authFormLogin')?.addEventListener('submit', async (e)=>{
   const email = $('#loginEmail').value.trim().toLowerCase();
   const pass  = $('#loginPass').value;
   const err = $('#loginError');
+  const info = $('#loginInfo');
   if(err) err.textContent='';
+  if(info) { info.hidden=true; info.textContent=''; }
   try{
     const user = await signIn(email, pass);
     currentUser = user;
@@ -155,7 +222,35 @@ $('#authFormLogin')?.addEventListener('submit', async (e)=>{
     $('#chipEmail').textContent = email;
     show('#screen-lobby');
   }catch(ex){
-    if(err) err.textContent = ex.message || 'Ошибка входа';
+    const msg = mapAuthError(ex);
+    if(err) err.textContent = msg;
+    const mode = sessionStorage.getItem('supabase_mode') || 'direct';
+    if(info){
+      if(msg.includes('Не удалось связаться')){
+        info.textContent = mode==='proxy'
+          ? 'Проблема со связью с сервером. Мы переключили подключение на резервный домен.'
+          : 'Проблема со связью с сервером. Попробуйте «Вход по ссылке» ниже или другой интернет.';
+        info.hidden = false;
+      }
+    }
+  }
+});
+
+$('#loginOtpBtn')?.addEventListener('click', async ()=>{
+  const email = $('#loginEmail').value.trim().toLowerCase();
+  const err = $('#loginError');
+  const info = $('#loginInfo');
+  if(err) err.textContent='';
+  if(info){ info.hidden=false; info.textContent=''; }
+  if(!email){ if(err) err.textContent='Введите почту'; return; }
+  try{
+    await ensureSupabase();
+    await window.supabase.auth.signInWithOtp({ email });
+    if(info){ info.textContent='Мы отправили письмо. Откройте ссылку на этом устройстве.'; }
+  }catch(ex){
+    const msg = mapAuthError(ex);
+    if(err) err.textContent = msg;
+    if(info) info.hidden=true;
   }
 });
 
@@ -178,7 +273,7 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
     $('#chipEmail').textContent = email;
     show('#screen-lobby');
   }catch(ex){
-    if(err) err.textContent = ex.message || 'Ошибка регистрации';
+    if(err) err.textContent = mapAuthError(ex);
   }
 });
 

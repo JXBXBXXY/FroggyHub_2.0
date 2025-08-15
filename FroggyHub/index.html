@@ -36,7 +36,9 @@
           <input id="loginPass" type="password" placeholder="••••••••" minlength="4" required>
         </label>
         <button type="submit" class="btn primary">Войти</button>
+        <button type="button" class="btn" id="loginOtpBtn">Войти по ссылке на e‑mail</button>
         <p id="loginError" class="error" role="status" aria-live="polite"></p>
+        <p id="loginInfo" class="hint" hidden></p>
         <p class="hint">Нет аккаунта? Перейдите на вкладку «Регистрация».</p>
       </form>
 
@@ -261,14 +263,12 @@
   <script>
     // TODO: заполнить для проды через переменные окружения Netlify
     window.SUPABASE_URL = "https://smamhlfzserjkdfhthwhdv.supabase.co";
+    window.PROXY_SUPABASE_URL = location.origin + '/supabase';
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4";
   </script>
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-    window.supabase = createClient(
-      window.SUPABASE_URL,
-      window.SUPABASE_ANON_KEY
-    );
+    window.createSupabaseClient = createClient;
   </script>
   <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
     <div class="cookie-text">
