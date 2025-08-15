@@ -11,6 +11,15 @@ const errorEl = document.getElementById('error');
 const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
 
+// state collections keyed by primary keys
+const visitors = new Map();       // key: user_id
+const visitorEls = new Map();
+const wishlist = new Map();       // key: item id
+const wishlistEls = new Map();
+
+let rtChannel = null;
+let retryDelay = 1000; // start with 1s
+
 async function authHeader(){
   if(window.supabase){
     const { data } = await window.supabase.auth.getSession();
@@ -46,28 +55,89 @@ function statusIcon(s){
   }
 }
 
-function renderVisitors(list){
-  const order = { yes:0, maybe:1, no:2 };
-  list.sort((a,b)=> (order[a.rsvp]??3) - (order[b.rsvp]??3));
-  visitorsList.innerHTML = list.map(v => `
-    <li class="ea-item" role="listitem">
-      <img class="ea-avatar" src="${v.avatar_url||'assets/stump.png'}" alt="" title="${v.nickname}">
-      <div class="ea-name">${v.nickname}</div>
-      <div class="ea-status ${'rsvp-'+v.rsvp}" role="status" aria-label="${statusText(v.rsvp)}">${statusIcon(v.rsvp)} ${statusText(v.rsvp)}</div>
-    </li>`).join('');
+function visitorHtml(v){
+  return `
+    <img class="ea-avatar" src="${v.avatar_url || 'assets/stump.png'}" alt="" title="${v.nickname}">
+    <div class="ea-name">${v.nickname}</div>
+    <div class="ea-status ${'rsvp-' + v.rsvp}" role="status" aria-label="${statusText(v.rsvp)}">${statusIcon(v.rsvp)} ${statusText(v.rsvp)}</div>`;
 }
 
-function renderWishlist(items){
-  wishlistList.innerHTML = items.map(i => {
-    let claimed = `<span class="wl-free" role="status" aria-label="Свободно">🟢 свободно</span>`;
-    if(i.taken_by){
-      claimed = `<span class="wl-taken" role="status" aria-label="Занято ${i.taken_by.nickname}">🔒 <img class="wl-ava" src="${i.taken_by.avatar_url}" alt="" title="${i.taken_by.nickname}"><span class="nick">${i.taken_by.nickname}</span></span>`;
-    }
-    return `<li class="wl-item" role="listitem">
-      <div class="wl-title">${i.title}</div>
-      <div class="wl-claimed">${claimed}</div>
-    </li>`;
-  }).join('');
+function insertVisitor(v){
+  const li = document.createElement('li');
+  li.className = 'ea-item';
+  li.dataset.id = v.id;
+  li.dataset.rsvp = v.rsvp;
+  li.innerHTML = visitorHtml(v);
+  const order = { yes:0, maybe:1, no:2 };
+  let placed = false;
+  for (const el of visitorsList.children) {
+    if (order[v.rsvp] < order[el.dataset.rsvp]) { visitorsList.insertBefore(li, el); placed = true; break; }
+  }
+  if (!placed) visitorsList.appendChild(li);
+  visitorEls.set(v.id, li);
+}
+
+function updateVisitor(v){
+  const li = visitorEls.get(v.id);
+  if (!li) { insertVisitor(v); return; }
+  li.dataset.rsvp = v.rsvp;
+  li.innerHTML = visitorHtml(v);
+  const order = { yes:0, maybe:1, no:2 };
+  let next = null;
+  for (const el of visitorsList.children) {
+    if (el === li) continue;
+    if (order[v.rsvp] < order[el.dataset.rsvp]) { next = el; break; }
+  }
+  if (next) visitorsList.insertBefore(li, next); else visitorsList.appendChild(li);
+}
+
+function removeVisitor(id){
+  const li = visitorEls.get(id);
+  if (li) { li.remove(); visitorEls.delete(id); }
+}
+
+function setVisitors(list){
+  visitors.clear(); visitorEls.clear();
+  visitorsList.innerHTML = '';
+  list.forEach(v => { visitors.set(v.id, v); insertVisitor(v); });
+}
+
+function wishlistHtml(i){
+  let claimed = `<span class="wl-free" role="status" aria-label="Свободно">🟢 свободно</span>`;
+  if (i.taken_by) {
+    claimed = `<span class="wl-taken" role="status" aria-label="Занято ${i.taken_by.nickname}">🔒 <img class="wl-ava" src="${i.taken_by.avatar_url}" alt="" title="${i.taken_by.nickname}"><span class="nick">${i.taken_by.nickname}</span></span>`;
+  }
+  return `<div class="wl-title">${i.title}</div><div class="wl-claimed">${claimed}</div>`;
+}
+
+function insertWishlist(i){
+  const li = document.createElement('li');
+  li.className = 'wl-item';
+  li.dataset.id = i.id;
+  li.innerHTML = wishlistHtml(i);
+  let placed = false;
+  for (const el of wishlistList.children) {
+    if (i.id < el.dataset.id) { wishlistList.insertBefore(li, el); placed = true; break; }
+  }
+  if (!placed) wishlistList.appendChild(li);
+  wishlistEls.set(i.id, li);
+}
+
+function updateWishlist(i){
+  const li = wishlistEls.get(i.id);
+  if (!li) { insertWishlist(i); return; }
+  li.innerHTML = wishlistHtml(i);
+}
+
+function removeWishlist(id){
+  const li = wishlistEls.get(id);
+  if (li) { li.remove(); wishlistEls.delete(id); }
+}
+
+function setWishlist(items){
+  wishlist.clear(); wishlistEls.clear();
+  wishlistList.innerHTML = '';
+  items.forEach(i => { wishlist.set(i.id, i); insertWishlist(i); });
 }
 
 async function load(){
@@ -83,11 +153,103 @@ async function load(){
     dateEl.textContent = evt.date || '—';
     timeEl.textContent = evt.time || '—';
     addrEl.textContent = evt.address || '—';
-    renderVisitors(data.participants||[]);
-    renderWishlist(data.wishlist||[]);
+
+    // load participants with ids
+    const { data: parts } = await window.supabase
+      .from('participants')
+      .select('user_id, rsvp, profiles(nickname, avatar_url)')
+      .eq('event_id', eventId);
+    const visitorsInit = (parts||[]).map(p=>({
+      id: p.user_id,
+      nickname: p.profiles?.nickname || '',
+      avatar_url: p.profiles?.avatar_url || '',
+      rsvp: p.rsvp
+    }));
+    setVisitors(visitorsInit);
+
+    // load wishlist items with ids
+    const { data: wlItems } = await window.supabase
+      .from('wishlist_items')
+      .select('id, title, url, taken_by, profiles:profiles!wishlist_items_taken_by_fkey(nickname, avatar_url)')
+      .eq('event_id', eventId);
+    const wlInit = (wlItems||[]).map(w=>({
+      id: w.id,
+      title: w.title,
+      url: w.url,
+      taken_by: w.taken_by ? { nickname: w.profiles?.nickname || '', avatar_url: w.profiles?.avatar_url || '' } : null
+    }));
+    setWishlist(wlInit);
+
+    subscribeRealtime();
   }catch(err){
     errorEl.textContent = err.message;
   }
 }
 
 load();
+
+async function handleParticipantChange(payload){
+  const ev = payload.eventType;
+  if(ev === 'DELETE'){
+    const id = payload.old?.user_id;
+    visitors.delete(id);
+    removeVisitor(id);
+    return;
+  }
+  const p = payload.new;
+  let prof = null;
+  if(!visitors.has(p.user_id)){
+    const { data } = await window.supabase.from('profiles').select('nickname, avatar_url').eq('id', p.user_id).single();
+    prof = data;
+  } else {
+    prof = visitors.get(p.user_id);
+  }
+  const v = {
+    id: p.user_id,
+    nickname: prof?.nickname || '',
+    avatar_url: prof?.avatar_url || '',
+    rsvp: p.rsvp
+  };
+  visitors.set(v.id, v);
+  updateVisitor(v);
+}
+
+async function handleWishlistChange(payload){
+  const ev = payload.eventType;
+  if(ev === 'DELETE'){
+    const id = payload.old?.id;
+    wishlist.delete(id);
+    removeWishlist(id);
+    return;
+  }
+  const w = payload.new;
+  let taken = null;
+  if(w.taken_by){
+    const { data } = await window.supabase.from('profiles').select('nickname, avatar_url').eq('id', w.taken_by).single();
+    taken = { nickname: data?.nickname || '', avatar_url: data?.avatar_url || '' };
+  }
+  const item = { id:w.id, title:w.title, url:w.url, taken_by:taken };
+  wishlist.set(item.id, item);
+  updateWishlist(item);
+}
+
+function subscribeRealtime(){
+  if(!window.supabase || !eventId) return;
+  if(rtChannel) window.supabase.removeChannel(rtChannel);
+  rtChannel = window.supabase
+    .channel('analytics-' + eventId)
+    .on('postgres_changes',{ event:'*', schema:'public', table:'participants', filter:'event_id=eq.'+eventId }, handleParticipantChange)
+    .on('postgres_changes',{ event:'*', schema:'public', table:'wishlist_items', filter:'event_id=eq.'+eventId }, handleWishlistChange)
+    .subscribe(status => {
+      if(status === 'SUBSCRIBED') { retryDelay = 1000; }
+      else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)) {
+        const delay = Math.min(retryDelay, 30000);
+        retryDelay = Math.min(retryDelay*2, 30000);
+        setTimeout(subscribeRealtime, delay);
+      }
+    });
+}
+
+window.addEventListener('beforeunload', () => {
+  if(rtChannel){ window.supabase.removeChannel(rtChannel); rtChannel=null; }
+});
