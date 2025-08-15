@@ -258,6 +258,28 @@ const bigClock = $('#bigClock'), bigClockHM = $('#bigClockHM'), bigClockDays = $
 const finalLayout = $('#finalLayout');
 const slidesEl = $('#slides');
 const stumpImg = document.getElementById('stumpImg');
+
+// Фикс для мобильных: держим мобильную раскладку при открытой клавиатуре
+function installMobileLock(){
+  const vv = window.visualViewport;
+  const isCoarse = matchMedia('(pointer: coarse)').matches;
+
+  const update = () => {
+    let kbOpen = false;
+    if (vv) {
+      // если высота визуального вьюпорта сильно меньше window.innerHeight → открыта клавиатура
+      kbOpen = (window.innerHeight - vv.height) > 120;
+    }
+    document.body.classList.toggle('force-mobile', kbOpen || isCoarse);
+  };
+
+  update();
+  window.addEventListener('resize', update);
+  vv?.addEventListener('resize', update);
+  document.addEventListener('focusin', update);
+  document.addEventListener('focusout', update);
+}
+installMobileLock();
 stumpImg?.addEventListener('load',()=>{
   if(document.body.classList.contains('scene-final')) placeFrogOnStump();
 });
@@ -279,15 +301,20 @@ function setScene(scene){
 window.addEventListener('resize', () => {
   if (document.body.classList.contains('scene-final')) placeFrogOnStump();
 });
+window.visualViewport?.addEventListener('resize', () => {
+  if (document.body.classList.contains('scene-final')) placeFrogOnStump();
+});
 
 /* Лягушка на пне */
 function placeFrogOnStump(){
-  const stump = $('#stumpImg'); const frog = $('#frog');
+  const stump = document.querySelector('#stumpImg');
+  const frog  = document.querySelector('#frog');
   if(!stump || !frog) return;
   const r = stump.getBoundingClientRect();
-  const top  = r.top  + window.scrollY + r.height * 0.58; // чуть ниже центра текстуры
+  const top  = r.top  + window.scrollY + r.height * 0.58;
   const left = r.left + window.scrollX + r.width  * 0.50;
-  frog.style.top = `${top}px`; frog.style.left = `${left}px`;
+  frog.style.top = `${top}px`;
+  frog.style.left = `${left}px`;
 }
 
 const stepToPad = {
