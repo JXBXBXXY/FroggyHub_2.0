@@ -6,10 +6,51 @@ const saveUsers = () => localStorage.setItem(USERS_KEY, JSON.stringify(users));
 const setSession = (email) => localStorage.setItem(SESSION_KEY, email);
 const getSession = () => localStorage.getItem(SESSION_KEY);
 
-async function hashPassword(pass){
-  const enc=new TextEncoder().encode(pass);
-  const buf=await crypto.subtle.digest('SHA-256',enc);
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+const enc = new TextEncoder();
+const toHex = (buf) => [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+const randBytes = (len=16) => crypto.getRandomValues(new Uint8Array(len));
+
+async function pbkdf2Hash(password, saltHex, iterations=150_000){
+  const salt = new Uint8Array(saltHex.match(/.{1,2}/g).map(h=>parseInt(h,16)));
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name:'PBKDF2', hash:'SHA-256', salt, iterations },
+    key,
+    256
+  );
+  return toHex(bits);
+}
+
+function timingSafeEqual(aHex, bHex){
+  if (aHex.length !== bHex.length) return false;
+  let diff = 0;
+  for (let i=0; i<aHex.length; i++) diff |= aHex.charCodeAt(i) ^ bHex.charCodeAt(i);
+  return diff === 0;
+}
+
+async function sha256(pass){
+  const buf=await crypto.subtle.digest('SHA-256', enc.encode(pass));
+  return toHex(buf);
+}
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function buildInviteUrl(code){
+  const url = new URL(location.href);
+  url.searchParams.set('code', code);
+  return url.toString();
+}
+
+async function shareInvite(code){
+  const link = buildInviteUrl(code);
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'FroggyHub', text: 'Присоединяйся к событию', url: link });
+      return;
+    } catch (_) {}
+  }
+  await navigator.clipboard.writeText(link);
+  alert('Ссылка скопирована: ' + link);
 }
 
 /* ---------- УТИЛИТЫ ---------- */
@@ -47,9 +88,25 @@ $('#authFormLogin')?.addEventListener('submit', async (e)=>{
   const pass  = $('#loginPass').value;
   const err = $('#loginError');
   if(err) err.textContent='';
-  if(!users[email]){ err.textContent='Пользователь не найден.'; return; }
-  const passHash = await hashPassword(pass);
-  if(users[email].pass !== passHash){ err.textContent='Неверный пароль.'; return; }
+  const u = users[email];
+  if(!u){ err.textContent='Пользователь не найден.'; return; }
+
+  if(u.passHash){
+    const calc = await pbkdf2Hash(pass, u.salt, u.iters || 150_000);
+    if(!timingSafeEqual(calc, u.passHash)){ err.textContent='Неверный пароль.'; return; }
+  } else if(u.pass){
+    const oldHash = await sha256(pass);
+    if(oldHash !== u.pass){ err.textContent='Неверный пароль.'; return; }
+    const saltHex = toHex(randBytes(16));
+    const iters = 150_000;
+    const passHash = await pbkdf2Hash(pass, saltHex, iters);
+    users[email] = { name: u.name, passHash, salt: saltHex, iters };
+    delete users[email].pass;
+    saveUsers();
+  } else {
+    err.textContent='Неверный пароль.'; return;
+  }
+
   setSession(email);
   $('#chipEmail').textContent = email;
   show('#screen-lobby');
@@ -69,8 +126,10 @@ $('#authFormRegister')?.addEventListener('submit', async (e)=>{
   if(pass !== pass2){ err.textContent='Пароли не совпадают.'; return; }
   if(users[email]){ err.textContent='Такой пользователь уже существует.'; return; }
 
-  const passHash = await hashPassword(pass);
-  users[email] = { pass: passHash, name }; // в базу: никнейм, почта (ключ), пароль
+  const saltHex = toHex(randBytes(16));
+  const iterations = 150_000;
+  const passHash = await pbkdf2Hash(pass, saltHex, iterations);
+  users[email] = { name, passHash, salt: saltHex, iters: iterations }; // в базу: никнейм, почта (ключ), пароль
   saveUsers();
   setSession(email);
   $('#chipEmail').textContent = email;
@@ -130,11 +189,12 @@ if(codeInput && joinBtn){
   });
 }
 
-const params=new URLSearchParams(location.search);
-const preCode=params.get('code');
-if(preCode){
+const qp = new URLSearchParams(location.search);
+const pre = qp.get('code');
+if(pre && codeInput && joinBtn){
   show('#screen-app'); setScene('pond'); renderPads(); showSlide('join-code');
-  if(codeInput){ codeInput.value=preCode; codeInput.dispatchEvent(new Event('input')); }
+  codeInput.value = pre.replace(/\D/g,'').slice(0,6);
+  joinBtn.disabled = codeInput.value.length !== 6;
 }
 
 /* ---------- ПРУД / ЛЯГУШКА ---------- */
@@ -209,7 +269,7 @@ function frogJumpToPad(index, forceJump=false){
   const rect=pad.getBoundingClientRect(), stage=document.body.getBoundingClientRect();
   frog.style.left=(rect.left+rect.width/2-stage.left)+'px';
   frog.style.top =(rect.top +rect.height*0.52-stage.top )+'px';
-  if(forceJump){
+  if(forceJump && !reduceMotion){
     frogImg.src=FROG_JUMP; frog.classList.remove('jump'); void frog.offsetWidth; frog.classList.add('jump'); croak();
     setTimeout(()=>{ frogImg.src=FROG_IDLE; },550);
   }
@@ -256,6 +316,7 @@ $('#formCreate')?.addEventListener('submit',(e)=>{
 const wlGrid=$('#wlGrid'), editor=$('#cellEditor');
 const cellTitle=$('#cellTitle'), cellUrl=$('#cellUrl'); let currentCellId=null;
 if(editor) trapFocus(editor);
+editor?.addEventListener('close', ()=> editor.querySelector('button, input')?.blur());
 
 function renderGrid(){
   wlGrid.innerHTML=''; wlGrid.style.gridTemplateColumns=`repeat(5,1fr)`;
@@ -292,18 +353,7 @@ function renderAdmin(){
 }
 $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene()));
 
-$('#copyCodeBtn')?.addEventListener('click',async ()=>{
-  const code=eventData.code;
-  if(!code) return;
-  try{
-    await navigator.clipboard.writeText(`${location.origin}/?code=${code}`);
-    const btn=$('#copyCodeBtn'); if(btn){
-      const txt=btn.textContent; btn.textContent='Скопировано!';
-      setTimeout(()=>btn.textContent=txt,2000);
-    }
-  }catch(e){
-  }
-});
+$('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.code));
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
 $('#joinCodeBtn')?.addEventListener('click',()=>{
@@ -359,6 +409,11 @@ $('#toGuestFinal')?.addEventListener('click',()=>withTransition(()=>toFinalScene
 
 /* ---------- ФИНАЛ: две колонки ---------- */
 let finalTimer = null;
+function getEventDate(){
+  const iso = `${eventData.date}T${eventData.time}`;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
 function toFinalScene(){
   setScene('final');
   croak();
@@ -391,18 +446,15 @@ function toFinalScene(){
   $('#fShare').innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <div>Код события: <span class="pill-mini" style="background:#1b4a33">${eventData.code||'—'}</span></div>
-      <button class="btn small" id="copyCodeBtn">Скопировать</button>
+      <button class="btn small" id="copyCodeBtn">Поделиться</button>
     </div>
   `;
-  $('#copyCodeBtn')?.addEventListener('click', async () => {
-    try{ await navigator.clipboard.writeText(eventData.code||''); alert('Код скопирован'); }catch(e){ alert('Не удалось скопировать'); }
-  });
+  document.getElementById('copyCodeBtn')?.addEventListener('click', () => shareInvite(eventData.code));
 
   function tickClock(){
-    if(!eventData.date||!eventData.time){
-      bigClockHM.textContent='—:—'; bigClockDays.textContent='—'; return;
-    }
-    const diff = new Date(`${eventData.date}T${eventData.time}`) - new Date();
+    const dt = getEventDate();
+    if(!dt){ bigClockHM.textContent='—:—'; bigClockDays.textContent='—'; return; }
+    const diff = dt - new Date();
     if(diff<=0){ bigClockHM.textContent='00:00'; bigClockDays.textContent='Праздник начался!'; return; }
     const days = Math.floor(diff/86400000);
     const rem  = diff%86400000;
