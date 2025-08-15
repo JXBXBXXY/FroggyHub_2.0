@@ -57,24 +57,24 @@
       </section>
 
       <section id="paneReset" class="grid" role="tabpanel" aria-labelledby="tabLogin" hidden inert>
-        <label>Почта
-          <input id="resetEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
-        </label>
-        <button type="button" class="btn primary" id="resetSend">Отправить ссылку для сброса</button>
+        <div id="resetEmailBlock" class="grid">
+          <label>Почта
+            <input id="resetEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
+          </label>
+          <button type="button" class="btn primary" id="resetSend">Отправить ссылку для сброса</button>
+        </div>
+        <div id="resetPassBlock" class="grid" hidden>
+          <label>Новый пароль
+            <input id="resetPass" type="password" minlength="4" required autocomplete="new-password">
+          </label>
+          <label>Повторите пароль
+            <input id="resetPass2" type="password" minlength="4" required autocomplete="new-password">
+          </label>
+          <button type="button" class="btn primary" id="resetSet">Сменить пароль</button>
+        </div>
         <button type="button" class="btn" id="backToLogin">Назад к входу</button>
         <div id="resetError" class="form-error" aria-live="polite"></div>
       </section>
-
-      <form id="newPassForm" class="grid" hidden inert>
-        <label>Новый пароль
-          <input id="newPass" type="password" minlength="4" required autocomplete="new-password">
-        </label>
-        <label>Повторите пароль
-          <input id="newPass2" type="password" minlength="4" required autocomplete="new-password">
-        </label>
-        <button type="button" class="btn primary" id="setNewPassBtn">Сменить пароль</button>
-        <div id="newPassError" class="form-error" aria-live="polite"></div>
-      </form>
     </div>
   </div>
 

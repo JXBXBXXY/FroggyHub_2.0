@@ -40,8 +40,8 @@ html.includes('class="tab active" id="tabLogin"')
   ? ok('signup pane hidden by default') : fail('signup pane should be hidden');
 /id="paneReset"[^>]*hidden/.test(html)
   ? ok('reset pane hidden by default') : fail('reset pane should be hidden');
-/id="newPassForm"[^>]*hidden/.test(html)
-  ? ok('new password form hidden by default') : fail('new password form should be hidden');
+/id="resetPassBlock"[^>]*hidden/.test(html)
+  ? ok('new password block hidden by default') : fail('new password block should be hidden');
 
 // 4) Import functions and test early guards (no DB call)
 const imp = async (p) => (await import(pathToFileURL(path.resolve(p)).href));
