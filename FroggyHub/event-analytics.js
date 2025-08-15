@@ -35,6 +35,12 @@ const wishlistPending = new Map();
 let currentUserId = null;
 let currentUserProfile = null;
 
+if(!window.supabase && window.createSupabaseClient){
+  const mode = sessionStorage.getItem('supabase_mode') || 'direct';
+  const url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
+  window.supabase = window.createSupabaseClient(url, window.SUPABASE_ANON_KEY);
+}
+
 if(window.supabase){
   const { data:{ user } } = await window.supabase.auth.getUser();
   currentUserId = user?.id || null;
@@ -53,6 +59,7 @@ function toast(msg){
 
 let rtChannel = null;
 let retryDelay = 1000; // start with 1s
+let retryTimer = null;
 
 async function authHeader(){
   if(window.supabase){
@@ -63,13 +70,31 @@ async function authHeader(){
   return {};
 }
 
-backBtn?.addEventListener('click', () => {
-  window.location.href = 'index.html';
-});
+function cleanup(){
+  if(retryTimer){ clearTimeout(retryTimer); retryTimer=null; }
+  if(rtChannel){
+    dbg('unsubscribing from channel');
+    window.supabase.removeChannel(rtChannel); rtChannel=null;
+  }
+  window.removeEventListener('beforeunload', cleanup);
+  backBtn?.removeEventListener('click', onBack);
+  editBtn?.removeEventListener('click', onEdit);
+}
 
-editBtn?.addEventListener('click', () => {
-  if (eventId) window.location.href = `event-edit.html?id=${eventId}`;
-});
+function onBack(){
+  cleanup();
+  window.location.href = 'index.html';
+}
+
+function onEdit(){
+  if(eventId){
+    cleanup();
+    window.location.href = `event-edit.html?id=${eventId}`;
+  }
+}
+
+backBtn?.addEventListener('click', onBack);
+editBtn?.addEventListener('click', onEdit);
 
 function statusText(s){
   switch(s){
@@ -334,6 +359,7 @@ async function handleWishlistChange(payload){
 
 async function subscribeRealtime(){
   if(!window.supabase || !eventId) return;
+  if(retryTimer){ clearTimeout(retryTimer); retryTimer=null; }
   dbg('subscribing to channel', 'analytics-' + eventId);
   const { data:{ session } } = await window.supabase.auth.getSession();
   if(!session){ console.warn('Realtime: auth required'); return; }
@@ -358,14 +384,9 @@ async function subscribeRealtime(){
         const delay = Math.min(retryDelay, 30000);
         retryDelay = Math.min(retryDelay*2, 30000);
         dbg('realtime disconnected', status, 'retry in', delay, 'ms');
-        setTimeout(subscribeRealtime, delay);
+        retryTimer = setTimeout(subscribeRealtime, delay);
       }
     });
 }
 
-window.addEventListener('beforeunload', () => {
-  if(rtChannel){
-    dbg('unsubscribing from channel');
-    window.supabase.removeChannel(rtChannel); rtChannel=null;
-  }
-});
+window.addEventListener('beforeunload', cleanup);

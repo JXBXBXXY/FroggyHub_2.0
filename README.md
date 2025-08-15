@@ -37,6 +37,16 @@ A simple banner is rendered at the bottom of the page asking the visitor to acce
 2. Run tests and lint: `npm test`.
 3. Start local development with Netlify: `npm run dev`.
 
+## Regional connectivity & proxy
+
+Some regions block direct access to `*.supabase.co`. The app can automatically fall back to a proxied endpoint.
+
+- `PROXY_SUPABASE_URL` points to `/supabase` which is proxied to the original project through Netlify `_redirects`.
+- On start the client performs a quick health probe to `SUPABASE_URL`. If it fails within 1500 ms, the client re‑initialises with the proxy URL and stores the choice in `sessionStorage`.
+- Auth, REST, Storage and Functions requests are proxied; Realtime can also be proxied through an optional edge function.
+- The proxy must not expose a `SERVICE_ROLE` key – only the anonymous key is used in the browser.
+- To disable the proxy, remove the fallback code and the `/supabase` rules when regional restrictions are not an issue.
+
 ## Testing checklist
 - Apply the SQL migrations.
 - Create users and profiles, create an event, join via code from another user.
