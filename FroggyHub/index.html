@@ -78,7 +78,7 @@
       </div>
 
       <div class="grid">
-        <button class="btn primary" id="goCreate">🧪 Создать ивент</button>
+        <button class="btn primary" id="goCreate" data-requires-auth>🧪 Создать ивент</button>
         <div class="card inner">
           <h3>Присоединиться к ивенту</h3>
           <div class="row2">
@@ -154,7 +154,7 @@
         <div class="speech" id="speech">
           <div id="speechText"><strong>Фрогги:</strong> Готовы начать?</div>
           <div class="actions" id="speechActions">
-            <button class="pill" data-next="create">🧪 Создать</button>
+            <button class="pill" data-next="create" data-requires-auth>🧪 Создать</button>
             <button class="pill secondary" data-next="join">🎉 Присоединиться</button>
           </div>
         </div>
@@ -208,7 +208,7 @@
             <label>Дресс-код <input id="eventDress" /></label>
             <label>Что взять <input id="eventBring" /></label>
             <label>Как пройти / комментарии <textarea id="eventNotes" rows="3"></textarea></label>
-            <button class="btn" type="submit">Сгенерировать код</button>
+            <button class="btn" type="submit" data-requires-auth>Сгенерировать код</button>
           </form>
           <p id="createEventStatus" class="error" role="status" aria-live="polite"></p>
         </section>
@@ -270,6 +270,7 @@
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
     window.createSupabaseClient = createClient;
   </script>
+  <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
   <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
     <div class="cookie-text">
       <p>Мы используем cookies. Согласны?</p>

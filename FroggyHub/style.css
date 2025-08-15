@@ -240,6 +240,8 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 .bar-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .pill-mini{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #2a7c56;background:#143d2a;color:#dfffe6;font-weight:700}
 
+#sessionBanner{position:fixed;left:0;right:0;top:0;max-width:1100px;margin:12px auto 0;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));background:var(--panel);border:1px solid var(--panel-bd);box-shadow:var(--shadow);text-align:center;}
+#sessionBanner[hidden]{display:none;pointer-events:none;opacity:0;}
 .error{color:#ff6b6b;font-size:.9rem;min-height:1.2em}
 
 /* Cookie banner */
