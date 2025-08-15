@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { json, getUserFromAuth } from './_utils.js';
 
+const DEBUG_ANALYTICS = process.env.DEBUG_ANALYTICS === 'true';
+const dbg = (...args) => { if (DEBUG_ANALYTICS) console.debug('[analytics]', ...args); };
+
 export async function handler(event){
   try{
     if(event.httpMethod !== 'GET' && event.httpMethod !== 'POST'){
@@ -47,6 +50,38 @@ export async function handler(event){
       url: w.url,
       taken_by: w.taken_by ? { nickname: w.profiles?.nickname || '', avatar_url: w.profiles?.avatar_url || '' } : null
     }));
+    const format = payload.format || payload.csv;
+    if(format === 'csv'){
+      const esc = (v) => {
+        if(v == null) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      };
+      const visitorRows = [['nickname','rsvp'], ...visitors.map(v=>[v.nickname, v.rsvp])];
+      const wishlistRows = [['title','url','taken_by'], ...wl.map(w=>[w.title, w.url, w.taken_by?.nickname || ''])];
+      const lines = [];
+      if(visitorRows.length > 1){
+        lines.push('Visitors');
+        visitorRows.forEach(r => lines.push(r.map(esc).join(',')));
+      }
+      if(wishlistRows.length > 1){
+        if(lines.length) lines.push('');
+        lines.push('Wishlist');
+        wishlistRows.forEach(r => lines.push(r.map(esc).join(',')));
+      }
+      const csv = lines.join('\n');
+      const rowCount = (visitorRows.length - 1) + (wishlistRows.length - 1);
+      dbg(`CSV export: ${rowCount} rows, ${Buffer.byteLength(csv, 'utf8')} bytes`);
+      return {
+        statusCode: 200,
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': 'attachment; filename="analytics.csv"',
+          'cache-control': 'no-store'
+        },
+        body: csv
+      };
+    }
 
     return json(200, {
       event: {

@@ -22,6 +22,9 @@ const toastEl = document.getElementById('toast');
 const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
 
+const DEBUG_ANALYTICS = !!window.DEBUG_ANALYTICS;
+const dbg = (...args) => { if (DEBUG_ANALYTICS) console.debug('[analytics]', ...args); };
+
 // state collections keyed by primary keys
 const visitors = new Map();       // key: user_id
 const visitorEls = new Map();
@@ -331,25 +334,38 @@ async function handleWishlistChange(payload){
 
 async function subscribeRealtime(){
   if(!window.supabase || !eventId) return;
+  dbg('subscribing to channel', 'analytics-' + eventId);
   const { data:{ session } } = await window.supabase.auth.getSession();
   if(!session){ console.warn('Realtime: auth required'); return; }
-  if(rtChannel) window.supabase.removeChannel(rtChannel);
+  if(rtChannel){
+    dbg('removing existing channel');
+    window.supabase.removeChannel(rtChannel);
+  }
   rtChannel = window.supabase
     .channel('analytics-' + eventId)
     .on('postgres_changes',{ event:'*', schema:'public', table:'participants', filter:'event_id=eq.'+eventId }, handleParticipantChange)
     .on('postgres_changes',{ event:'*', schema:'public', table:'wishlist_items', filter:'event_id=eq.'+eventId }, handleWishlistChange)
     .subscribe(status => {
-      if(status === 'SUBSCRIBED') { retryDelay = 1000; }
+      dbg('channel status', status);
+      if(status === 'SUBSCRIBED') {
+        retryDelay = 1000;
+        dbg('realtime subscribed');
+      }
       else if(status === 'CHANNEL_ERROR') {
+        dbg('realtime channel error');
         console.warn('Realtime channel not connected: insufficient rights');
       } else if(['TIMED_OUT','CLOSED'].includes(status)) {
         const delay = Math.min(retryDelay, 30000);
         retryDelay = Math.min(retryDelay*2, 30000);
+        dbg('realtime disconnected', status, 'retry in', delay, 'ms');
         setTimeout(subscribeRealtime, delay);
       }
     });
 }
 
 window.addEventListener('beforeunload', () => {
-  if(rtChannel){ window.supabase.removeChannel(rtChannel); rtChannel=null; }
+  if(rtChannel){
+    dbg('unsubscribing from channel');
+    window.supabase.removeChannel(rtChannel); rtChannel=null;
+  }
 });
