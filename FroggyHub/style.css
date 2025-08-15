@@ -282,3 +282,18 @@ body.scene-intro .speech{display:block}
   input,textarea{min-width:0}
   .bar-actions,.btn-group{flex-direction:column}
 }
+/* === Analytics page === */
+.ea-list, .wl-list{list-style:none;margin:0;padding:0;}
+.ea-item{display:grid;grid-template-columns:64px 1fr 120px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
+.ea-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;}
+.ea-status{text-align:right;}
+.wl-item{display:grid;grid-template-columns:1fr 200px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
+.wl-claimed{display:flex;align-items:center;gap:8px;}
+.wl-ava{width:32px;height:32px;border-radius:50%;object-fit:cover;}
+@media (max-width:640px){
+  .ea-item{grid-template-columns:1fr;text-align:center;}
+  .ea-avatar{margin:0 auto;}
+  .ea-status{text-align:center;margin-top:4px;}
+  .wl-item{grid-template-columns:1fr;text-align:center;}
+  .wl-claimed{justify-content:center;margin-top:4px;}
+}
