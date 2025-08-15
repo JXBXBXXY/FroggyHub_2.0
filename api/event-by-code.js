@@ -6,7 +6,7 @@ const pool = new Pool({
 });
 
 async function getUserFromAuth(event) {
-  const auth = event.headers.authorization || "";
+  const auth = event.headers?.authorization || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) throw new Error("Missing Authorization");
 
@@ -26,9 +26,9 @@ export async function handler(event) {
     if (event.httpMethod !== 'GET') {
       return { statusCode: 405, body: 'Method Not Allowed' };
     }
-    await getUserFromAuth(event);
     const code = (event.queryStringParameters?.code || '').trim();
     if (!/^\d{6}$/.test(code)) return { statusCode: 400, body: 'Invalid code' };
+    await getUserFromAuth(event);
 
     const { rows } = await pool.query(
       `select id, title, date, time, address, dress, bring, notes, code

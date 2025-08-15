@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "netlify dev",
-    "serve:functions": "netlify functions:serve"
+    "serve:functions": "netlify functions:serve",
+    "test": "npm run test:syntax && node tools/smoke.mjs",
+    "test:syntax": "node --check FroggyHub/app.js && node --check api/join-by-code.js && node --check api/event-by-code.js"
   },
   "dependencies": {
     "pg": "^8.11.3"
