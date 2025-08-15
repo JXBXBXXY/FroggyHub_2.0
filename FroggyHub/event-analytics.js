@@ -35,20 +35,65 @@ const wishlistPending = new Map();
 let currentUserId = null;
 let currentUserProfile = null;
 
-if(!window.supabase && window.createSupabaseClient){
-  const mode = sessionStorage.getItem('supabase_mode') || 'direct';
-  const url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
-  window.supabase = window.createSupabaseClient(url, window.SUPABASE_ANON_KEY);
-}
-
-if(window.supabase){
-  const { data:{ user } } = await window.supabase.auth.getUser();
-  currentUserId = user?.id || null;
-  if(currentUserId){
-    const { data } = await window.supabase.from('profiles').select('nickname, avatar_url').eq('id', currentUserId).single();
-    currentUserProfile = { nickname:data?.nickname||'', avatar_url:data?.avatar_url||'' };
+async function probe(url){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(),1500);
+  try{
+    const res = await fetch(url + '/auth/v1/health',{ method:'HEAD', signal:ctrl.signal });
+    clearTimeout(t);
+    return res.ok;
+  }catch(_){
+    clearTimeout(t);
+    return false;
   }
 }
+
+async function ensureSupabase(){
+  if(window.__supabaseClient){ return window.__supabaseClient; }
+  if(!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY){
+    toast('Не настроены ключи Supabase. Обратитесь к администратору.');
+    return null;
+  }
+  let createClient = window.createSupabaseClient;
+  if(!createClient){
+    if(document.readyState==='loading'){
+      await new Promise(r=>document.addEventListener('DOMContentLoaded', r,{once:true}));
+    }
+    createClient = window.createSupabaseClient;
+    if(!createClient){
+      toast('Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.');
+      return null;
+    }
+  }
+  let mode = sessionStorage.getItem('sb_mode');
+  if(!mode){
+    const ok = await probe(window.SUPABASE_URL);
+    mode = ok ? 'direct' : 'proxy';
+    sessionStorage.setItem('sb_mode', mode);
+  }
+  const url = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
+  const client = createClient(url, window.SUPABASE_ANON_KEY, { auth:{ persistSession:true } });
+  window.__supabaseClient = client;
+  window.supabase = client;
+  console.debug('[sb] mode', sessionStorage.getItem('sb_mode')); // TODO: remove debug before release
+  return client;
+}
+
+let supabase = null;
+(async ()=>{
+  supabase = await ensureSupabase();
+  if(!supabase){
+    errorEl.textContent = 'Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.';
+    return;
+  }
+  const { data:{ user } } = await supabase.auth.getUser();
+  currentUserId = user?.id || null;
+  if(currentUserId){
+    const { data } = await supabase.from('profiles').select('nickname, avatar_url').eq('id', currentUserId).single();
+    currentUserProfile = { nickname:data?.nickname||'', avatar_url:data?.avatar_url||'' };
+  }
+  load();
+})();
 
 function toast(msg){
   if(!toastEl){ alert(msg); return; }
@@ -62,8 +107,8 @@ let retryDelay = 1000; // start with 1s
 let retryTimer = null;
 
 async function authHeader(){
-  if(window.supabase){
-    const { data } = await window.supabase.auth.getSession();
+  if(supabase){
+    const { data } = await supabase.auth.getSession();
     const t = data?.session?.access_token;
     return t ? { Authorization: 'Bearer '+t } : {};
   }
@@ -74,7 +119,7 @@ function cleanup(){
   if(retryTimer){ clearTimeout(retryTimer); retryTimer=null; }
   if(rtChannel){
     dbg('unsubscribing from channel');
-    window.supabase.removeChannel(rtChannel); rtChannel=null;
+    supabase.removeChannel(rtChannel); rtChannel=null;
   }
   window.removeEventListener('beforeunload', cleanup);
   backBtn?.removeEventListener('click', onBack);
@@ -238,7 +283,7 @@ async function toggleWishlist(id){
   item.taken_by = item.taken_by ? null : { ...currentUserProfile };
   updateWishlist(item);
   updateGiftStats();
-  const { error } = await window.supabase
+  const { error } = await supabase
     .from('wishlist_items')
     .update({ taken_by: item.taken_by ? currentUserId : null })
     .eq('id', id);
@@ -269,7 +314,7 @@ async function load(){
     addrEl.textContent = evt.address || '—';
 
     // load participants with ids
-    const { data: parts } = await window.supabase
+    const { data: parts } = await supabase
       .from('participants')
       .select('user_id, rsvp, profiles(nickname, avatar_url)')
       .eq('event_id', eventId);
@@ -282,7 +327,7 @@ async function load(){
     setVisitors(visitorsInit);
 
     // load wishlist items with ids
-    const { data: wlItems } = await window.supabase
+    const { data: wlItems } = await supabase
       .from('wishlist_items')
       .select('id, title, url, taken_by, profiles:profiles!wishlist_items_taken_by_fkey(nickname, avatar_url)')
       .eq('event_id', eventId);
@@ -300,8 +345,6 @@ async function load(){
   }
 }
 
-load();
-
 async function handleParticipantChange(payload){
   const ev = payload.eventType;
   if(ev === 'DELETE'){
@@ -314,7 +357,7 @@ async function handleParticipantChange(payload){
   const p = payload.new;
   let prof = null;
   if(!visitors.has(p.user_id)){
-    const { data } = await window.supabase.from('profiles').select('nickname, avatar_url').eq('id', p.user_id).single();
+    const { data } = await supabase.from('profiles').select('nickname, avatar_url').eq('id', p.user_id).single();
     prof = data;
   } else {
     prof = visitors.get(p.user_id);
@@ -348,7 +391,7 @@ async function handleWishlistChange(payload){
   const w = payload.new;
   let taken = null;
   if(w.taken_by){
-    const { data } = await window.supabase.from('profiles').select('nickname, avatar_url').eq('id', w.taken_by).single();
+    const { data } = await supabase.from('profiles').select('nickname, avatar_url').eq('id', w.taken_by).single();
     taken = { nickname: data?.nickname || '', avatar_url: data?.avatar_url || '' };
   }
   const item = { id:w.id, title:w.title, url:w.url, taken_by:taken };
@@ -358,16 +401,16 @@ async function handleWishlistChange(payload){
 }
 
 async function subscribeRealtime(){
-  if(!window.supabase || !eventId) return;
+  if(!supabase || !eventId) return;
   if(retryTimer){ clearTimeout(retryTimer); retryTimer=null; }
   dbg('subscribing to channel', 'analytics-' + eventId);
-  const { data:{ session } } = await window.supabase.auth.getSession();
+  const { data:{ session } } = await supabase.auth.getSession();
   if(!session){ console.warn('Realtime: auth required'); return; }
   if(rtChannel){
     dbg('removing existing channel');
-    window.supabase.removeChannel(rtChannel);
+    supabase.removeChannel(rtChannel);
   }
-  rtChannel = window.supabase
+  rtChannel = supabase
     .channel('analytics-' + eventId)
     .on('postgres_changes',{ event:'*', schema:'public', table:'participants', filter:'event_id=eq.'+eventId }, handleParticipantChange)
     .on('postgres_changes',{ event:'*', schema:'public', table:'wishlist_items', filter:'event_id=eq.'+eventId }, handleWishlistChange)
