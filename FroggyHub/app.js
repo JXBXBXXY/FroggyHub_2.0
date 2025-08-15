@@ -359,6 +359,25 @@ let eventData = JSON.parse(localStorage.getItem(STORAGE)||'null') || {
 };
 const save=()=>localStorage.setItem(STORAGE,JSON.stringify(eventData));
 
+function genCode(){ return Math.floor(100000 + Math.random()*900000).toString(); }
+
+async function createEvent({ title, date, time, address, dress, bring, notes, wishlist }){
+  const user = (await supabase.auth.getUser()).data.user;
+  const code = genCode();
+  const ttlDays = 14;
+  const code_expires_at = new Date(Date.now() + ttlDays*24*60*60*1000).toISOString();
+  const { data, error } = await supabase.from('events').insert([{
+    owner: user.id, title, date, time, address, dress, bring, notes,
+    code, code_expires_at
+  }]).select('*').single();
+  if(error) throw error;
+  const items = (wishlist||[]).filter(i=>i.title||i.url).map(it=>({
+    event_id: data.id, title: it.title, url: it.url
+  }));
+  if(items.length){ await supabase.from('wishlist_items').insert(items); }
+  return data;
+}
+
 /* шаги создания */
 $('#formCreate')?.addEventListener('submit',(e)=>{
   e.preventDefault();
@@ -395,14 +414,25 @@ $('#addItem')?.addEventListener('click',()=>{ const nextId=eventData.wishlist.le
 $('#toDetails')?.addEventListener('click',()=>withTransition(()=>{ showSlide('create-details'); }));
 editor?.addEventListener('click',e=>{ const r=editor.getBoundingClientRect(); if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) editor.close(); });
 
-$('#formDetails')?.addEventListener('submit',(e)=>{
+$('#formDetails')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
   Object.assign(eventData,{dress:$('#eventDress').value.trim(),bring:$('#eventBring').value.trim(),notes:$('#eventNotes').value.trim()});
-  eventData.code=(Math.floor(100000+Math.random()*900000)).toString(); save();
-  withTransition(()=>{ showSlide('admin'); renderAdmin(); });
+  try{
+    const ev = await createEvent(eventData);
+    Object.assign(eventData, ev);
+    save();
+    withTransition(()=>{ showSlide('admin'); renderAdmin(); });
+  }catch(_){ toast('Не удалось создать событие'); }
 });
 function renderAdmin(){
   $('#eventCode').textContent=eventData.code||'—';
+  const exp=$('#codeExpire');
+  if(exp){
+    if(eventData.code_expires_at){
+      const d=new Date(eventData.code_expires_at);
+      exp.textContent=`Код истечёт ${d.toLocaleDateString('ru-RU')}`;
+    } else exp.textContent='';
+  }
   const html=(eventData.wishlist.filter(i=>i.title||i.url).map(i=>`${i.title||'Подарок'} — ${i.claimedBy?'🔒 занято':'🟢 свободно'} ${i.url?`• <a href="${i.url}" target="_blank">ссылка</a>`:''}`)).map(s=>`<li>${s}</li>`).join('');
   $('#adminGifts').innerHTML=html||'<li>Вишлист пуст</li>';
 }
@@ -417,12 +447,21 @@ async function authHeader(){
   return t ? { Authorization: 'Bearer '+t } : {};
 }
 
+function mapStatusToMessage(res){
+  if (res.status === 400) return 'Неверный формат кода';
+  if (res.status === 401) return 'Войдите, чтобы продолжить';
+  if (res.status === 404) return 'Код не найден';
+  if (res.status === 410) return 'Срок действия кода истёк';
+  if (res.status === 429) return 'Слишком много попыток. Попробуйте позже';
+  return 'Ошибка сервера';
+}
+
 async function verifyCode(code){
   const res = await fetch('/.netlify/functions/event-by-code?code='+code, { headers: await authHeader() });
-  if (res.status === 400) throw new Error('Неверный формат кода');
-  if (res.status === 401) throw new Error('Нужно войти');
-  if (res.status === 404) throw new Error('Код не найден');
-  if (!res.ok)          throw new Error('Ошибка сервера');
+  if (!res.ok){
+    if(res.status===401) await needLogin();
+    throw new Error(mapStatusToMessage(res));
+  }
   return res.json();
 }
 
@@ -440,8 +479,11 @@ async function joinFlow(code){
       headers:{ 'Content-Type':'application/json', ...(await authHeader()) },
       body: JSON.stringify({ code, name })
     });
-    if (res.status === 401) { await needLogin(); return; }
-    if (!res.ok) { toast('Не удалось присоединиться'); return; }
+    if (!res.ok){
+      const msg = mapStatusToMessage(res);
+      if(res.status===401) await needLogin(); else toast(msg);
+      return;
+    }
 
     const { event_id } = await res.json();
     await loadEvent(event_id);
@@ -449,10 +491,48 @@ async function joinFlow(code){
   }catch(e){ toast(e.message || 'Сеть недоступна'); }
 }
 
-async function loadEvent(id){
-  // данные события уже в eventData после verifyCode
-  // сюда можно добавить дополнительную загрузку по id
+let rtChannel;
+
+function subscribeEventRealtime(eventId, { onWishlist, onGuests } = {}) {
+  if (rtChannel) { supabase.removeChannel(rtChannel); rtChannel = null; }
+  rtChannel = supabase
+    .channel('event-' + eventId)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'wishlist_items', filter: 'event_id=eq.' + eventId
+    }, (payload) => { onWishlist?.(payload); })
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'guests', filter: 'event_id=eq.' + eventId
+    }, (payload) => { onGuests?.(payload); })
+    .subscribe();
 }
+
+async function renderWishlist(eventId){
+  const { data } = await supabase.from('wishlist_items').select('id,title,url,claimed_by').eq('event_id', eventId).order('id');
+  eventData.wishlist = (data || []).map(it=>({ id:it.id, title:it.title, url:it.url, claimedBy:it.claimed_by || '' }));
+  if(!$('#slide-join-wishlist').hidden) renderGuestWishlist();
+  if(!$('#slide-create-wishlist').hidden) renderGrid();
+  if(!$('#slide-admin').hidden) renderAdmin();
+  if(document.body.classList.contains('scene-final')) toFinalScene();
+}
+
+async function renderGuests(eventId){
+  const { data } = await supabase.from('guests').select('name,rsvp').eq('event_id', eventId);
+  eventData.guests = data || [];
+  if(document.body.classList.contains('scene-final')) toFinalScene();
+}
+
+async function loadEvent(eventId){
+  const ev = await supabase.from('events').select('*').eq('id', eventId).single();
+  if(ev.data) Object.assign(eventData, ev.data);
+  await Promise.all([renderWishlist(eventId), renderGuests(eventId)]);
+  subscribeEventRealtime(eventId, {
+    onWishlist: () => renderWishlist(eventId),
+    onGuests:   () => renderGuests(eventId),
+  });
+}
+
+function cleanupRealtime(){ if (rtChannel) { supabase.removeChannel(rtChannel); rtChannel = null; } }
+window.addEventListener('beforeunload', cleanupRealtime);
 
 async function needLogin(){
   const qp = new URLSearchParams(location.search);
