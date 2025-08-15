@@ -1,6 +1,6 @@
 [build]
   command = ""
-  publish = "."
+  publish = "FroggyHub"
 
 [functions]
   directory = "api"
