@@ -76,17 +76,112 @@ function sendAuthTelemetry(kind, mode){
   }catch(_){ /* ignore */ }
 }
 
-function mapAuthError(ex){
-  console.error(ex);
-  const msg = ex?.message || '';
-  if(ex instanceof TypeError && msg.includes('Failed to fetch')){
+function formatAuthError(e){
+  console.error(e);
+  const msg = e?.message || '';
+  const st = e?.status;
+  if(st === 400 || st === 401 || msg === 'Invalid login credentials') return 'Неверная почта или пароль';
+  if(st === 429 || /rate limit/i.test(msg)) return 'Слишком много попыток, попробуйте позже';
+  if(st === 500) return 'Сервис недоступен, повторите позже';
+  if(msg === 'User already registered') return 'Пользователь с этой почтой уже существует';
+  if(e instanceof TypeError && /Failed to fetch|timeout|network/i.test(msg)){
     sendAuthTelemetry('auth_failed_fetch');
-    return 'Не удалось связаться с сервером авторизации. Проверьте интернет или используйте альтернативный вход.';
+    return 'Не удалось связаться с сервером авторизации. Попробуйте вход по ссылке.';
   }
-  if(/ERR_BLOCKED_BY_CLIENT|CORS|DNS/i.test(msg)){
-    return 'Доступ к домену авторизации заблокирован. Попробуйте другой интернет/домен.';
+  return 'Ошибка входа: ' + (msg || String(e));
+}
+
+function validateAuthForm(fields, mode){
+  const errors={};
+  const email=(fields.email||'').trim().toLowerCase();
+  if(!email) errors.email='Введите почту';
+  else if(!/^\S+@\S+\.\S+$/.test(email)) errors.email='Некорректная почта';
+  const pass=fields.password||'';
+  if(!pass) errors.password='Введите пароль';
+  else if(pass.length<4) errors.password='Пароль слишком короткий';
+  if(mode==='signup'){
+    const pass2=fields.password2||'';
+    if(!pass2) errors.password2='Повторите пароль';
+    else if(pass2!==pass) errors.password2='Пароли не совпадают';
+    const nick=(fields.nickname||'').trim();
+    if(!nick) errors.nickname='Введите имя';
   }
-  return msg || 'Ошибка авторизации';
+  return { ok:Object.keys(errors).length===0, errors };
+}
+
+function clearFieldError(input){
+  if(!input) return;
+  input.classList.remove('is-invalid');
+  input.removeAttribute('aria-invalid');
+  const errId='err-'+input.id;
+  input.removeAttribute('aria-describedby');
+  const el=document.getElementById(errId);
+  if(el) el.remove();
+}
+
+function showFieldError(input,msg){
+  if(!input) return;
+  let errId='err-'+input.id;
+  let err=document.getElementById(errId);
+  if(!err){
+    err=document.createElement('div');
+    err.id=errId;
+    err.className='field-error';
+    input.insertAdjacentElement('afterend',err);
+  }
+  err.textContent=msg;
+  input.classList.add('is-invalid');
+  input.setAttribute('aria-invalid','true');
+  input.setAttribute('aria-describedby',errId);
+  const onInput=()=>{clearFieldError(input);input.removeEventListener('input',onInput);};
+  input.addEventListener('input',onInput);
+}
+
+function showFormError(el,msg){ if(el) el.textContent=msg; }
+function clearFormError(el){ if(el) el.textContent=''; }
+
+function applyValidationErrors(mode, errors){
+  const map= mode==='login'
+    ? { email:'loginEmail', password:'loginPass' }
+    : { nickname:'regName', email:'regEmail', password:'regPass', password2:'regPass2' };
+  Object.entries(errors).forEach(([k,v])=>{
+    const el=document.getElementById(map[k]);
+    showFieldError(el,v);
+  });
+  const firstKey=Object.keys(errors)[0];
+  if(firstKey){
+    const firstEl=document.getElementById(map[firstKey]);
+    firstEl?.scrollIntoView({ behavior:'smooth', block:'center' });
+    if(!reduceMotion) firstEl?.classList.add('shake');
+    setTimeout(()=>firstEl?.classList.remove('shake'),200);
+    setTimeout(()=>firstEl?.focus(),100);
+    const ann = mode==='login'?$('#loginAnnounce'):$('#regAnnounce');
+    if(ann) ann.textContent=errors[firstKey];
+  }
+}
+
+async function attemptWithProxyFallback(fn){
+  try{
+    const result = await fn();
+    return { result, usedFallback:false };
+  }catch(e){
+    if(e instanceof TypeError && /Failed to fetch/i.test(e.message) && sessionStorage.getItem('sb_mode')!=='proxy'){
+      sessionStorage.setItem('sb_mode','proxy');
+      window.__supabaseClient = null;
+      await ensureSupabase();
+      sessionBanner.textContent = 'Переключили подключение на резервный домен.';
+      sessionBanner.hidden = false;
+      try{
+        const result = await fn();
+        return { result, usedFallback:true };
+      }catch(e2){
+        e2.usedFallback = true;
+        throw e2;
+      }
+    }
+    e.usedFallback = false;
+    throw e;
+  }
 }
 
 /* ---------- ПОЛЬЗОВАТЕЛИ / СЕССИЯ ---------- */
@@ -243,76 +338,117 @@ $('#tabLogin')?.addEventListener('click',()=>switchAuth('login'));
 $('#tabRegister')?.addEventListener('click',()=>switchAuth('register'));
 
 /* ---------- ЛОГИН ---------- */
-$('#authFormLogin')?.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const email = $('#loginEmail').value.trim().toLowerCase();
-  const pass  = $('#loginPass').value;
-  const err = $('#loginError');
-  const info = $('#loginInfo');
-  if(err) err.textContent='';
-  if(info) { info.hidden=true; info.textContent=''; }
-  try{
-    const user = await signIn(email, pass);
-    currentUser = user;
-    setSession(email);
-    $('#chipEmail').textContent = email;
-    show('#screen-lobby');
-  }catch(ex){
-    const msg = mapAuthError(ex);
-    if(err) err.textContent = msg;
-    const mode = sessionStorage.getItem('supabase_mode') || 'direct';
-    if(info){
-      if(msg.includes('Не удалось связаться')){
-        info.textContent = mode==='proxy'
-          ? 'Проблема со связью с сервером. Мы переключили подключение на резервный домен.'
-          : 'Проблема со связью с сервером. Попробуйте «Вход по ссылке» ниже или другой интернет.';
-        info.hidden = false;
+const loginForm = $('#authFormLogin');
+const loginBtn = $('#loginBtn');
+if(loginForm && loginBtn){
+  const handleLogin = async (e)=>{
+    e.preventDefault();
+    clearFieldError($('#loginEmail'));
+    clearFieldError($('#loginPass'));
+    clearFormError($('#loginError'));
+    $('#loginAnnounce').textContent='';
+    const info = $('#loginInfo');
+    if(info){ info.hidden=true; info.textContent=''; }
+    const { ok, errors } = validateAuthForm({ email: $('#loginEmail').value, password: $('#loginPass').value }, 'login');
+    if(!ok){ applyValidationErrors('login', errors); return; }
+    const email = $('#loginEmail').value.trim().toLowerCase();
+    const pass  = $('#loginPass').value;
+    loginBtn.disabled = true; loginBtn.textContent='Входим…'; loginBtn.style.cursor='progress';
+    try{
+      const { result:user, usedFallback } = await attemptWithProxyFallback(()=>signIn(email, pass));
+      dbgAuth('signInWithPassword', user?.id, sessionStorage.getItem('sb_mode'));
+      currentUser = user;
+      setSession(email);
+      $('#chipEmail').textContent = email;
+      show('#screen-lobby');
+      clearFormError($('#loginError'));
+    }catch(ex){
+      dbgAuth('signIn error', ex?.status, ex?.message, sessionStorage.getItem('sb_mode'));
+      const msg = formatAuthError(ex);
+      if(ex?.status===400 || ex?.status===401 || ex?.message==='Invalid login credentials'){
+        showFieldError($('#loginPass'), msg);
+        $('#loginAnnounce').textContent = msg;
+      }else{
+        showFormError($('#loginError'), msg);
       }
+      if(ex.usedFallback){
+        showFormError($('#loginError'), 'Мы переключили подключение на резервный домен. Попробуйте ещё раз.');
+        loginBtn.focus();
+      }
+    }finally{
+      loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.style.cursor='';
     }
-  }
-});
+  };
+  loginForm.addEventListener('submit', handleLogin);
+  loginBtn.addEventListener('click', handleLogin);
+}
 
 $('#loginOtpBtn')?.addEventListener('click', async ()=>{
   const email = $('#loginEmail').value.trim().toLowerCase();
-  const err = $('#loginError');
+  clearFormError($('#loginError'));
   const info = $('#loginInfo');
-  if(err) err.textContent='';
   if(info){ info.hidden=false; info.textContent=''; }
-  if(!email){ if(err) err.textContent='Введите почту'; return; }
+  if(!email){ showFormError($('#loginError'),'Введите почту'); return; }
   try{
     const sb = await ensureSupabase();
     if(!sb) throw new Error('init failed');
     await sb.auth.signInWithOtp({ email });
     if(info){ info.textContent='Мы отправили письмо. Откройте ссылку на этом устройстве.'; }
   }catch(ex){
-    const msg = mapAuthError(ex);
-    if(err) err.textContent = msg;
+    const msg = formatAuthError(ex);
+    showFormError($('#loginError'), msg);
     if(info) info.hidden=true;
   }
 });
 
 /* ---------- РЕГИСТРАЦИЯ ---------- */
-$('#authFormRegister')?.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const name = $('#regName').value.trim();
-  const email = $('#regEmail').value.trim().toLowerCase();
-  const pass = $('#regPass').value;
-  const pass2 = $('#regPass2').value;
-  const err = $('#regError');
-  if(err) err.textContent='';
-  if(!name || !email || !pass || !pass2){ err.textContent='Заполните все поля.'; return; }
-  if(pass !== pass2){ err.textContent='Пароли не совпадают.'; return; }
-  try{
-    await signUp(name,email,pass);
-    const user = await signIn(email,pass);
-    currentUser = user;
-    setSession(email);
-    $('#chipEmail').textContent = email;
-    show('#screen-lobby');
-  }catch(ex){
-    if(err) err.textContent = mapAuthError(ex);
-  }
-});
+const regForm = $('#authFormRegister');
+const regBtn = $('#regBtn');
+if(regForm && regBtn){
+  const handleReg = async (e)=>{
+    e.preventDefault();
+    clearFieldError($('#regName'));
+    clearFieldError($('#regEmail'));
+    clearFieldError($('#regPass'));
+    clearFieldError($('#regPass2'));
+    clearFormError($('#regError'));
+    $('#regAnnounce').textContent='';
+    const { ok, errors } = validateAuthForm({ nickname: $('#regName').value, email: $('#regEmail').value, password: $('#regPass').value, password2: $('#regPass2').value }, 'signup');
+    if(!ok){ applyValidationErrors('signup', errors); return; }
+    const name = $('#regName').value.trim();
+    const email = $('#regEmail').value.trim().toLowerCase();
+    const pass = $('#regPass').value;
+    regBtn.disabled=true; regBtn.textContent='Регистрируем…'; regBtn.style.cursor='progress';
+    try{
+      await attemptWithProxyFallback(()=>signUp(name,email,pass));
+      const { result:user, usedFallback } = await attemptWithProxyFallback(()=>signIn(email,pass));
+      dbgAuth('signUp', user?.id, sessionStorage.getItem('sb_mode'));
+      currentUser = user;
+      setSession(email);
+      $('#chipEmail').textContent = email;
+      show('#screen-lobby');
+    }catch(ex){
+      dbgAuth('signUp error', ex?.status, ex?.message, sessionStorage.getItem('sb_mode'));
+      const msg = formatAuthError(ex);
+      if(ex?.message==='User already registered'){
+        showFieldError($('#regEmail'), msg);
+        $('#regAnnounce').textContent = msg;
+      }else if(ex?.status===429 || /rate limit/i.test(ex?.message)){
+        showFormError($('#regError'), msg);
+      }else{
+        showFormError($('#regError'), msg);
+      }
+      if(ex.usedFallback){
+        showFormError($('#regError'), 'Мы переключили подключение на резервный домен. Попробуйте ещё раз.');
+        regBtn.focus();
+      }
+    }finally{
+      regBtn.disabled=false; regBtn.textContent='Зарегистрироваться'; regBtn.style.cursor='';
+    }
+  };
+  regForm.addEventListener('submit', handleReg);
+  regBtn.addEventListener('click', handleReg);
+}
 
 /* ---------- АВТОВХОД ---------- */
 (async function autoLogin() {
@@ -481,7 +617,14 @@ ensureSupabase().then(async sb => {
   sb.auth.onAuthStateChange(async (event, session)=>{
     currentUser = session?.user || null;
     toggleAuthButtons(!currentUser);
-    sessionBanner.hidden = event !== 'SIGNED_OUT';
+    if(event === 'SIGNED_OUT'){
+      localStorage.removeItem(SESSION_KEY);
+      sessionBanner.textContent = 'Сессия истекла, войдите снова';
+      sessionBanner.hidden = false;
+      show('#screen-auth');
+    } else {
+      sessionBanner.hidden = true;
+    }
     if(event === 'SIGNED_IN' && currentUser){
       const temp = localStorage.getItem(COOKIE_TEMP_KEY);
       if(temp){

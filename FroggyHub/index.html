@@ -30,16 +30,18 @@
       <!-- ЛОГИН -->
       <form id="authFormLogin" class="grid" autocomplete="on" role="tabpanel" aria-labelledby="tabLogin">
         <label>Почта
-          <input id="loginEmail" type="email" placeholder="you@email.com" required>
+          <input id="loginEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
         </label>
         <label>Пароль
-          <input id="loginPass" type="password" placeholder="••••••••" minlength="4" required>
+          <input id="loginPass" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
         </label>
-        <button type="submit" class="btn primary">Войти</button>
+        <button type="button" class="btn primary" id="loginBtn">Войти</button>
         <button type="button" class="btn" id="loginOtpBtn">Войти по ссылке на e‑mail</button>
-        <p id="loginError" class="error" role="status" aria-live="polite"></p>
+        <div id="loginError" class="form-error" aria-live="polite"></div>
         <p id="loginInfo" class="hint" hidden></p>
+        <div id="loginAnnounce" class="visually-hidden" aria-live="assertive"></div>
         <p class="hint">Нет аккаунта? Перейдите на вкладку «Регистрация».</p>
+        <input type="submit" hidden>
       </form>
 
       <!-- РЕГИСТРАЦИЯ -->
@@ -48,16 +50,18 @@
           <input id="regName" type="text" placeholder="Как вас называть?" required>
         </label>
         <label>Почта
-          <input id="regEmail" type="email" placeholder="you@email.com" required>
+          <input id="regEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
         </label>
         <label>Пароль
-          <input id="regPass" type="password" placeholder="минимум 4 символа" minlength="4" required>
+          <input id="regPass" type="password" placeholder="минимум 4 символа" minlength="4" required autocomplete="new-password">
         </label>
         <label>Повтор пароля
-          <input id="regPass2" type="password" placeholder="повторите пароль" minlength="4" required>
+          <input id="regPass2" type="password" placeholder="повторите пароль" minlength="4" required autocomplete="new-password">
         </label>
-        <button type="submit" class="btn primary">Зарегистрироваться</button>
-        <p id="regError" class="error" role="status" aria-live="polite"></p>
+        <button type="button" class="btn primary" id="regBtn">Зарегистрироваться</button>
+        <div id="regError" class="form-error" aria-live="polite"></div>
+        <div id="regAnnounce" class="visually-hidden" aria-live="assertive"></div>
+        <input type="submit" hidden>
       </form>
     </div>
   </div>
