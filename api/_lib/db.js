@@ -1,2 +1,1 @@
-import { neon } from '@netlify/neon';
-export const sql = neon(); // NETLIFY_DATABASE_URL
+export { getClient } from '../../utils/db.js';
