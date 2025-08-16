@@ -99,6 +99,8 @@ input, textarea, select { font-size: 16px; }
 .tab.active{background:var(--accent);color:#0a1e14;font-weight:700}
 #paneLogin,#paneSignup,#paneReset{max-width:420px;margin:0 auto;}
 section[hidden]{display:none !important;}
+#authPanel{position:relative;z-index:15;}
+.auth-debug{font-size:.75rem;opacity:.7;margin-bottom:4px;}
 
 /* Пруд и сцены */
 .wrap{display:grid;grid-template-rows:48vh auto;min-height:100vh;transition:opacity .45s ease}

@@ -1,6 +1,6 @@
 /* ---------- Supabase init with proxy fallback ---------- */
 const DEBUG_AUTH = !!window.DEBUG_AUTH;
-const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[supabase]', ...args); };
+const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[auth]', ...args); };
 const DEBUG_EVENTS = !!window.DEBUG_EVENTS;
 
 function probeDirect(url){
@@ -90,6 +90,11 @@ function formatAuthError(e){
     return 'Не удалось связаться с сервером авторизации. Попробуйте вход по ссылке.';
   }
   return 'Ошибка входа: ' + (msg || String(e));
+}
+
+function isFetchErr(e){
+  const msg = e?.message || '';
+  return (e instanceof TypeError && /Failed to fetch/i.test(msg)) || msg === 'timeout';
 }
 
 function validateAuthForm(fields, mode){
@@ -276,6 +281,8 @@ function show(idToShow){
 // --- Auth state management ---
 let authState = 'login';
 let loginBtn, regBtn;
+let isAuthPending = false;
+let dbgLogin, dbgSignup;
 const resetEmailBlock = document.getElementById('resetEmailBlock');
 const resetPassBlock = document.getElementById('resetPassBlock');
 function updateRegBtnState(){
@@ -288,6 +295,23 @@ function updateRegBtnState(){
   }, 'signup');
   if(ok){ regBtn.disabled=false; regBtn.removeAttribute('aria-disabled'); }
   else { regBtn.disabled=true; regBtn.setAttribute('aria-disabled','true'); }
+  updateAuthDebug();
+}
+
+function updateAuthDebug(){
+  if(!DEBUG_AUTH) return;
+  const sbMode = sessionStorage.getItem('sb_mode') || 'direct';
+  const btn = authState === 'signup' ? regBtn : loginBtn;
+  let overlay = false;
+  if(btn){
+    const r = btn.getBoundingClientRect();
+    const el = document.elementFromPoint(r.left + r.width/2, r.top + r.height/2);
+    overlay = !!(el && el !== btn && !btn.contains(el));
+  }
+  const msg = `state:${authState} loginDisabled:${!!loginBtn?.disabled} signupDisabled:${!!regBtn?.disabled} pending:${isAuthPending} sbMode:${sbMode} overlay:${overlay}`;
+  if(dbgLogin) dbgLogin.textContent = msg;
+  if(dbgSignup) dbgSignup.textContent = msg;
+  dbgAuth(msg);
 }
 
 function setAuthState(state){
@@ -342,6 +366,7 @@ function setAuthState(state){
     if(loginBtn){ loginBtn.disabled=false; loginBtn.textContent='Войти'; loginBtn.removeAttribute('aria-disabled'); }
   }
   panel?.scrollIntoView({ behavior:'smooth', block:'center' });
+  updateAuthDebug();
 }
 
 document.getElementById('tabLogin')?.addEventListener('click',()=>setAuthState('login'));
@@ -366,47 +391,87 @@ if(urlParams.get('type') === 'recovery'){
 
 // --- Login ---
 loginBtn = document.getElementById('loginBtn');
+if(DEBUG_AUTH && loginBtn){
+  dbgLogin = document.createElement('div');
+  dbgLogin.className = 'auth-debug';
+  loginBtn.before(dbgLogin);
+}
 loginBtn?.addEventListener('click', async (e)=>{
   e.preventDefault();
+  if(isAuthPending) return;
   clearFieldError(document.getElementById('loginEmail'));
   clearFieldError(document.getElementById('loginPass'));
   clearFormError(document.getElementById('loginError'));
   const { ok, errors } = validateAuthForm({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value }, 'login');
-  if(!ok){ applyValidationErrors('login', errors); return; }
+  if(!ok){ applyValidationErrors('login', errors); updateAuthDebug(); return; }
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const password = document.getElementById('loginPass').value;
   const orig = loginBtn.textContent;
+  isAuthPending = true;
   loginBtn.disabled = true; loginBtn.setAttribute('aria-disabled','true'); loginBtn.textContent='Входим…';
+  updateAuthDebug();
   const ctrl = new AbortController();
+  let retried = false;
   try{
     const sb = await ensureSupabase();
-    await withTimeout(sb.auth.signInWithPassword({ email, password }),15000,ctrl);
+    const { data, error } = await withTimeout(sb.auth.signInWithPassword({ email, password }),15000,ctrl);
+    if(error) throw error;
     document.getElementById('chipEmail').textContent = email;
     show('#screen-lobby');
+    return;
   }catch(err){
-    showFormError(document.getElementById('loginError'), formatAuthError(err));
+    if(!retried && isFetchErr(err)){
+      try{
+        const { result } = await switchToProxyAndRetry(async sb=>await withTimeout(sb.auth.signInWithPassword({ email, password }),15000));
+        retried = true;
+        const { data, error } = result;
+        if(error) throw error;
+        document.getElementById('chipEmail').textContent = email;
+        show('#screen-lobby');
+        return;
+      }catch(err2){
+        showFormError(document.getElementById('loginError'), formatAuthError(err2));
+      }
+    }else{
+      showFormError(document.getElementById('loginError'), formatAuthError(err));
+    }
   }finally{
-    loginBtn.disabled=false; loginBtn.removeAttribute('aria-disabled'); loginBtn.textContent=orig;
+    isAuthPending = false;
+    const { ok } = validateAuthForm({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value }, 'login');
+    loginBtn.disabled = !ok;
+    if(ok) loginBtn.removeAttribute('aria-disabled'); else loginBtn.setAttribute('aria-disabled','true');
+    loginBtn.textContent = orig;
+    updateAuthDebug();
   }
 });
+updateAuthDebug();
 
 // --- Signup ---
 regBtn = document.getElementById('regBtn');
+if(DEBUG_AUTH && regBtn){
+  dbgSignup = document.createElement('div');
+  dbgSignup.className = 'auth-debug';
+  regBtn.before(dbgSignup);
+}
 regBtn?.addEventListener('click', async (e)=>{
   e.preventDefault();
+  if(isAuthPending) return;
   clearFieldError(document.getElementById('regName'));
   clearFieldError(document.getElementById('regEmail'));
   clearFieldError(document.getElementById('regPass'));
   clearFieldError(document.getElementById('regPass2'));
   clearFormError(document.getElementById('regError'));
   const { ok, errors } = validateAuthForm({ nickname: document.getElementById('regName').value, email: document.getElementById('regEmail').value, password: document.getElementById('regPass').value, password2: document.getElementById('regPass2').value }, 'signup');
-  if(!ok){ applyValidationErrors('signup', errors); return; }
+  if(!ok){ applyValidationErrors('signup', errors); updateAuthDebug(); return; }
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim().toLowerCase();
   const pass = document.getElementById('regPass').value;
   const orig = regBtn.textContent;
+  isAuthPending = true;
   regBtn.disabled = true; regBtn.setAttribute('aria-disabled','true'); regBtn.textContent='Регистрируем…';
+  updateAuthDebug();
   const ctrl = new AbortController();
+  let retried = false;
   try{
     const sb = await ensureSupabase();
     const { data, error } = await withTimeout(sb.auth.signUp({ email, password: pass }),15000,ctrl);
@@ -417,14 +482,38 @@ regBtn?.addEventListener('click', async (e)=>{
       show('#screen-lobby');
     }else if(data.user){
       sessionStorage.setItem('pendingProfileName', name);
-      toast('Проверьте почту');
+      sessionBanner.textContent = 'Проверьте почту';
+      sessionBanner.hidden = false;
       setAuthState('login');
     }
   }catch(err){
-    showFormError(document.getElementById('regError'), formatAuthError(err));
+    if(!retried && isFetchErr(err)){
+      try{
+        const { result, sb } = await switchToProxyAndRetry(async sb=>await withTimeout(sb.auth.signUp({ email, password: pass }),15000));
+        retried = true;
+        const { data, error } = result;
+        if(error) throw error;
+        if(data.user && data.session){
+          await sb.from('profiles').upsert({ id:data.user.id, nickname:name });
+          document.getElementById('chipEmail').textContent = email;
+          show('#screen-lobby');
+        }else if(data.user){
+          sessionStorage.setItem('pendingProfileName', name);
+          sessionBanner.textContent = 'Проверьте почту';
+          sessionBanner.hidden = false;
+          setAuthState('login');
+        }
+      }catch(err2){
+        showFormError(document.getElementById('regError'), formatAuthError(err2));
+      }
+    }else{
+      showFormError(document.getElementById('regError'), formatAuthError(err));
+    }
   }finally{
+    isAuthPending = false;
     regBtn.textContent=orig;
     updateRegBtnState();
+    updateAuthDebug();
   }
 });
 
