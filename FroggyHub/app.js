@@ -1,3 +1,41 @@
+const LS_NICK = 'fh:nickname';
+const $ = (s, r=document)=>r.querySelector(s);
+
+function toast(msg, type='info'){
+  console[type==='error'?'error':'log']('[toast]', msg);
+  try { window.showToast?.(msg, type) ?? alert(msg); } catch {}
+}
+
+function withBusy(btn, fn){
+  return async (...a)=>{
+    if(!btn) return fn(...a);
+    const t=btn.textContent; btn.disabled=true; btn.textContent='Подождите…';
+    try{ return await fn(...a); } finally{ btn.disabled=false; btn.textContent=t; }
+  };
+}
+
+async function callFn(name, payload){
+  const url = `/.netlify/functions/${name}`;
+  console.log('[fetch]', name, {url, payload});
+  const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload??{})});
+  const data = await res.json().catch(()=> ({}));
+  if(!res.ok || data?.ok===false){
+    const msg = data?.error || data?.message || `Ошибка ${name}`;
+    console.error('[fn:error]', name, res.status, data);
+    throw new Error(msg);
+  }
+  console.log('[fn:ok]', name, data);
+  return data;
+}
+
+const getNickname = ()=> localStorage.getItem(LS_NICK)||'';
+const setNickname = (n)=> {
+  localStorage.setItem(LS_NICK, n);
+  const badge = $('[data-user-badge]');
+  if(badge) badge.textContent = n||'гость';
+};
+setNickname(getNickname());
+
 /* ---------- Supabase init with proxy fallback ---------- */
 const DEBUG_AUTH = !!window.DEBUG_AUTH;
 const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[auth]', ...args); };
@@ -55,21 +93,7 @@ async function switchToProxyAndRetry(action){
 
 window.ensureSupabase = ensureSupabase;
 
-const LS_NICK = 'fh:nickname';
-
-function setNickname(n) {
-  if (typeof n === 'string' && n.trim()) {
-    localStorage.setItem(LS_NICK, n.trim());
-  }
-}
-
-function getNickname() {
-  return localStorage.getItem(LS_NICK) || '';
-}
-
-function clearNickname() {
-  localStorage.removeItem(LS_NICK);
-}
+const clearNickname = () => setNickname('');
 
 function renderUserBadge({ nickname, email } = {}) {
   const badge = document.querySelector('[data-user-badge]');
@@ -108,7 +132,7 @@ async function withTimeout(promiseFactory, ms, label){
   }
 }
 
-async function callFn(name, { method='POST', body, headers={} } = {}, { timeoutMs=15000, retryOnceOnNetwork=true } = {}) {
+async function callFnEx(name, { method='POST', body, headers={} } = {}, { timeoutMs=15000, retryOnceOnNetwork=true } = {}) {
   const url = `/.netlify/functions/${name}`;
   const auth = await (typeof authHeader === 'function' ? authHeader() : {});
   const doFetch = (signal) => fetch(url, {
@@ -316,8 +340,6 @@ async function shareInvite(code){
 }
 
 /* ---------- УТИЛИТЫ ---------- */
-const $ = (s) => document.querySelector(s);
-const toastEl = document.getElementById('toast');
 const sessionBanner = document.getElementById('sessionBanner');
 function toggleAuthButtons(disabled){
   document.querySelectorAll('[data-requires-auth]').forEach(btn=>{
@@ -325,12 +347,6 @@ function toggleAuthButtons(disabled){
   });
 }
 toggleAuthButtons(true);
-function toast(msg){
-  if(!toastEl){ alert(msg); return; }
-  toastEl.textContent = msg;
-  toastEl.hidden = false;
-  setTimeout(()=>{ toastEl.hidden = true; }, 4000);
-}
 function trapFocus(node){
   const f=node.querySelectorAll('button, [href], input, textarea, [tabindex]:not([tabindex="-1"])');
   if(!f.length) return () => {};
@@ -1211,7 +1227,7 @@ $('#formDetails')?.addEventListener('submit', async (e)=>{
     if(!user){ toast('Войдите'); status.textContent='Войдите'; return; }
     const payload = { title:eventData.title, date:eventData.date, time:eventData.time, address:eventData.address, notes:eventData.notes, dress_code:eventData.dress, bring:eventData.bring, owner_id:user.id };
     if(DEBUG_EVENTS) console.log('[create-event] payload', payload);
-    const data = await callFn('create-event', { method:'POST', body: payload });
+    const data = await callFnEx('create-event', { method:'POST', body: payload });
     if(DEBUG_EVENTS) console.log('[create-event] ok');
     Object.assign(eventData, data);
     save();
@@ -1271,7 +1287,7 @@ async function joinByCode(code){
     const sb = await ensureSupabase();
     const { data:{ user } } = await sb.auth.getUser();
     if(!user){ toast('Войдите'); announce.textContent='Войдите'; return; }
-    const data = await callFn('join-by-code',{ method:'POST', body:{ code }});
+    const data = await callFnEx('join-by-code',{ method:'POST', body:{ code }});
     await loadEvent(data.event_id || data.eventId);
     setScene('final');
   }catch(err){
@@ -1338,7 +1354,7 @@ async function renderGuests(eventId){
 
 async function loadEvent(eventId){
   try{
-    const data = await callFn('event-by-code',{ method:'POST', body:{ event_id:eventId }});
+    const data = await callFnEx('event-by-code',{ method:'POST', body:{ event_id:eventId }});
     if(data.event){
       Object.assign(eventData, data.event);
       if(data.event.event_at){
@@ -1406,7 +1422,7 @@ $('#joinCodeBtn')?.addEventListener('click', () => {
 });
 
 async function joinCurrentEvent(){
-  try{ await callFn('join-by-code',{ method:'POST', body:{ code:eventData.join_code }}); }catch(_){ }
+  try{ await callFnEx('join-by-code',{ method:'POST', body:{ code:eventData.join_code }}); }catch(_){ }
 }
 /* RSVP + подарок */
 let currentGuestName='';
@@ -1612,6 +1628,86 @@ if(editForm){
 
   loadDetails();
 }
+
+/* ---------- Простые обработчики кнопок ---------- */
+const createBtn = document.querySelector('[data-action="create-event"]');
+if (createBtn){
+  createBtn.addEventListener('click', withBusy(createBtn, async ()=>{
+    const nickname = getNickname();
+    if(!nickname){ toast('Сначала войдите/зарегистрируйтесь (нужен ник)', 'error'); return; }
+
+    const event = {
+      title: $('#event-title')?.value?.trim() || 'Моё событие',
+      date:  $('#event-date')?.value || null,
+      time:  $('#event-time')?.value || null,
+      place: $('#event-place')?.value?.trim() || '',
+      dress: $('#event-dress')?.value?.trim() || '',
+      bring: $('#event-bring')?.value?.trim() || '',
+      note:  $('#event-note')?.value?.trim()  || ''
+    };
+
+    try{
+      const r = await callFn('create-event', { nickname, event });
+      const code = r?.code || r?.event?.join_code;
+      if(code){ try{ await navigator.clipboard.writeText(code);}catch{} }
+      toast(code ? `Событие создано, код: ${code}` : 'Событие создано');
+      // location.href = `/event.html?id=${encodeURIComponent(r?.event?.id||r?.id)}`;
+    }catch(e){ toast(e.message || 'Не удалось создать событие', 'error'); }
+  }));
+}
+
+const joinBtn2 = document.querySelector('[data-action="join-event"]');
+if (joinBtn2){
+  joinBtn2.addEventListener('click', withBusy(joinBtn2, async ()=>{
+    const nickname = getNickname();
+    if(!nickname){ toast('Сначала войдите с никнеймом', 'error'); return; }
+    const code = ($('#join-code')?.value||'').trim();
+    if(!/^\w{6}$/.test(code)){ toast('Введите корректный 6-значный код', 'error'); return; }
+
+    try{
+      const r = await callFn('join-by-code', { nickname, code });
+      toast('Вы присоединились к событию');
+      // location.href = `/event.html?id=${encodeURIComponent(r?.event?.id||r?.id)}`;
+    }catch(e){ toast(e.message || 'Не удалось присоединиться', 'error'); }
+  }));
+}
+
+$('#login-btn')?.addEventListener('click', withBusy($('#login-btn'), async ()=>{
+  const nickname = $('#login-nickname')?.value?.trim();
+  const password = $('#login-password')?.value||'';
+  if(!nickname || !password){ toast('Введите ник и пароль', 'error'); return; }
+  try{ await callFn('local-login', { nickname, password }); setNickname(nickname); toast('Вход выполнен'); }
+  catch(e){ toast(e.message||'Не удалось войти','error'); }
+}));
+
+$('#signup-btn')?.addEventListener('click', withBusy($('#signup-btn'), async ()=>{
+  const nickname = $('#signup-nickname')?.value?.trim();
+  const p1 = $('#signup-password')?.value||'', p2 = $('#signup-password2')?.value||'';
+  if(!nickname || !p1 || p1!==p2){ toast('Проверьте ник и пароли', 'error'); return; }
+  try{ await callFn('local-signup', { nickname, password:p1 }); setNickname(nickname); toast('Регистрация успешна'); }
+  catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
+}));
+
+$('#logout-btn')?.addEventListener('click', withBusy($('#logout-btn'), async ()=>{
+  try{ await callFn('local-logout', {});}catch(e){ console.warn(e); }
+  setNickname('');
+  toast('Вы вышли');
+}));
+
+async function uiSmoke(){
+  const report = [];
+  const need = [
+    ['create-event', !!document.querySelector('[data-action="create-event"]')],
+    ['join-event',   !!document.querySelector('[data-action="join-event"]')],
+    ['login',        !!document.querySelector('#login-btn')],
+    ['signup',       !!document.querySelector('#signup-btn')],
+    ['logout',       !!document.querySelector('#logout-btn')],
+  ];
+  need.forEach(([k, ok])=> report.push({button:k, present:ok}));
+  console.table(report);
+  if(report.some(x=>!x.present)) console.warn('Не все кнопки найдены на странице');
+}
+uiSmoke();
 
 if(DEBUG_AUTH){
   dbgAuth('sb_mode', sessionStorage.getItem('sb_mode') || 'direct');

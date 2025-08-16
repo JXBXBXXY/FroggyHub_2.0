@@ -29,12 +29,12 @@
 
       <section id="pane-login" class="pane grid" role="tabpanel" aria-labelledby="tab-login">
         <label>Никнейм
-          <input id="login-identifier" type="text" placeholder="Никнейм" required autocomplete="username">
+          <input id="login-nickname" type="text" placeholder="Никнейм" required autocomplete="username">
         </label>
         <label>Пароль
           <input id="login-password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
         </label>
-        <button type="button" class="btn primary" id="btn-login">Войти</button>
+        <button type="button" class="btn primary" id="login-btn" data-action="login">Войти</button>
         <button type="button" class="btn" id="showReset" data-forgot="false">Забыли пароль?</button>
         <div id="resetPassBlock" class="grid is-hidden">
           <label>Новый пароль
@@ -49,15 +49,15 @@
 
       <section id="pane-register" class="pane grid is-hidden" role="tabpanel" aria-labelledby="tab-register">
         <label>Имя / Никнейм
-          <input id="reg-nickname" required minlength="2" autocomplete="nickname">
+          <input id="signup-nickname" required minlength="2" autocomplete="nickname">
         </label>
         <label>Пароль
-          <input id="reg-password" type="password" required minlength="4" autocomplete="new-password">
+          <input id="signup-password" type="password" required minlength="4" autocomplete="new-password">
         </label>
         <label>Повтор пароля
-          <input id="reg-password2" type="password" required minlength="4" autocomplete="new-password">
+          <input id="signup-password2" type="password" required minlength="4" autocomplete="new-password">
         </label>
-        <button id="btn-register" class="btn primary" type="button">Зарегистрироваться</button>
+        <button id="signup-btn" class="btn primary" type="button" data-action="signup">Зарегистрироваться</button>
         <div id="reg-status" aria-live="polite"></div>
       </section>
     </div>
@@ -73,18 +73,18 @@
           <div class="chips">
             <span class="chip">Шаг 2</span>
             <span class="pill" data-user-badge>гость</span>
-            <button class="btn ghost small" id="logoutBtn" title="Выйти">Выйти</button>
+            <button class="btn ghost small" id="logout-btn" data-action="logout" title="Выйти">Выйти</button>
           </div>
         </div>
       </div>
 
       <div class="grid">
-        <button class="btn primary" id="goCreate" data-requires-auth>🧪 Создать ивент</button>
+        <button class="btn primary" id="goCreate" data-requires-auth data-action="create-event">🧪 Создать ивент</button>
         <div class="card inner">
           <h3>Присоединиться к ивенту</h3>
           <div class="row2">
-            <input id="lobbyJoinCode" placeholder="Введите 6-значный код" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6">
-            <button class="btn" id="goJoinByCode" disabled>🎉 Присоединиться</button>
+            <input id="join-code" placeholder="Введите 6-значный код" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6">
+            <button class="btn" id="join-btn" data-action="join-event" disabled>🎉 Присоединиться</button>
           </div>
         </div>
       </div>
