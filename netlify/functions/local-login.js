@@ -1,44 +1,45 @@
-// netlify/functions/local-login.js
-const { Client } = require('pg');
-const bcrypt = require('bcryptjs');
-const { cors, ok, err, signToken } = require('./_auth');
+// Netlify v2 function
+import bcrypt from 'bcryptjs';
+import pg from 'pg';
+import { json, preflight } from './_http.js';
+import { signToken } from './_jwt.js';
 
-exports.handler = async (event) => {
+const { Client } = pg;
+
+export default async function handler(request) {
+  if (request.method === 'OPTIONS') return preflight();
+  if (request.method !== 'POST') return json({ success:false, error:'Method not allowed' }, 405);
+
+  let payload;
+  try { payload = await request.json(); }
+  catch { return json({ success:false, error:'Invalid JSON body' }, 400); }
+
+  const { nickname, password } = payload || {};
+  if (!nickname || !password) return json({ success:false, error:'Missing nickname or password' }, 400);
+
+  const conn = process.env.DATABASE_URL;
+  if (!conn) return json({ success:false, error:'DATABASE_URL is not set' }, 500);
+
+  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
+  await client.connect();
+
   try {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
-    if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
-
-    let payload = {};
-    try { payload = JSON.parse(event.body || '{}'); } catch { return err('Invalid JSON body', 400); }
-
-    const { nickname, password } = payload;
-    if (!nickname || !password) return err('Missing nickname or password', 400);
-
-    const conn = process.env.DATABASE_URL;
-    if (!conn) return err('DATABASE_URL is not set', 500);
-
-    const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
-    await client.connect();
-
     const { rows } = await client.query(
       'SELECT id, nickname, password_hash FROM public.users_local WHERE nickname=$1 LIMIT 1',
       [nickname]
     );
-
-    if (!rows[0]) { await client.end(); return err('User not found', 401); }
-
     const user = rows[0];
-    const okPass = await bcrypt.compare(password, user.password_hash);
-    if (!okPass) { await client.end(); return err('Invalid password', 401); }
+    if (!user) return json({ success:false, error:'User not found' }, 401);
 
-    await client.end();
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) return json({ success:false, error:'Invalid password' }, 401);
 
-    // JWT
     const token = signToken({ sub: user.id, nickname: user.nickname });
-
-    return ok({ success: true, token, user: { id: user.id, nickname: user.nickname } });
+    return json({ success:true, token, user: { id: user.id, nickname: user.nickname } });
   } catch (e) {
-    console.error('local-login error:', e && (e.stack || e.message || e));
-    return err(e && e.message ? e.message : 'Internal error', 500);
+    console.error('local-login error:', e);
+    return json({ success:false, error: e?.message || 'Internal error' }, 500);
+  } finally {
+    await client.end();
   }
-};
+}
