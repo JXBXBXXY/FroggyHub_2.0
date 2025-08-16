@@ -1,14 +1,20 @@
-import axios from 'axios'
+// src/api.ts (добавить хелперы использования токена)
+import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/.netlify/functions'
-})
+});
 
-export const signup = (nickname: string, password: string) =>
-  api.post('/signup', { nickname, password }).then(r => r.data)
+export const login = async (nickname: string, password: string) => {
+  const { data } = await api.post('/local-login', { nickname, password });
+  if (data?.token) localStorage.setItem('token', data.token);
+  return data;
+};
 
-export const login = (nickname: string, password: string) =>
-  api.post('/login', { nickname, password }).then(r => r.data)
-
-export default api
-
+export const getProfile = async () => {
+  const token = localStorage.getItem('token');
+  const { data } = await api.get('/profile', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  return data;
+};
