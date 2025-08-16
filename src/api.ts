@@ -9,6 +9,3 @@ export const signup = (nickname: string, password: string) =>
 
 export const login = (nickname: string, password: string) =>
   api.post('/login', { nickname, password }).then(r => r.data)
-
-export default api
-
