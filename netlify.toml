@@ -1,16 +1,10 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
-
-[build.environment]
-  SUPABASE_URL = "..."
-  SUPABASE_SERVICE_ROLE_KEY = "..."
-  DEBUG_ANALYTICS = "false"
+  # Статический сайт — сборка не нужна
+  command = "echo 'no build step'"
+  # Публикуем директорию, где лежит index.html
+  publish = "FroggyHub"
 
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["pg","bcryptjs","jsonwebtoken"]
-
-[functions."sync-secondary"]
-  schedule = "@hourly"
+  directory = "netlify/functions"
