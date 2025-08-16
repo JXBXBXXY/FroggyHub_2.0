@@ -85,6 +85,43 @@ async function withTimeout(promiseFactory, ms, label){
   }
 }
 
+async function callFn(name, { method='POST', body, headers={} } = {}, { timeoutMs=15000, retryOnceOnNetwork=true } = {}) {
+  const url = `/.netlify/functions/${name}`;
+  const auth = await (typeof authHeader === 'function' ? authHeader() : {});
+  const doFetch = (signal) => fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...auth, ...headers },
+    body: body ? JSON.stringify(body) : undefined,
+    signal
+  });
+  try {
+    const res = await withTimeout((signal)=>doFetch(signal), timeoutMs, `${name.toUpperCase()}_TIMEOUT`);
+    if (!res.ok) {
+      const text = await res.text().catch(()=> '');
+      const err = new Error(text || res.statusText); err.status = res.status; throw err;
+    }
+    return await res.json().catch(()=> ({}));
+  } catch (e) {
+    const net = (e.name==='AbortError' || e.code==='TIMEOUT' || /Failed to fetch|NetworkError/i.test(String(e)));
+    if (net && retryOnceOnNetwork) {
+      try {
+        const res = await withTimeout((signal)=>doFetch(signal), timeoutMs, `${name.toUpperCase()}_TIMEOUT_RETRY`);
+        if (!res.ok) { const t = await res.text().catch(()=> ''); const er = new Error(t||res.statusText); er.status=res.status; throw er; }
+        return await res.json().catch(()=> ({}));
+      } catch (e2) { e.original = e2; throw e; }
+    }
+    throw e;
+  }
+}
+
+function explainFnError(err){
+  if (err.status===401||err.status===403) return 'Нет прав. Войдите заново.';
+  if (err.status===409) return 'Конфликт данных. Попробуйте снова.';
+  if (err.code==='TIMEOUT') return 'Сервер не отвечает. Повторите попытку.';
+  if (/Failed to fetch|NetworkError/i.test(String(err))) return 'Проблема со связью. Проверьте интернет.';
+  return 'Ошибка сервера. Попробуйте позже.';
+}
+
 function formatAuthError(e){
   console.error(e);
   const msg = e?.message || '';
@@ -922,9 +959,11 @@ const codeInput=document.getElementById('joinCodeInput');
 const joinBtn=document.getElementById('joinCodeBtn');
 if(codeInput && joinBtn){
   joinBtn.disabled=true;
+  const err=document.getElementById('joinCodeError');
   codeInput.addEventListener('input',()=>{
     codeInput.value=codeInput.value.replace(/\D/g,'').slice(0,6);
     joinBtn.disabled = codeInput.value.length!==6;
+    if(err) err.textContent='';
   });
 }
 
@@ -1085,6 +1124,7 @@ let eventData = JSON.parse(localStorage.getItem(STORAGE)||'null') || {
   guests:[], join_code:null
 };
 const save=()=>localStorage.setItem(STORAGE,JSON.stringify(eventData));
+let isEventActionPending = false;
 
 function genCode(){ return Math.floor(100000 + Math.random()*900000).toString(); }
 async function uniqueCode(sb){
@@ -1155,34 +1195,35 @@ editor?.addEventListener('click',e=>{ const r=editor.getBoundingClientRect(); if
 
 $('#formDetails')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const btn = e.submitter; btn?.setAttribute('disabled','');
+  if(isEventActionPending) return;
+  isEventActionPending = true;
+  const btn = e.submitter;
+  const original = btn?.textContent;
+  btn?.setAttribute('disabled','');
+  btn && (btn.textContent='Создаём…');
   Object.assign(eventData,{dress:$('#eventDress').value.trim(),bring:$('#eventBring').value.trim(),notes:$('#eventNotes').value.trim()});
   const status=$('#createEventStatus');
   status.textContent='';
   try{
     const sb = await ensureSupabase();
-    if(!sb){
-      status.textContent='Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.';
-      return;
-    }
-    const { data:{ user }, error } = await sb.auth.getUser();
-    if(error || !user){
-      if(DEBUG_EVENTS) console.warn('[create-event] auth', error);
-      const msg='Для создания события войдите в аккаунт';
-      status.textContent=msg;
-      toast(msg);
-      return;
-    }
-    const ev = await createEvent(sb, user.id, eventData);
-    Object.assign(eventData, ev);
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user){ toast('Войдите'); status.textContent='Войдите'; return; }
+    const payload = { title:eventData.title, date:eventData.date, time:eventData.time, address:eventData.address, notes:eventData.notes, dress_code:eventData.dress, bring:eventData.bring, owner_id:user.id };
+    if(DEBUG_EVENTS) console.log('[create-event] payload', payload);
+    const data = await callFn('create-event', { method:'POST', body: payload });
+    if(DEBUG_EVENTS) console.log('[create-event] ok');
+    Object.assign(eventData, data);
     save();
     status.textContent='Событие создано';
     withTransition(()=>{ showSlide('admin'); renderAdmin(); });
   }catch(err){
-    if(DEBUG_EVENTS) console.warn('createEvent handler', err);
-    status.textContent = err.message || 'Не удалось создать событие';
+    if(DEBUG_EVENTS) console.warn('[create-event] err', err);
+    status.textContent = explainFnError(err);
+    toast(explainFnError(err));
   }finally{
+    isEventActionPending=false;
     btn?.removeAttribute('disabled');
+    if(btn) btn.textContent = original || 'Сгенерировать код';
   }
 });
 function renderAdmin(){
@@ -1217,52 +1258,31 @@ async function authHeader(){
   return {};
 }
 
-function mapStatusToMessage(res){
-  if (res.status === 400) return 'Неверный формат кода';
-  if (res.status === 401) return 'Войдите, чтобы продолжить';
-  if (res.status === 404) return 'Код не найден';
-  if (res.status === 410) return 'Срок действия кода истёк';
-  if (res.status === 429) return 'Слишком много попыток. Попробуйте позже';
-  return 'Ошибка сервера';
-}
-
-async function verifyCode(code){
-  const sb = await ensureSupabase();
-  const { data:{ user } } = await sb.auth.getUser();
-  const params = new URLSearchParams({ code, userId: user?.id || '' });
-  const res = await fetch('/.netlify/functions/event-by-code?'+params.toString());
-  if (!res.ok){
-    throw new Error(mapStatusToMessage(res));
-  }
-  return res.json();
-}
-
-async function joinFlow(code){
+async function joinByCode(code){
+  const announce = document.getElementById('joinCodeError');
+  announce.textContent='';
+  if(isEventActionPending) return;
+  isEventActionPending = true;
+  const original = joinBtn?.textContent;
+  joinBtn?.setAttribute('disabled','');
+  if(joinBtn) joinBtn.textContent='Присоединяем…';
   try{
-    const event = await verifyCode(code); // проверка и загрузка данных
-    Object.assign(eventData, event);
     const sb = await ensureSupabase();
-    if(!sb) throw new Error('Не удалось подключиться к серверу. Попробуйте ещё раз или включите другой интернет.');
-    let { data:{ user } } = await sb.auth.getUser();
-    let name = user?.user_metadata?.name;
-    if(!name) name = (prompt('Как вас называть?') || '').trim();
-    if(!name) { toast('Введите имя'); return; }
-
-    const res = await fetch('/.netlify/functions/join-by-code', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', ...(await authHeader()) },
-      body: JSON.stringify({ code, name })
-    });
-    if (!res.ok){
-      const msg = mapStatusToMessage(res);
-      if(res.status===401) await needLogin(); else toast(msg);
-      return;
-    }
-
-    const { event_id } = await res.json();
-    await loadEvent(event_id);
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user){ toast('Войдите'); announce.textContent='Войдите'; return; }
+    const data = await callFn('join-by-code',{ method:'POST', body:{ code }});
+    await loadEvent(data.event_id || data.eventId);
     setScene('final');
-  }catch(e){ toast(e.message || 'Сеть недоступна'); }
+  }catch(err){
+    if(err.status===404||err.status===400) announce.textContent='Неверный или истёкший код.';
+    else if(err.status===409) announce.textContent='Вы уже участник этого события.';
+    else announce.textContent=explainFnError(err);
+    toast(announce.textContent);
+  }finally{
+    isEventActionPending=false;
+    joinBtn?.removeAttribute('disabled');
+    if(joinBtn) joinBtn.textContent=original || 'Проверить';
+  }
 }
 
 let rtChannel;
@@ -1316,22 +1336,27 @@ async function renderGuests(eventId){
 }
 
 async function loadEvent(eventId){
-  const sb = await ensureSupabase();
-  if(!sb) return;
-  const ev = await sb.from('events').select('*').eq('id', eventId).single();
-  if(ev.data){
-    Object.assign(eventData, ev.data);
-    if(ev.data.event_at){
-      const d=new Date(ev.data.event_at);
-      eventData.date = d.toISOString().slice(0,10);
-      eventData.time = d.toISOString().slice(11,16);
+  try{
+    const data = await callFn('event-by-code',{ method:'POST', body:{ event_id:eventId }});
+    if(data.event){
+      Object.assign(eventData, data.event);
+      if(data.event.event_at){
+        const d=new Date(data.event.event_at);
+        eventData.date = d.toISOString().slice(0,10);
+        eventData.time = d.toISOString().slice(11,16);
+      }
     }
+    eventData.wishlist = (data.wishlist || []).map(it=>({ id:it.id, title:it.title, url:it.url, claimedBy:it.claimed_by || it.taken_by || it.reserved_by || '' }));
+    eventData.guests = (data.participants || []).map(p=>({ name:p.profiles?.nickname || p.name || '', rsvp:p.rsvp }));
+    await Promise.all([renderWishlist(eventId), renderGuests(eventId)]);
+    await subscribeEventRealtime(eventId, {
+      onWishlist: () => renderWishlist(eventId),
+      onGuests:   () => renderGuests(eventId),
+    });
+  }catch(err){
+    if(err.status===401||err.status===403) await needLogin();
+    else toast(explainFnError(err));
   }
-  await Promise.all([renderWishlist(eventId), renderGuests(eventId)]);
-  await subscribeEventRealtime(eventId, {
-    onWishlist: () => renderWishlist(eventId),
-    onGuests:   () => renderGuests(eventId),
-  });
 }
 
 function cleanupRealtime(){ if (rtChannel) { window.__supabaseClient?.removeChannel(rtChannel); rtChannel = null; } }
@@ -1352,7 +1377,7 @@ async function handleDeepLink(){
   if(!sb) return;
   const { data:{ session } } = await sb.auth.getSession();
   if(!session){ sessionStorage.setItem('pendingCode', code); show('#screen-auth'); setAuthState('login'); }
-  else { joinFlow(code); }
+  else { joinByCode(code); }
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -1361,7 +1386,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const sb = await ensureSupabase();
     if(sb){
       const { data:{ session } } = await sb.auth.getSession();
-      if(session){ sessionStorage.removeItem('pendingCode'); joinFlow(pending); }
+      if(session){ sessionStorage.removeItem('pendingCode'); joinByCode(pending); }
     }
   } else {
     handleDeepLink();
@@ -1369,21 +1394,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 $('#joinCodeBtn')?.addEventListener('click', () => {
-  const code = ($('#joinCodeInput').value || '').replace(/\D/g,'').slice(0,6);
-  if(code.length !== 6) return toast('Нужен 6-значный код');
-  joinFlow(code);
+  if(isEventActionPending) return;
+  const code = (document.getElementById('joinCodeInput')?.value || '').trim();
+  if(!/^\d{6}$/.test(code)){
+    const announce = document.getElementById('joinCodeError');
+    announce.textContent = 'Введите 6 цифр';
+    return;
+  }
+  joinByCode(code);
 });
 
 async function joinCurrentEvent(){
-  try{
-    const sb = await ensureSupabase();
-    const { data:{ user } } = await sb.auth.getUser();
-    await fetch('/.netlify/functions/join-by-code',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ code:eventData.join_code, userId: user?.id })
-    });
-  }catch(_){ }
+  try{ await callFn('join-by-code',{ method:'POST', body:{ code:eventData.join_code }}); }catch(_){ }
 }
 /* RSVP + подарок */
 let currentGuestName='';

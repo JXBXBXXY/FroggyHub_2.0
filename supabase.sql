@@ -1,17 +1,32 @@
+create extension if not exists pgcrypto;
+
+create table public.local_users (
+  id uuid primary key default gen_random_uuid(),
+  username citext not null unique,
+  password_hash text not null,
+  created_at timestamptz not null default now(),
+  last_login timestamptz
+);
+alter table public.local_users enable row level security;
+create policy "me_select" on public.local_users
+  for select using (auth.uid() = id);
+revoke insert, update, delete on public.local_users from anon, authenticated;
+
 -- profiles
 create table public.profiles (
-  id uuid primary key references auth.users on delete cascade,
+  id uuid primary key references public.local_users(id) on delete cascade,
   nickname text not null,
   created_at timestamptz default now()
 );
 alter table public.profiles enable row level security;
 create policy "profiles owner" on public.profiles
   for all using (auth.uid() = id);
+create unique index profiles_nickname_key on public.profiles(nickname);
 
 -- events
 create table public.events (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references public.profiles(id) on delete cascade,
+  owner_id uuid not null references public.local_users(id) on delete cascade,
   join_code text unique not null,
   title text not null,
   event_at timestamptz,
@@ -33,7 +48,7 @@ create policy "events delete" on public.events
 -- participants
 create table public.participants (
   event_id uuid references public.events(id) on delete cascade,
-  user_id  uuid references public.profiles(id) on delete cascade,
+  user_id  uuid references public.local_users(id) on delete cascade,
   joined_at timestamptz default now(),
   primary key(event_id, user_id)
 );
@@ -50,10 +65,10 @@ create policy "participants owner select" on public.participants
 create table public.wishlist_items (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
-  owner_id uuid not null references public.profiles(id) on delete cascade,
+  owner_id uuid not null references public.local_users(id) on delete cascade,
   title text not null,
   url text,
-  reserved_by uuid references public.profiles(id),
+  reserved_by uuid references public.local_users(id),
   created_at timestamptz default now()
 );
 alter table public.wishlist_items enable row level security;
@@ -78,10 +93,22 @@ create policy "reserve wishlist items" on public.wishlist_items
 
 -- cookie_consents
 create table public.cookie_consents (
-  user_id uuid primary key references auth.users on delete cascade,
+  user_id uuid primary key references public.local_users(id) on delete cascade,
   consented boolean not null default false,
   updated_at timestamptz default now()
 );
 alter table public.cookie_consents enable row level security;
 create policy "cookie owner" on public.cookie_consents
   for all using (auth.uid() = user_id);
+
+-- RPC to change password
+create or replace function public.local_set_password(new_pass text)
+returns void
+language sql
+security definer
+as $$
+  update public.local_users
+  set password_hash = crypt(new_pass, gen_salt('bf', 12))
+  where id = auth.uid();
+$$;
+grant execute on function public.local_set_password(text) to authenticated;

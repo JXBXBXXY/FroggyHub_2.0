@@ -50,11 +50,11 @@ const testEventByCode = async () => {
   const { handler } = await imp('api/event-by-code.js');
   if (typeof handler !== 'function') return fail('event-by-code: no handler export');
 
-  const r1 = await handler({ httpMethod: 'POST', queryStringParameters: {} });
-  (r1.statusCode === 405) ? ok('event-by-code: 405 on POST') : fail('event-by-code: expected 405 on POST');
+  const r1 = await handler({ httpMethod: 'GET' });
+  (r1.statusCode === 405) ? ok('event-by-code: 405 on GET') : fail('event-by-code: expected 405 on GET');
 
-  const r2 = await handler({ httpMethod: 'GET', queryStringParameters: { code: 'abc' } });
-  (r2.statusCode === 400) ? ok('event-by-code: 400 on bad code') : fail('event-by-code: expected 400 on bad code');
+  const r2 = await handler({ httpMethod: 'POST', body: JSON.stringify({}) });
+  (r2.statusCode === 400) ? ok('event-by-code: 400 on missing body') : fail('event-by-code: expected 400 on missing body');
 };
 
 const testJoinByCode = async () => {
