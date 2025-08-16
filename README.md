@@ -29,6 +29,38 @@ SUPABASE_URL = "..."
 SUPABASE_SERVICE_ROLE_KEY = "..."
 ```
 
+## Secondary sync (Neon)
+
+A scheduled Netlify function copies changed rows from the primary Supabase database
+into a secondary Neon instance for read-only analytics. The replica may lag by up to
+one hour.
+
+### Configuration
+
+Set the following environment variables in Netlify:
+
+- `SUPABASE_DB_URL` – connection string to the primary database (read/write).
+- `RW_NEON_URL` – Neon database URL with write access for the sync process.
+- `NETLIFY_DATABASE_URL` – read-only DSN for application queries.
+- `SYNC_BATCH_LIMIT` – maximum rows per batch (default: `2000`).
+- `SYNC_TABLES` – comma separated list of tables to replicate
+  (`profiles,events,participants,wishlist_items,cookie_consents`).
+
+### Full initial load
+
+To backfill the replica from scratch set `FULL_SYNC=true` in the environment and
+trigger the `sync-secondary` function. After the first successful run disable the
+flag so that subsequent runs only transfer new or updated rows.
+
+### Validation
+
+Compare `count(*)` for each table between the primary and secondary databases.
+
+### Limitations
+
+Cascade deletes are not synchronised. Use `deleted_at` columns and filter on
+`where deleted_at is null` in analytics queries.
+
 ## Cookie consent
 A simple banner is rendered at the bottom of the page asking the visitor to accept or decline cookies. The choice is stored in `localStorage` and synchronised with the `cookie_consents` table when the user is authenticated. Declining removes optional scripts such as analytics.
 
