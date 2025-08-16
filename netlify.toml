@@ -1,6 +1,7 @@
 [build]
-  command = ""
-  publish = "FroggyHub"
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   SUPABASE_URL = "..."
@@ -8,8 +9,8 @@
   DEBUG_ANALYTICS = "false"
 
 [functions]
-  directory = "api"
   node_bundler = "esbuild"
+  external_node_modules = ["pg","bcryptjs","jsonwebtoken"]
 
 [functions."sync-secondary"]
   schedule = "@hourly"
