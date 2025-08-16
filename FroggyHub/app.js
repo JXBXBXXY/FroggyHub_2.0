@@ -55,6 +55,29 @@ async function switchToProxyAndRetry(action){
 
 window.ensureSupabase = ensureSupabase;
 
+const LS_NICK = 'fh:nickname';
+
+function setNickname(n) {
+  if (typeof n === 'string' && n.trim()) {
+    localStorage.setItem(LS_NICK, n.trim());
+  }
+}
+
+function getNickname() {
+  return localStorage.getItem(LS_NICK) || '';
+}
+
+function clearNickname() {
+  localStorage.removeItem(LS_NICK);
+}
+
+function renderUserBadge({ nickname, email } = {}) {
+  const badge = document.querySelector('[data-user-badge]');
+  if (!badge) return;
+  const name = (nickname && nickname.trim()) || getNickname() || (email || '').split('@')[0] || 'гость';
+  badge.textContent = name;
+}
+
 function sendAuthTelemetry(kind, mode){
   try{
     if(DEBUG_AUTH) return;
@@ -255,6 +278,9 @@ async function logout(msg){
   manualSignOut = true;
   try{ await sb.auth.signOut(); }catch(_){ }
   manualSignOut = false;
+  try{ await fetch('/.netlify/functions/local-logout'); }catch(_){ }
+  clearNickname();
+  renderUserBadge({ nickname:'', email:'' });
   sessionStorage.removeItem('sb_mode');
   sessionStorage.removeItem('pendingCreate');
   localStorage.removeItem(COOKIE_TEMP_KEY);
@@ -500,6 +526,8 @@ async function handleRegister(){
   document.getElementById('reg-nickname')?.classList.remove('input-error');
   try{
     await call('auth-register', { nickname, password: p1 });
+    setNickname(nickname);
+    renderUserBadge({ nickname });
     setStatus('reg','Готово! Теперь войдите.');
     showAuthPane('login');
     const li = document.querySelector('#pane-login input[name="login"], #pane-login input[type="text"], #pane-login input[type="email"]');
@@ -529,6 +557,9 @@ async function handleLogin(){
   setBusy('login', true);
   try{
     const { user } = await call('auth-login', { nickname, password });
+    const n = user?.nickname || nickname;
+    setNickname(n);
+    renderUserBadge({ nickname: n });
     localStorage.setItem('fh_user', JSON.stringify(user));
     setStatus('login','Вход выполнен');
     goToLobby();
@@ -601,14 +632,16 @@ resetSetBtn?.addEventListener('click', async ()=>{
     if(emailSup){
       currentUser = supUser;
       setSession(emailSup);
-      $('#chipEmail').textContent = emailSup;
+      window.currentUserEmail = emailSup;
+      renderUserBadge({ nickname: getNickname(), email: emailSup });
       show('#screen-lobby');
       return;
     }
   }
   const email = getSession();
   if (email && users[email]) {
-    $('#chipEmail').textContent = email;
+    window.currentUserEmail = email;
+    renderUserBadge({ nickname: getNickname(), email });
     show('#screen-lobby');
   } else {
     localStorage.removeItem(SESSION_KEY);
@@ -746,13 +779,19 @@ async function initCookieBanner(){
 
 document.addEventListener('DOMContentLoaded', initCookieBanner);
 
+document.addEventListener('DOMContentLoaded', () => {
+  const email = window.currentUserEmail || '';
+  renderUserBadge({ nickname: getNickname(), email });
+});
+
 ensureSupabase().then(async sb => {
   if(!sb) return;
   const { data:{ session } } = await sb.auth.getSession();
   currentUser = session?.user || null;
   toggleAuthButtons(!currentUser);
   if(currentUser){
-    $('#chipEmail').textContent = currentUser.email || '';
+    window.currentUserEmail = currentUser.email || '';
+    renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
     show('#screen-lobby');
     const pending = sessionStorage.getItem('pendingCreate');
     if(pending){
@@ -794,7 +833,8 @@ ensureSupabase().then(async sb => {
       return;
     }
     if(event === 'SIGNED_IN' && currentUser){
-      $('#chipEmail').textContent = currentUser.email || '';
+      window.currentUserEmail = currentUser.email || '';
+      renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
       show('#screen-lobby');
       const pendingProfile = sessionStorage.getItem('pendingProfileName');
       if(pendingProfile){

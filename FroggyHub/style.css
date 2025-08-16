@@ -351,3 +351,11 @@ body.scene-intro .speech{display:block}
   .edit-form{padding-bottom:80px;}
   .edit-form .save-row{position:fixed;left:0;right:0;bottom:0;background:var(--card-dark);border-top:1px solid var(--card-border);padding:12px 20px;}
 }
+
+[data-user-badge]{
+  flex:none;
+  min-width:auto;
+  padding:6px 10px;
+  box-shadow:none;
+  cursor:default;
+}
