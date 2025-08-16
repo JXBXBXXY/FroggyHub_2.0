@@ -50,8 +50,7 @@ async function switchToProxyAndRetry(action){
   sessionStorage.setItem('sb_mode','proxy');
   window.__supabaseClient = null;
   const sb = await ensureSupabase();
-  const result = await action(sb);
-  return { result, sb };
+  return await action(sb);
 }
 
 window.ensureSupabase = ensureSupabase;
@@ -68,13 +67,22 @@ function sendAuthTelemetry(kind, mode){
   }catch(_){ /* ignore */ }
 }
 
-function withTimeout(promise, ms, ctrl){
-  return new Promise((resolve, reject)=>{
-    const timer = setTimeout(()=>{ ctrl?.abort(); reject(new Error('timeout')); }, ms);
-    const onAbort = ()=>{ clearTimeout(timer); reject(new DOMException('Aborted','AbortError')); };
-    ctrl?.signal.addEventListener('abort', onAbort, { once:true });
-    promise.then(v=>{ clearTimeout(timer); resolve(v); }, e=>{ clearTimeout(timer); reject(e); });
-  });
+async function withTimeout(promiseFactory, ms, label){
+  const controller = new AbortController();
+  const p = promiseFactory(controller.signal);
+  const t = setTimeout(() => controller.abort('timeout'), ms);
+  try{
+    return await p;
+  }catch(err){
+    if(controller.signal.aborted){
+      const e = new Error(label || 'timeout');
+      e.code = 'TIMEOUT';
+      throw e;
+    }
+    throw err;
+  }finally{
+    clearTimeout(t);
+  }
 }
 
 function formatAuthError(e){
@@ -85,7 +93,7 @@ function formatAuthError(e){
   if(st === 429 || /rate limit/i.test(msg)) return 'Слишком много попыток, попробуйте позже';
   if(st === 500) return 'Сервис недоступен, повторите позже';
   if(msg === 'User already registered') return 'Пользователь с этой почтой уже существует';
-  if(e instanceof TypeError && /Failed to fetch|timeout|network/i.test(msg)){
+  if(e?.code === 'TIMEOUT' || (e instanceof TypeError && /Failed to fetch|network/i.test(msg))){
     sendAuthTelemetry('auth_failed_fetch');
     return 'Не удалось связаться с сервером авторизации. Попробуйте вход по ссылке.';
   }
@@ -94,7 +102,7 @@ function formatAuthError(e){
 
 function isFetchErr(e){
   const msg = e?.message || '';
-  return (e instanceof TypeError && /Failed to fetch/i.test(msg)) || msg === 'timeout';
+  return e?.code === 'TIMEOUT' || (e instanceof TypeError && /Failed to fetch/i.test(msg));
 }
 
 function validateAuthForm(fields, mode){
@@ -410,26 +418,38 @@ loginBtn?.addEventListener('click', async (e)=>{
   isAuthPending = true;
   loginBtn.disabled = true; loginBtn.setAttribute('aria-disabled','true'); loginBtn.textContent='Входим…';
   updateAuthDebug();
-  const ctrl = new AbortController();
+  let sb;
   let retried = false;
   try{
-    const sb = await ensureSupabase();
-    const { data, error } = await withTimeout(sb.auth.signInWithPassword({ email, password }),15000,ctrl);
+    sb = await ensureSupabase();
+    const doLogin = () => sb.auth.signInWithPassword({ email, password });
+    const { data, error } = await withTimeout(() => doLogin(), 15000, 'LOGIN_TIMEOUT');
     if(error) throw error;
-    document.getElementById('chipEmail').textContent = email;
-    show('#screen-lobby');
-    return;
+    if(data?.user){
+      document.getElementById('chipEmail').textContent = email;
+      show('#screen-lobby');
+      return;
+    }
+    throw new Error('No user');
   }catch(err){
-    if(!retried && isFetchErr(err)){
+    if(err?.code === 'TIMEOUT'){ dbgAuth('LOGIN_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
+    if(!retried && (isFetchErr(err) || err?.code === 'TIMEOUT')){
       try{
-        const { result } = await switchToProxyAndRetry(async sb=>await withTimeout(sb.auth.signInWithPassword({ email, password }),15000));
+        const { data, error } = await switchToProxyAndRetry(async sb2=>{
+          sb = sb2;
+          const doLogin = () => sb.auth.signInWithPassword({ email, password });
+          return await withTimeout(() => doLogin(), 15000, 'LOGIN_TIMEOUT');
+        });
         retried = true;
-        const { data, error } = result;
         if(error) throw error;
-        document.getElementById('chipEmail').textContent = email;
-        show('#screen-lobby');
-        return;
+        if(data?.user){
+          document.getElementById('chipEmail').textContent = email;
+          show('#screen-lobby');
+          return;
+        }
+        throw new Error('No user');
       }catch(err2){
+        if(err2?.code === 'TIMEOUT'){ dbgAuth('LOGIN_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
         showFormError(document.getElementById('loginError'), formatAuthError(err2));
       }
     }else{
@@ -437,9 +457,8 @@ loginBtn?.addEventListener('click', async (e)=>{
     }
   }finally{
     isAuthPending = false;
-    const { ok } = validateAuthForm({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value }, 'login');
-    loginBtn.disabled = !ok;
-    if(ok) loginBtn.removeAttribute('aria-disabled'); else loginBtn.setAttribute('aria-disabled','true');
+    loginBtn.disabled = false;
+    loginBtn.removeAttribute('aria-disabled');
     loginBtn.textContent = orig;
     updateAuthDebug();
   }
@@ -470,14 +489,15 @@ regBtn?.addEventListener('click', async (e)=>{
   isAuthPending = true;
   regBtn.disabled = true; regBtn.setAttribute('aria-disabled','true'); regBtn.textContent='Регистрируем…';
   updateAuthDebug();
-  const ctrl = new AbortController();
+  let sb;
   let retried = false;
   try{
-    const sb = await ensureSupabase();
-    const { data, error } = await withTimeout(sb.auth.signUp({ email, password: pass }),15000,ctrl);
+    sb = await ensureSupabase();
+    const doSignup = () => sb.auth.signUp({ email, password: pass });
+    const { data, error } = await withTimeout(() => doSignup(), 15000, 'SIGNUP_TIMEOUT');
     if(error) throw error;
     if(data.user && data.session){
-      await sb.from('profiles').upsert({ id:data.user.id, nickname:name });
+      await withTimeout(() => sb.from('profiles').upsert({ id:data.user.id, nickname:name }),15000);
       document.getElementById('chipEmail').textContent = email;
       show('#screen-lobby');
     }else if(data.user){
@@ -485,16 +505,22 @@ regBtn?.addEventListener('click', async (e)=>{
       sessionBanner.textContent = 'Проверьте почту';
       sessionBanner.hidden = false;
       setAuthState('login');
+    }else{
+      throw new Error('Signup failed');
     }
   }catch(err){
-    if(!retried && isFetchErr(err)){
+    if(err?.code === 'TIMEOUT'){ dbgAuth('SIGNUP_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
+    if(!retried && (isFetchErr(err) || err?.code === 'TIMEOUT')){
       try{
-        const { result, sb } = await switchToProxyAndRetry(async sb=>await withTimeout(sb.auth.signUp({ email, password: pass }),15000));
+        const { data, error } = await switchToProxyAndRetry(async sb2=>{
+          sb = sb2;
+          const doSignup = () => sb.auth.signUp({ email, password: pass });
+          return await withTimeout(() => doSignup(), 15000, 'SIGNUP_TIMEOUT');
+        });
         retried = true;
-        const { data, error } = result;
         if(error) throw error;
         if(data.user && data.session){
-          await sb.from('profiles').upsert({ id:data.user.id, nickname:name });
+          await withTimeout(() => sb.from('profiles').upsert({ id:data.user.id, nickname:name }),15000);
           document.getElementById('chipEmail').textContent = email;
           show('#screen-lobby');
         }else if(data.user){
@@ -502,8 +528,11 @@ regBtn?.addEventListener('click', async (e)=>{
           sessionBanner.textContent = 'Проверьте почту';
           sessionBanner.hidden = false;
           setAuthState('login');
+        }else{
+          throw new Error('Signup failed');
         }
       }catch(err2){
+        if(err2?.code === 'TIMEOUT'){ dbgAuth('SIGNUP_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
         showFormError(document.getElementById('regError'), formatAuthError(err2));
       }
     }else{
@@ -531,10 +560,9 @@ resetBtn?.addEventListener('click', async (e)=>{
   if(!email){ showFormError(document.getElementById('resetError'),'Введите почту'); return; }
   const orig = resetBtn.textContent;
   resetBtn.disabled=true; resetBtn.textContent='Отправляем…';
-  const ctrl = new AbortController();
   try{
     const sb = await ensureSupabase();
-    await withTimeout(sb.auth.resetPasswordForEmail(email),15000,ctrl);
+    await withTimeout(() => sb.auth.resetPasswordForEmail(email),15000);
     toast('Письмо отправлено');
   }catch(err){
     showFormError(document.getElementById('resetError'), formatAuthError(err));
@@ -1560,4 +1588,8 @@ if(editForm){
   });
 
   loadDetails();
+}
+
+if(DEBUG_AUTH){
+  dbgAuth('sb_mode', sessionStorage.getItem('sb_mode') || 'direct');
 }
