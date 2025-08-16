@@ -34,13 +34,11 @@ for (const f of clientFiles) {
 
 // 3) Basic auth markup sanity checks
 const html = fs.readFileSync(path.join(PUBLISH_DIR,'index.html'),'utf8');
-html.includes('class="tab active" id="tabLogin"')
+/id="tab-login"[^>]*class="tab is-active"/.test(html)
   ? ok('login tab active by default') : fail('login tab not active');
-/id="paneSignup"[^>]*hidden/.test(html)
+/id="pane-register"[^>]*class="[^" ]*[^>]*is-hidden/.test(html)
   ? ok('signup pane hidden by default') : fail('signup pane should be hidden');
-/id="paneReset"[^>]*hidden/.test(html)
-  ? ok('reset pane hidden by default') : fail('reset pane should be hidden');
-/id="resetPassBlock"[^>]*hidden/.test(html)
+/id="resetPassBlock"[^>]*class="[^" ]*[^>]*is-hidden/.test(html)
   ? ok('new password block hidden by default') : fail('new password block should be hidden');
 
 // 4) Import functions and test early guards (no DB call)

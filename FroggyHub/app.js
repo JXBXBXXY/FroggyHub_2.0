@@ -323,6 +323,24 @@ function show(idToShow){
   });
 }
 
+function showAuthPane(kind){
+  const loginTab = document.getElementById('tab-login');
+  const registerTab = document.getElementById('tab-register');
+  const loginPane = document.getElementById('pane-login');
+  const registerPane = document.getElementById('pane-register');
+  const isLogin = kind === 'login';
+  loginTab?.classList.toggle('is-active', isLogin);
+  loginTab?.setAttribute('aria-selected', isLogin ? 'true' : 'false');
+  registerTab?.classList.toggle('is-active', !isLogin);
+  registerTab?.setAttribute('aria-selected', !isLogin ? 'true' : 'false');
+  loginPane?.classList.toggle('is-hidden', !isLogin);
+  registerPane?.classList.toggle('is-hidden', isLogin);
+  const pane = isLogin ? loginPane : registerPane;
+  const focusEl = pane?.querySelector('input,button,select,textarea,[tabindex="0"]');
+  focusEl?.focus();
+  document.getElementById(`pane-${kind}`)?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 // --- Auth state management ---
 let authState = 'login';
 let loginBtn, regBtn;
@@ -414,25 +432,65 @@ function setAuthState(state){
   updateAuthDebug();
 }
 
-document.getElementById('tabLogin')?.addEventListener('click',()=>setAuthState('login'));
-document.getElementById('tabSignup')?.addEventListener('click', async ()=>{
-  try{
-    const sb = await ensureSupabase();
-    const { data:{ session } } = await sb.auth.getSession();
-    if(session?.user){ await sb.auth.signOut(); }
-  }catch(_){ }
-  setAuthState('signup');
-});
-document.getElementById('showReset')?.addEventListener('click',()=>setAuthState('reset'));
-document.getElementById('backToLogin')?.addEventListener('click',()=>setAuthState('login'));
+document.getElementById('tab-login')?.addEventListener('click',()=>showAuthPane('login'));
+document.getElementById('tab-register')?.addEventListener('click',()=>showAuthPane('register'));
+showAuthPane('login');
 
-setAuthState('login');
-const urlParams = new URLSearchParams(location.hash.slice(1) || location.search);
-if(urlParams.get('type') === 'recovery'){
-  setAuthState('reset');
-  resetEmailBlock.hidden = true;
-  resetPassBlock.hidden = false;
+const forgotBtn = document.getElementById('showReset');
+const forgotBlock = document.getElementById('resetPassBlock');
+forgotBtn?.addEventListener('click',()=>{
+  const state = forgotBtn.getAttribute('data-forgot') === 'true';
+  if(state){
+    forgotBtn.setAttribute('data-forgot','false');
+    forgotBlock?.classList.add('is-hidden');
+  }else{
+    forgotBtn.setAttribute('data-forgot','true');
+    forgotBlock?.classList.remove('is-hidden');
+    forgotBlock?.querySelector('input,button,select,textarea,[tabindex="0"]')?.focus();
+  }
+});
+
+const el = id => document.getElementById(id);
+window.authApi = window.authApi || {};
+if(typeof window.authApi.register !== 'function'){
+  window.authApi.register = async ()=>false;
 }
+let regBusy = false;
+async function onRegister(){
+  if(regBusy) return;
+  const nick = el('reg-nickname')?.value.trim();
+  const p1 = el('reg-password')?.value;
+  const p2 = el('reg-password2')?.value;
+  const status = el('reg-status');
+  status.textContent = '';
+  if(!nick || p1.length<4 || p1!==p2){
+    status.textContent = 'Проверьте ник и пароли.';
+    return;
+  }
+  regBusy = true;
+  const btn = el('btn-register');
+  btn.disabled = true;
+  btn.textContent = 'Регистрируем…';
+  try{
+    const ok = await window.authApi.register({ nickname:nick, password:p1 });
+    if(ok){
+      status.textContent = 'Готово! Входим…';
+      showAuthPane('login');
+      const emailOrNick = document.querySelector('#pane-login input[type="email"], #pane-login input[name="login"], #pane-login input');
+      if(emailOrNick){ emailOrNick.value = nick; emailOrNick.focus(); }
+    }else{
+      status.textContent = 'Не удалось зарегистрироваться.';
+    }
+  }catch(e){
+    status.textContent = (e && e.message) ? e.message : 'Ошибка сети';
+    console.error('register error', e);
+  }finally{
+    regBusy = false;
+    btn.disabled = false;
+    btn.textContent = 'Зарегистрироваться';
+  }
+}
+el('btn-register')?.addEventListener('click', onRegister);
 
 // --- Login ---
 loginBtn = document.getElementById('loginBtn');
