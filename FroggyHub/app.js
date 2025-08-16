@@ -450,201 +450,104 @@ forgotBtn?.addEventListener('click',()=>{
   }
 });
 
-const el = id => document.getElementById(id);
-window.authApi = window.authApi || {};
-if(typeof window.authApi.register !== 'function'){
-  window.authApi.register = async ()=>false;
-}
-let regBusy = false;
-async function onRegister(){
-  if(regBusy) return;
-  const nick = el('reg-nickname')?.value.trim();
-  const p1 = el('reg-password')?.value;
-  const p2 = el('reg-password2')?.value;
-  const status = el('reg-status');
-  status.textContent = '';
-  if(!nick || p1.length<4 || p1!==p2){
-    status.textContent = 'Проверьте ник и пароли.';
-    return;
-  }
-  regBusy = true;
-  const btn = el('btn-register');
-  btn.disabled = true;
-  btn.textContent = 'Регистрируем…';
+// local auth helpers
+const showErr = (where, e)=>console.error(`[${where}]`, e?.status, e?.message || e);
+
+const call = async (path, body)=>{
   try{
-    const ok = await window.authApi.register({ nickname:nick, password:p1 });
-    if(ok){
-      status.textContent = 'Готово! Входим…';
-      showAuthPane('login');
-      const emailOrNick = document.querySelector('#pane-login input[type="email"], #pane-login input[name="login"], #pane-login input');
-      if(emailOrNick){ emailOrNick.value = nick; emailOrNick.focus(); }
-    }else{
-      status.textContent = 'Не удалось зарегистрироваться.';
+    const res = await fetch(`/.netlify/functions/${path}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){
+      const err = new Error(data?.error || `${res.status}`);
+      err.status = res.status;
+      throw err;
     }
+    return data;
+  }catch(err){
+    err.status = err.status || 0;
+    throw err;
+  }
+};
+
+function setBusy(zone,on){
+  const b = zone==='reg' ? document.getElementById('btn-register') : document.getElementById('btn-login');
+  if(!b) return;
+  b.disabled = !!on;
+  b.textContent = on ? (zone==='reg'?'Регистрируем…':'Входим…') : (zone==='reg'?'Зарегистрироваться':'Войти');
+}
+
+function setStatus(zone,msg){
+  const id = zone==='reg' ? 'reg-status' : 'login-status';
+  const el = document.getElementById(id);
+  if(el){ el.textContent = msg||''; }
+}
+
+function goToLobby(){
+  show('#screen-lobby');
+}
+
+async function handleRegister(){
+  const nickname = document.getElementById('reg-nickname')?.value.trim();
+  const p1 = document.getElementById('reg-password')?.value;
+  const p2 = document.getElementById('reg-password2')?.value;
+  if(!nickname || p1.length<4 || p1!==p2) return setStatus('reg','Проверьте ник и пароли');
+  setStatus('reg','');
+  setBusy('reg', true);
+  document.getElementById('reg-nickname')?.classList.remove('input-error');
+  try{
+    await call('auth-register', { nickname, password: p1 });
+    setStatus('reg','Готово! Теперь войдите.');
+    showAuthPane('login');
+    const li = document.querySelector('#pane-login input[name="login"], #pane-login input[type="text"], #pane-login input[type="email"]');
+    if(li){ li.value = nickname; li.focus(); }
   }catch(e){
-    status.textContent = (e && e.message) ? e.message : 'Ошибка сети';
-    console.error('register error', e);
+    showErr('register', e);
+    let msg = e?.message || 'Ошибка сети';
+    if(e.status === 409){
+      msg = 'Ник уже занят';
+      const field = document.getElementById('reg-nickname');
+      field?.classList.add('input-error');
+      field?.focus();
+    }else if(e.status >= 500 || e.status === 0){
+      msg = 'Проблемы с сервером, попробуйте позже';
+    }
+    setStatus('reg', msg);
   }finally{
-    regBusy = false;
-    btn.disabled = false;
-    btn.textContent = 'Зарегистрироваться';
+    setBusy('reg', false);
   }
 }
-el('btn-register')?.addEventListener('click', onRegister);
 
-// --- Login ---
-loginBtn = document.getElementById('loginBtn');
-if(DEBUG_AUTH && loginBtn){
-  dbgLogin = document.createElement('div');
-  dbgLogin.className = 'auth-debug';
-  loginBtn.before(dbgLogin);
-}
-loginBtn?.addEventListener('click', async (e)=>{
-  e.preventDefault();
-  if(isAuthPending) return;
-  clearFieldError(document.getElementById('loginEmail'));
-  clearFieldError(document.getElementById('loginPass'));
-  clearFormError(document.getElementById('loginError'));
-  const { ok, errors } = validateAuthForm({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value }, 'login');
-  if(!ok){ applyValidationErrors('login', errors); updateAuthDebug(); return; }
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-  const password = document.getElementById('loginPass').value;
-  const orig = loginBtn.textContent;
-  isAuthPending = true;
-  loginBtn.disabled = true; loginBtn.setAttribute('aria-disabled','true'); loginBtn.textContent='Входим…';
-  updateAuthDebug();
-  let sb;
-  let retried = false;
+async function handleLogin(){
+  const nickname = document.getElementById('login-identifier')?.value.trim();
+  const password = document.getElementById('login-password')?.value;
+  if(!nickname || !password) return setStatus('login','Введите ник и пароль');
+  setStatus('login','');
+  setBusy('login', true);
   try{
-    sb = await ensureSupabase();
-    const doLogin = () => sb.auth.signInWithPassword({ email, password });
-    const { data, error } = await withTimeout(() => doLogin(), 15000, 'LOGIN_TIMEOUT');
-    if(error) throw error;
-    if(data?.user){
-      document.getElementById('chipEmail').textContent = email;
-      show('#screen-lobby');
-      return;
+    const { user } = await call('auth-login', { nickname, password });
+    localStorage.setItem('fh_user', JSON.stringify(user));
+    setStatus('login','Вход выполнен');
+    goToLobby();
+  }catch(e){
+    showErr('login', e);
+    let msg = e?.message || 'Ошибка сети';
+    if(e.status === 401){
+      msg = 'Неверный ник или пароль';
+    }else if(e.status >= 500 || e.status === 0){
+      msg = 'Проблемы с сервером, попробуйте позже';
     }
-    throw new Error('No user');
-  }catch(err){
-    if(err?.code === 'TIMEOUT'){ dbgAuth('LOGIN_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
-    if(!retried && (isFetchErr(err) || err?.code === 'TIMEOUT')){
-      try{
-        const { data, error } = await switchToProxyAndRetry(async sb2=>{
-          sb = sb2;
-          const doLogin = () => sb.auth.signInWithPassword({ email, password });
-          return await withTimeout(() => doLogin(), 15000, 'LOGIN_TIMEOUT');
-        });
-        retried = true;
-        if(error) throw error;
-        if(data?.user){
-          document.getElementById('chipEmail').textContent = email;
-          show('#screen-lobby');
-          return;
-        }
-        throw new Error('No user');
-      }catch(err2){
-        if(err2?.code === 'TIMEOUT'){ dbgAuth('LOGIN_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
-        showFormError(document.getElementById('loginError'), formatAuthError(err2));
-      }
-    }else{
-      showFormError(document.getElementById('loginError'), formatAuthError(err));
-    }
+    setStatus('login', msg);
   }finally{
-    isAuthPending = false;
-    loginBtn.disabled = false;
-    loginBtn.removeAttribute('aria-disabled');
-    loginBtn.textContent = orig;
-    updateAuthDebug();
+    setBusy('login', false);
   }
-});
-updateAuthDebug();
-
-// --- Signup ---
-regBtn = document.getElementById('regBtn');
-if(DEBUG_AUTH && regBtn){
-  dbgSignup = document.createElement('div');
-  dbgSignup.className = 'auth-debug';
-  regBtn.before(dbgSignup);
 }
-regBtn?.addEventListener('click', async (e)=>{
-  e.preventDefault();
-  if(isAuthPending) return;
-  clearFieldError(document.getElementById('regName'));
-  clearFieldError(document.getElementById('regEmail'));
-  clearFieldError(document.getElementById('regPass'));
-  clearFieldError(document.getElementById('regPass2'));
-  clearFormError(document.getElementById('regError'));
-  const { ok, errors } = validateAuthForm({ nickname: document.getElementById('regName').value, email: document.getElementById('regEmail').value, password: document.getElementById('regPass').value, password2: document.getElementById('regPass2').value }, 'signup');
-  if(!ok){ applyValidationErrors('signup', errors); updateAuthDebug(); return; }
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim().toLowerCase();
-  const pass = document.getElementById('regPass').value;
-  const orig = regBtn.textContent;
-  isAuthPending = true;
-  regBtn.disabled = true; regBtn.setAttribute('aria-disabled','true'); regBtn.textContent='Регистрируем…';
-  updateAuthDebug();
-  let sb;
-  let retried = false;
-  try{
-    sb = await ensureSupabase();
-    const doSignup = () => sb.auth.signUp({ email, password: pass });
-    const { data, error } = await withTimeout(() => doSignup(), 15000, 'SIGNUP_TIMEOUT');
-    if(error) throw error;
-    if(data.user && data.session){
-      await withTimeout(() => sb.from('profiles').upsert({ id:data.user.id, nickname:name }),15000);
-      document.getElementById('chipEmail').textContent = email;
-      show('#screen-lobby');
-    }else if(data.user){
-      sessionStorage.setItem('pendingProfileName', name);
-      sessionBanner.textContent = 'Проверьте почту';
-      sessionBanner.hidden = false;
-      setAuthState('login');
-    }else{
-      throw new Error('Signup failed');
-    }
-  }catch(err){
-    if(err?.code === 'TIMEOUT'){ dbgAuth('SIGNUP_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
-    if(!retried && (isFetchErr(err) || err?.code === 'TIMEOUT')){
-      try{
-        const { data, error } = await switchToProxyAndRetry(async sb2=>{
-          sb = sb2;
-          const doSignup = () => sb.auth.signUp({ email, password: pass });
-          return await withTimeout(() => doSignup(), 15000, 'SIGNUP_TIMEOUT');
-        });
-        retried = true;
-        if(error) throw error;
-        if(data.user && data.session){
-          await withTimeout(() => sb.from('profiles').upsert({ id:data.user.id, nickname:name }),15000);
-          document.getElementById('chipEmail').textContent = email;
-          show('#screen-lobby');
-        }else if(data.user){
-          sessionStorage.setItem('pendingProfileName', name);
-          sessionBanner.textContent = 'Проверьте почту';
-          sessionBanner.hidden = false;
-          setAuthState('login');
-        }else{
-          throw new Error('Signup failed');
-        }
-      }catch(err2){
-        if(err2?.code === 'TIMEOUT'){ dbgAuth('SIGNUP_TIMEOUT', sessionStorage.getItem('sb_mode') || 'direct'); }
-        showFormError(document.getElementById('regError'), formatAuthError(err2));
-      }
-    }else{
-      showFormError(document.getElementById('regError'), formatAuthError(err));
-    }
-  }finally{
-    isAuthPending = false;
-    regBtn.textContent=orig;
-    updateRegBtnState();
-    updateAuthDebug();
-  }
-});
 
-['regName','regEmail','regPass','regPass2'].forEach(id=>{
-  document.getElementById(id)?.addEventListener('input', updateRegBtnState);
-});
-updateRegBtnState();
+document.getElementById('btn-register')?.addEventListener('click', handleRegister);
+document.getElementById('btn-login')?.addEventListener('click', handleLogin);
 
 // --- Password reset ---
 const resetBtn = document.getElementById('resetSend');
