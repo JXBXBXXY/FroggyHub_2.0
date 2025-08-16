@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions'
-import { Client } from 'pg'
+import { getClient } from '../../utils/db.js'
 import bcrypt from 'bcryptjs'
 
 function cors(extra: Record<string,string> = {}) {
@@ -34,8 +34,7 @@ export const handler: Handler = async (event) => {
       return err('Некорректные данные')
     }
 
-    const client = new Client({ connectionString: process.env.NETLIFY_DATABASE_URL })
-    await client.connect()
+    const client = await getClient()
 
     try {
       const hash = await bcrypt.hash(password, 10)
