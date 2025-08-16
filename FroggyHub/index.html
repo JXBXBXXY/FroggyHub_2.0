@@ -28,13 +28,13 @@
       </div>
 
       <section id="pane-login" class="pane grid" role="tabpanel" aria-labelledby="tab-login">
-        <label>Почта
-          <input id="loginEmail" type="email" placeholder="you@email.com" required autocomplete="username" inputmode="email">
+        <label>Никнейм
+          <input id="login-identifier" type="text" placeholder="Никнейм" required autocomplete="username">
         </label>
         <label>Пароль
-          <input id="loginPass" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
+          <input id="login-password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
         </label>
-        <button type="button" class="btn primary" id="loginBtn">Войти</button>
+        <button type="button" class="btn primary" id="btn-login">Войти</button>
         <button type="button" class="btn" id="showReset" data-forgot="false">Забыли пароль?</button>
         <div id="resetPassBlock" class="grid is-hidden">
           <label>Новый пароль
@@ -44,7 +44,7 @@
             <input id="resetPass2" type="password" minlength="4" autocomplete="new-password">
           </label>
         </div>
-        <div id="loginError" class="form-error" aria-live="polite"></div>
+        <div id="login-status" aria-live="polite"></div>
       </section>
 
       <section id="pane-register" class="pane grid is-hidden" role="tabpanel" aria-labelledby="tab-register">
