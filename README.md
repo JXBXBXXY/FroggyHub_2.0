@@ -61,6 +61,26 @@ Compare `count(*)` for each table between the primary and secondary databases.
 Cascade deletes are not synchronised. Use `deleted_at` columns and filter on
 `where deleted_at is null` in analytics queries.
 
+## DATABASE_URL (Neon)
+
+**Важно:** в Netlify переменная `DATABASE_URL` должнa быть **чистым URL**, а не psql-командой.
+
+❌ Неверно (это CLI-команда):
+psql 'postgresql://neondb_owner:PASS@ep-...neon.tech/neondb?sslmode=require&channel_binding=require'
+
+✅ Верно (только URL, без `psql` и без кавычек):
+postgresql://neondb_owner:PASS@ep-...neon.tech/neondb?sslmode=require&channel_binding=require
+
+Если видите `password authentication failed`:
+1. В Neon → **Connect → Role** выберите роль (например, `neondb_owner`) и нажмите **Reset password**.
+2. Скопируйте **Connection string (URI)** *без* префикса `psql` и *без* кавычек.
+3. В Netlify → **Environment variables** замените `DATABASE_URL` во **всех** контекстах (Production, Deploy Previews, Branch).
+4. Нажмите **Trigger deploy**.
+
+### Диагностика
+- `/.netlify/functions/db-url-check` — проверка структуры `DATABASE_URL` (пароль скрыт).
+- `/.netlify/functions/db-whoami` — покажет `current_user`, базу и хост, если авторизация удалась.
+
 ## Cookie consent
 A simple banner is rendered at the bottom of the page asking the visitor to accept or decline cookies. The choice is stored in `localStorage` and synchronised with the `cookie_consents` table when the user is authenticated. Declining removes optional scripts such as analytics.
 
