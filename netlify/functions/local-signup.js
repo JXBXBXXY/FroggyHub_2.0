@@ -24,14 +24,12 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
     if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
 
-    let payload = {};
+    let nickname, password;
     try {
-      payload = JSON.parse(event.body || '{}');
+      ({ nickname, password } = JSON.parse(event.body || '{}'));
     } catch {
       return err('Invalid JSON body', 400);
     }
-
-    const { nickname, password } = payload;
     if (!nickname || !password) return err('Missing nickname or password', 400);
 
     const conn = process.env.DATABASE_URL;
