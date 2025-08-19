@@ -1,6 +1,6 @@
 // netlify/functions/local-signup.js
-const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
+const { getServiceClient } = require('./_supabase');
 
 // CORS + унифицированные ответы
 function cors(extra = {}) {
@@ -20,6 +20,7 @@ function err(message, status = 400, meta) {
 }
 
 exports.handler = async (event) => {
+  console.log('[auth] using supabase sdk');
   try {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
     if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
@@ -32,40 +33,23 @@ exports.handler = async (event) => {
     }
     if (!nickname || !password) return err('Missing nickname or password', 400);
 
-    const conn = process.env.DATABASE_URL;
-    if (!conn) return err('DATABASE_URL is not set', 500);
-
-    const client = new Client({
-      connectionString: conn,
-      ssl: { rejectUnauthorized: false }
-    });
-
-    await client.connect();
-
     // хэш пароля
     const passwordHash = await bcrypt.hash(password, 10);
-
     // вставка пользователя
-    let result;
-    try {
-      result = await client.query(
-        `INSERT INTO public.users_local (nickname, password_hash)
-         VALUES ($1, $2)
-         RETURNING id, nickname, email, created_at`,
-        [nickname, passwordHash]
-      );
-    } catch (e) {
-      // PG duplicate key
-      if (e && e.code === '23505') {
-        await client.end();
-        return err('Nickname already exists', 409);
-      }
-      throw e;
+    const sb = getServiceClient();
+    const { data, error } = await sb
+      .from('users_local')
+      .insert({ nickname, password_hash: passwordHash })
+      .select('id, nickname, email, created_at')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') return err('Nickname already exists', 409);
+      console.error('local-signup insert error:', error);
+      return err(error.message || 'Internal error', 500);
     }
 
-    await client.end();
-
-    return ok({ success: true, user: result.rows[0] }, 201);
+    return ok({ success: true, user: data }, 201);
   } catch (e) {
     console.error('local-signup error:', e && (e.stack || e.message || e));
     return err(e && e.message ? e.message : 'Internal error', 500);

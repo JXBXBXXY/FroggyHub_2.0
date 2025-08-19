@@ -1,28 +1,28 @@
 // netlify/functions/profile.js
-const { Client } = require('pg');
 const { cors, ok, err, requireAuth } = require('./_auth');
+const { getServiceClient } = require('./_supabase');
 
 async function handler(event, context) {
+  console.log('[auth] using supabase sdk');
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
   if (event.httpMethod !== 'GET') return err('Method not allowed', 405);
 
-  const conn = process.env.DATABASE_URL;
-  if (!conn) return err('DATABASE_URL is not set', 500);
-
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
-  await client.connect();
+  const sb = getServiceClient();
   try {
     // context.user.sub — id из токена
-    const { rows } = await client.query(
-      'SELECT id, nickname, email, created_at FROM public.users_local WHERE id = $1 LIMIT 1',
-      [context.user.sub]
-    );
-    if (!rows[0]) return err('User not found', 404);
-    return ok({ success: true, profile: rows[0] });
+    const { data, error } = await sb
+      .from('users_local')
+      .select('id, nickname, email, created_at')
+      .eq('id', context.user.sub)
+      .single();
+    if (error) {
+      if (error.code === 'PGRST116') return err('User not found', 404);
+      console.error('profile select error:', error);
+      return err(error.message || 'Failed to load profile', 500);
+    }
+    return ok({ success: true, profile: data });
   } catch (e) {
     return err(e.message || 'Failed to load profile', 500);
-  } finally {
-    await client.end();
   }
 }
 
