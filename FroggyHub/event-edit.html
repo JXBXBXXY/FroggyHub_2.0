@@ -32,7 +32,7 @@
         <input id="editBring" />
       </label>
       <div class="save-row">
-        <button id="saveEvent" type="submit" class="btn primary">Сохранить</button>
+        <button id="saveEvent" type="submit" class="btn btn--primary">Сохранить</button>
       </div>
     </form>
     <p id="editError" class="error" role="status" aria-live="polite"></p>
@@ -47,5 +47,19 @@
     window.createSupabaseClient = createClient;
   </script>
   <script type="module" src="app.js"></script>
+  <div id="cookieCard" class="card" style="display:none">
+    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
+      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
+    </svg>
+    <div class="cookieHeading">Cookies</div>
+    <div class="cookieDescription">
+      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
+    </div>
+    <div class="buttonContainer">
+      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
+      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+    </div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

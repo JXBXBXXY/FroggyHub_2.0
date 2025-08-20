@@ -12,7 +12,7 @@
     <nav class="fh-nav">
       <a href="/index.html">Меню</a>
       <a href="/profile.html">Профиль</a>
-      <button onclick="localStorage.removeItem('FH_JWT');location.href='/'">Выйти</button>
+      <button class="btn btn--ghost" onclick="localStorage.removeItem('FH_JWT');location.href='/'">Выйти</button>
     </nav>
   </header>
 
@@ -30,7 +30,7 @@
     <section id="lobby-right" class="lobby-right card">
       <h2 data-title>Событие</h2>
       <div class="event-grid">
-        <div><strong>Код:</strong> <span data-code>—</span> <button id="copyInviteBtn" class="btn">Скопировать приглашение</button></div>
+        <div class="codeRow"><span id="eventCodeText">Код: <strong id="eventCode" data-code>—</strong></span> <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button></div>
         <div><strong>Когда:</strong> <span data-when></span></div>
         <div><strong>Адрес:</strong> <span data-address>—</span></div>
         <div><strong>Дресс-код:</strong> <span data-dress>—</span></div>
@@ -57,11 +57,24 @@
       </div>
 
       <div class="actions">
-        <a class="btn" href="/index.html">Вернуться в меню</a>
+        <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
       </div>
     </section>
   </main>
 
   <script src="/app.js" type="module"></script>
+  <div id="cookieCard" class="card" style="display:none">
+    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
+      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
+    </svg>
+    <div class="cookieHeading">Cookies</div>
+    <div class="cookieDescription">
+      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
+    </div>
+    <div class="buttonContainer">
+      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
+      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+    </div>
+  </div>
 </body>
 </html>
