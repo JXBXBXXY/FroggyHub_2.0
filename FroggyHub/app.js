@@ -7,7 +7,7 @@ function clearToken(){ localStorage.removeItem('FH_JWT'); }
 
 function toast(msg, type='info'){
   console[type==='error'?'error':'log']('[toast]', msg);
-  try { window.showToast?.(msg, type) ?? alert(msg); } catch {}
+  try { window.showToast?.(msg, type); } catch {}
 }
 
 function withBusy(btn, fn){
