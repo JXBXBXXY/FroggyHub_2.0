@@ -1709,55 +1709,6 @@ async function signup(nickname, password){
   return { token };
 }
 
-async function handleLoginSubmit(e){
-  e.preventDefault(); e.stopPropagation();
-  const form = e.currentTarget;
-  const nickname = form.querySelector('input[name="nickname"], [data-field="nickname"]')?.value?.trim();
-  const password = form.querySelector('input[name="password"], [data-field="password"]')?.value ?? '';
-  if(!nickname || !password) return;
-  try {
-    const res = await login(nickname, password);
-    if(res?.token || res?.success){
-      safeRedirect('/');
-    }
-  } catch (err) {
-    // опционально: показать сообщение
-  }
-}
-
-async function handleSignupSubmit(e){
-  e.preventDefault(); e.stopPropagation();
-  const form = e.currentTarget;
-  const nickname = form.querySelector('input[name="nickname"], [data-field="nickname"]')?.value?.trim();
-  const password = form.querySelector('input[name="password"], [data-field="password"]')?.value ?? '';
-  const password2 = form.querySelector('input[name="password2"], [data-field="password2"]')?.value ?? '';
-  if(!nickname || !password || (password2 && password!==password2)) return;
-  try {
-    await signup(nickname, password);
-    safeRedirect('/');
-  } catch (err) {
-    // опционально: показать сообщение
-  }
-}
-
-function bindAuthForms(){
-  const loginForm  = document.querySelector('form#loginForm, form[data-auth="login"]');
-  const signupForm = document.querySelector('form#signupForm, form[data-auth="signup"]');
-
-  if(loginForm){
-    loginForm.addEventListener('submit', handleLoginSubmit, { once:false });
-    const btn = loginForm.querySelector('button:not([type]), button[type="button"]');
-    if(btn) btn.type = 'submit';
-  }
-  if(signupForm){
-    signupForm.addEventListener('submit', handleSignupSubmit, { once:false });
-    const btn = signupForm.querySelector('button:not([type]), button[type="button"]');
-    if(btn) btn.type = 'submit';
-  }
-}
-
-document.addEventListener('DOMContentLoaded', bindAuthForms);
-
 ['logout-btn','logoutBtn'].forEach(id=>{
   const el = document.getElementById(id);
   if(el) el.addEventListener('click', withBusy(el, async ()=>{
