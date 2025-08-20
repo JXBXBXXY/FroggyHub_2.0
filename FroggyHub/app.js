@@ -1,10 +1,24 @@
-const LS_NICK = 'fh:nickname';
-const $ = (s, r=document)=>r.querySelector(s);
+const $ = (s, r=document) => r.querySelector(s);
+const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
 
-const TOKEN_KEY = 'FH_JWT';
-const setToken = t => localStorage.setItem(TOKEN_KEY, t);
-const getToken = () => localStorage.getItem(TOKEN_KEY);
-const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+async function apiPost(fnPath, payload) {
+  const res = await fetch(`/.netlify/functions${fnPath}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    let msg = await res.text();
+    try { const j = JSON.parse(msg); msg = j.error || j.message || msg; } catch {}
+    throw new Error(msg || res.statusText);
+  }
+  return res.json();
+}
+
+function saveToken(t) { if (t) localStorage.setItem('FH_JWT', t); }
+function clearToken() { localStorage.removeItem('FH_JWT'); }
+const getToken = () => localStorage.getItem('FH_JWT');
+const LS_NICK = 'fh:nickname';
 
 document.querySelectorAll('input, textarea, select').forEach(el=>{
   el.classList.add('input');
@@ -1696,7 +1710,7 @@ if (joinBtn2){
 
 async function login(nickname, password){
   const { token } = await callFn('local-login', { nickname, password });
-  if(token){ setToken(token); }
+  if(token){ saveToken(token); }
   setNickname(nickname);
   return { token };
 }
@@ -1704,7 +1718,7 @@ async function login(nickname, password){
 async function signup(nickname, password){
   await callFn('local-signup', { nickname, password });
   const { token } = await callFn('local-login', { nickname, password });
-  if(token){ setToken(token); }
+  if(token){ saveToken(token); }
   setNickname(nickname);
   return { token };
 }
@@ -1867,7 +1881,7 @@ async function apiGet(path) {
   return data;
 }
 
-async function apiPost(path, body, useAuth = false) {
+async function apiPostAuth(path, body, useAuth = false) {
   const headers = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem(FH_TOKEN_KEY);
   if (useAuth && token) headers['Authorization'] = `Bearer ${token}`;
@@ -1893,7 +1907,7 @@ async function handleCreateEvent(formEl) {
   (fd.getAll('wishlist[]') || []).forEach(t => wishlist.push({ title: t }));
   payload.wishlist = wishlist;
 
-  const data = await apiPost('/events-create', payload, true);
+  const data = await apiPostAuth('/events-create', payload, true);
   // сразу в лобби с id
   window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.eventId)}`;
 }
@@ -1904,7 +1918,7 @@ async function handleJoinEvent(formEl) {
   const code = String(fd.get('code') || '').trim().toUpperCase();
   const name = String(fd.get('name') || fd.get('guest_name') || '').trim();
   if (!code || !name) throw new Error('Заполните код и имя');
-  const data = await apiPost('/events-join', { code, name });
+  const data = await apiPostAuth('/events-join', { code, name });
   window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.eventId)}`;
 }
 
@@ -2227,71 +2241,59 @@ document.querySelectorAll('#copyInviteBtn').forEach(copyBtn => {
   no?.addEventListener('click', close);
 })();
 
-// ---------- Auth intercept (global, capture) ----------
-function safeRedirect(url) {
-  try { window.location.assign(url); } catch { window.location.href = url; }
-}
-
-// Пытаемся угадать тип формы, если нет data-auth
-function guessAuthFormKind(form) {
-  if (form.dataset.auth) return form.dataset.auth; // 'login' | 'signup'
-  if (form.id === 'loginForm'  || form.matches('.login-form'))  return 'login';
-  if (form.id === 'signupForm' || form.matches('.signup-form')) return 'signup';
-  const txt = (form.querySelector('button[type="submit"],button')?.textContent || '').toLowerCase();
-  if (txt.includes('войти') || txt.includes('login')) return 'login';
-  if (txt.includes('рег')   || txt.includes('sign'))  return 'signup';
-  return null;
-}
-
-async function handleAuthSubmit(e) {
-  const form = e.target;
-  if (!(form instanceof HTMLFormElement)) return;
-
-  // Обрабатываем только auth-формы
-  const kind = guessAuthFormKind(form);
-  if (!kind) return;
-
-  // Гасим нативный сабмит ДО того, как браузер перезагрузит страницу
+// ---------- Local auth bindings ----------
+async function handleLoginSubmit(e) {
   e.preventDefault();
-  e.stopPropagation();
-
-  // Подготавливаем данные
-  const nickname = form.querySelector('input[name="nickname"], #nickname, [data-field="nickname"]')?.value?.trim();
-  const password = form.querySelector('input[name="password"], #password, [data-field="password"]')?.value ?? '';
-  if (!nickname || !password) {
-    console.warn('Auth: пустые поля'); 
-    return;
-  }
-
+  const f = e.currentTarget;
+  const btn = e.submitter || f.querySelector('[type=submit]');
+  btn?.setAttribute('disabled', 'true');
   try {
-    if (kind === 'login') {
-      // используй существующую функцию клиента
-      await login(nickname, password);
-    } else {
-      await signup(nickname, password); // твоя существующая signup уже логинит
-    }
-    // После успешной auth → в меню
-    safeRedirect('/');
+    const nickname = f.nickname.value.trim();
+    const password = f.password.value;
+    const data = await apiPost('/local-login', { nickname, password });
+    saveToken(data?.token);
+    window.location.assign('/');    // ← всегда уводим в меню
   } catch (err) {
-    console.error('Auth error', err);
-    // здесь можно показать тост/модалку, если в проекте есть хелпер
+    alert(err.message || 'Ошибка входа');
+  } finally {
+    btn?.removeAttribute('disabled');
   }
 }
 
-// Глобальный перехват всех submit'ов на фазе захвата
-function installAuthIntercept() {
-  // Уберём action у auth-форм, если он задан
-  document.querySelectorAll('form[data-auth], form.login-form, form.signup-form, #loginForm, #signupForm')
-    .forEach(f => { f.setAttribute('action', 'javascript:void(0)'); f.setAttribute('novalidate',''); });
-
-  window.addEventListener('submit', handleAuthSubmit, true); // capture=true
+async function handleSignupSubmit(e) {
+  e.preventDefault();
+  const f = e.currentTarget;
+  const btn = e.submitter || f.querySelector('[type=submit]');
+  btn?.setAttribute('disabled', 'true');
+  try {
+    const nickname = f.nickname.value.trim();
+    const password = f.password.value;
+    await apiPost('/local-signup', { nickname, password });
+    const data = await apiPost('/local-login', { nickname, password });
+    saveToken(data?.token);
+    window.location.assign('/');    // ← сразу в меню
+  } catch (err) {
+    alert(err.message || 'Ошибка регистрации');
+  } finally {
+    btn?.removeAttribute('disabled');
+  }
 }
 
-// Гарантируем установку перехватчика
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', installAuthIntercept);
-} else {
-  installAuthIntercept();
+function initAuthBindings() {
+  on($('#loginForm'), 'submit', handleLoginSubmit);
+  on($('#signupForm'), 'submit', handleSignupSubmit);
 }
+document.addEventListener('DOMContentLoaded', initAuthBindings, { once: true });
 
+document.addEventListener('DOMContentLoaded', () => {
+  const isHome = location.pathname === '/' || location.pathname.endsWith('/index.html');
+  if (!isHome) return;
 
+  const code = new URLSearchParams(location.search).get('code');
+  if (code) {
+    // показываем финальную страницу события ТОЛЬКО при наличии code
+    if (typeof showEventSummary === 'function') showEventSummary(code);
+  } else {
+    if (typeof renderMainMenu === 'function') renderMainMenu(); // страница "Создать / Присоединиться"
+  }
+});
