@@ -1,9 +1,9 @@
 // netlify/functions/_auth.js
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const CORS_ORIGIN = 'https://froggyhubapp.netlify.app';
 
-function cors(extra = {}) {
+export function cors(extra = {}) {
   return {
     'Access-Control-Allow-Origin': CORS_ORIGIN,
     'Access-Control-Allow-Credentials': 'true',
@@ -13,28 +13,28 @@ function cors(extra = {}) {
   };
 }
 
-function ok(body, status = 200) {
+export function ok(body, status = 200) {
   return { statusCode: status, headers: cors(), body: JSON.stringify(body) };
 }
 
-function err(message, status = 400, meta) {
+export function err(message, status = 400, meta) {
   return { statusCode: status, headers: cors(), body: JSON.stringify({ success: false, error: message, ...(meta||{}) }) };
 }
 
-function signToken(payload) {
+export function signToken(payload) {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET is not set');
   return jwt.sign(payload, secret, { expiresIn: '7d' });
 }
 
-function verifyToken(token) {
+export function verifyToken(token) {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET is not set');
   return jwt.verify(token, secret);
 }
 
 // Достаём токен из Authorization: Bearer <token>
-function getBearerToken(event) {
+export function getBearerToken(event) {
   const h = event.headers || {};
   const auth = h.authorization || h.Authorization || '';
   const m = auth.match(/^Bearer\s+(.+)$/i);
@@ -42,7 +42,7 @@ function getBearerToken(event) {
 }
 
 // Обёртка для защищённых хендлеров
-function requireAuth(handler) {
+export function requireAuth(handler) {
   return async (event, context) => {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
     try {
@@ -58,4 +58,3 @@ function requireAuth(handler) {
   };
 }
 
-module.exports = { cors, ok, err, signToken, verifyToken, requireAuth, getBearerToken };

@@ -1,8 +1,8 @@
 // netlify/functions/profile.js
-const { getServiceClient } = require('./_supabase');
-const { ok, err, requireAuth } = require('./_auth');
+import { getServiceClient } from './_supabase.js';
+import { ok, err, requireAuth } from './_auth.js';
 
-exports.handler = async (event, context) => {
+export async function handler(event, context) {
   return requireAuth(async (_event, ctx) => {
     const sb = getServiceClient();
     const { data, error } = await sb
@@ -13,4 +13,4 @@ exports.handler = async (event, context) => {
     if (error || !data) return err('User not found', 404);
     return ok({ success:true, profile: data });
   })(event, context);
-};
+}

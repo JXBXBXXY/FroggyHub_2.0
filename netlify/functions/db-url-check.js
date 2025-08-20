@@ -1,6 +1,6 @@
 // GET /.netlify/functions/db-url-check
 // Парсит DATABASE_URL и возвращает отдельные поля (без пароля), чтобы проверить корректность значения.
-export default async function handler() {
+export async function handler(event, context) {
   const raw = process.env.DATABASE_URL || '';
   if (!raw) {
     return new Response(JSON.stringify({ ok:false, error:'DATABASE_URL is not set' }), {
