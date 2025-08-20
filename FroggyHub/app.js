@@ -6,6 +6,10 @@ const setToken = t => localStorage.setItem(TOKEN_KEY, t);
 const getToken = () => localStorage.getItem(TOKEN_KEY);
 const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
+document.querySelectorAll('input, textarea, select').forEach(el=>{
+  el.classList.add('input');
+});
+
 function toast(msg, type='info'){
   console[type==='error'?'error':'log']('[toast]', msg);
   try { window.showToast?.(msg, type); } catch {}
@@ -1273,7 +1277,6 @@ function renderAdmin(){
 }
 $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene()));
 
-$('#copyCodeBtn')?.addEventListener('click', ()=>shareInvite(eventData.join_code));
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
 async function authHeader(){
@@ -1514,12 +1517,11 @@ function toFinalScene(){
     <div style="margin-top:6px"><strong>Подарки:</strong> Занято — <b>${chosen}</b>, Свободно — <b>${Math.max(0,totalW-chosen)}</b></div>
   `;
   $('#fShare').innerHTML = `
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div>Код события: <span class="pill-mini" style="background:#1b4a33">${eventData.join_code||'—'}</span></div>
-      <button class="btn small" id="copyCodeBtn">Поделиться</button>
+    <div class="codeRow">
+      <span id="eventCodeText">Код: <strong id="eventCode">${eventData.join_code||'—'}</strong></span>
+      <button class="btn btn--ghost btn--sm" id="copyInviteBtn">Скопировать приглашение</button>
     </div>
   `;
-  document.getElementById('copyCodeBtn')?.addEventListener('click', () => shareInvite(eventData.join_code));
 
   function tickClock(){
     const dt = getEventDate();
@@ -2165,5 +2167,32 @@ async function loadWishlist(eventId){
     list.appendChild(div);
   });
 }
+
+document.querySelectorAll('#copyInviteBtn').forEach(copyBtn => {
+  copyBtn.addEventListener('click', async () => {
+    const code = (copyBtn.closest('.codeRow')?.querySelector('#eventCode')?.textContent || '').trim();
+    if (!code) return;
+    const msg = `Привет! Приглашаю тебя на моё мероприятие 🎉\n\nКод для входа: ${code}\nОткрой https://froggyhubapp.netlify.app и введи код на главной странице.\n\nЖду тебя! 🐸`;
+    try {
+      await navigator.clipboard.writeText(msg);
+      copyBtn.textContent = 'Скопировано!';
+      setTimeout(()=>copyBtn.textContent = 'Скопировать приглашение', 2000);
+    } catch {
+      alert('Не удалось скопировать. Скопируй вручную:\n\n' + msg);
+    }
+  });
+});
+
+(() => {
+  const KEY = 'fh_cookies_accepted_v1';
+  const el = document.getElementById('cookieCard');
+  if (!el) return;
+  if (!localStorage.getItem(KEY)) el.style.display = 'flex';
+  const ok = document.getElementById('cookieAccept');
+  const no = document.getElementById('cookieDecline');
+  const close = () => { localStorage.setItem(KEY, '1'); el.style.display = 'none'; };
+  ok?.addEventListener('click', close);
+  no?.addEventListener('click', close);
+})();
 
 

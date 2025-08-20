@@ -35,8 +35,8 @@
           <label>Пароль
             <input id="login-password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
           </label>
-          <button class="btn primary" id="login-btn" type="submit">Войти</button>
-          <button type="button" class="btn" id="showReset" data-forgot="false">Забыли пароль?</button>
+            <button class="btn btn--primary" id="login-btn" type="submit">Войти</button>
+            <button type="button" class="btn btn--ghost" id="showReset" data-forgot="false">Забыли пароль?</button>
           <div id="resetPassBlock" class="grid is-hidden">
             <label>Новый пароль
               <input id="resetPass" type="password" minlength="4" autocomplete="new-password">
@@ -60,7 +60,7 @@
           <label>Повтор пароля
             <input id="signup-password2" type="password" required minlength="4" autocomplete="new-password">
           </label>
-          <button id="signup-btn" class="btn primary" type="submit">Зарегистрироваться</button>
+            <button id="signup-btn" class="btn btn--primary" type="submit">Зарегистрироваться</button>
           <div id="reg-status" aria-live="polite"></div>
         </form>
       </section>
@@ -77,18 +77,18 @@
           <div class="chips">
             <span class="chip">Шаг 2</span>
             <span class="pill" data-user-badge>гость</span>
-            <button class="btn ghost small" id="logout-btn" data-action="logout" title="Выйти">Выйти</button>
+              <button class="btn btn--ghost btn--sm" id="logout-btn" data-action="logout" title="Выйти">Выйти</button>
           </div>
         </div>
       </div>
 
       <div class="grid">
-        <button class="btn primary" id="goCreate" data-requires-auth data-action="create-event">🧪 Создать ивент</button>
+          <button class="btn btn--primary btn--lg" id="goCreate" data-requires-auth data-action="create-event">Создать событие</button>
         <div class="card inner">
           <h3>Присоединиться к ивенту</h3>
           <div class="row2">
             <input id="join-code" placeholder="Введите 6-значный код" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6">
-            <button class="btn" id="join-btn" data-action="join-event" disabled>🎉 Присоединиться</button>
+            <button class="btn btn--ghost" id="join-btn" data-action="join-event" disabled>Присоединиться</button>
           </div>
         </div>
       </div>
@@ -180,7 +180,7 @@
               <label>Время <input id="eventTime" type="time" required /></label>
             </div>
             <label>Адрес <input id="eventAddress" placeholder="Улица, дом, город" /></label>
-            <button class="btn" type="submit">Далее</button>
+            <button class="btn btn--primary" type="submit">Далее</button>
           </form>
         </section>
 
@@ -189,9 +189,9 @@
           <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Добавьте пожелания.</div></div>
           <div class="wl-wrap"><div id="wlGrid" class="gridVar"></div></div>
           <div class="bar-actions">
-            <button class="btn" id="addItem">Добавить</button>
-            <button class="btn ghost" id="clearWL">Очистить</button>
-            <button class="btn" id="toDetails">Далее</button>
+            <button class="btn btn--primary" id="addItem">Добавить</button>
+            <button class="btn btn--ghost" id="clearWL">Очистить</button>
+            <button class="btn btn--primary" id="toDetails">Далее</button>
           </div>
           <dialog id="cellEditor" aria-modal="true" role="dialog">
             <form method="dialog" class="editor">
@@ -199,8 +199,8 @@
               <label>Название <input id="cellTitle" /></label>
               <label>Ссылка <input id="cellUrl" placeholder="https://..." /></label>
               <menu>
-                <button value="cancel" class="btn ghost">Отмена</button>
-                <button id="saveCell" value="default" class="btn">Сохранить</button>
+                <button value="cancel" class="btn btn--ghost">Отмена</button>
+                <button id="saveCell" value="default" class="btn btn--primary">Сохранить</button>
               </menu>
             </form>
           </dialog>
@@ -213,7 +213,7 @@
             <label>Дресс-код <input id="eventDress" /></label>
             <label>Что взять <input id="eventBring" /></label>
             <label>Как пройти / комментарии <textarea id="eventNotes" rows="3"></textarea></label>
-            <button class="btn" type="submit" data-requires-auth>Сгенерировать код</button>
+            <button class="btn btn--primary" type="submit" data-requires-auth>Сгенерировать код</button>
           </form>
           <p id="createEventStatus" class="error" role="status" aria-live="polite"></p>
         </section>
@@ -221,11 +221,15 @@
         <!-- СОЗДАТЬ: админ -->
         <section id="slide-admin" hidden>
           <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Поделитесь кодом.</div></div>
-          <p><strong>Код события:</strong> <span class="code-box" id="eventCode">—</span> <button class="btn small" id="copyCodeBtn">Скопировать код</button> <a id="analyticsLink" class="btn small" href="#" hidden>Аналитика события</a></p>
+          <div class="codeRow">
+            <span id="eventCodeText">Код: <strong id="eventCode" data-code>—</strong></span>
+            <button class="btn btn--ghost btn--sm" id="copyInviteBtn">Скопировать приглашение</button>
+            <a id="analyticsLink" class="btn btn--ghost btn--sm" href="#" hidden>Аналитика события</a>
+          </div>
           <p id="codeExpire" class="hint"></p>
           <h3>Вишлист</h3>
           <ul id="adminGifts" class="list"></ul>
-          <div class="bar-actions"><button class="btn" id="finishCreate">К финальной инфо</button></div>
+          <div class="bar-actions"><button class="btn btn--primary" id="finishCreate">Далее</button></div>
         </section>
 
         <!-- ПРИСОЕДИНИТЬСЯ: код -->
@@ -233,7 +237,7 @@
           <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Введите код.</div></div>
           <div class="grid" style="place-items:center">
             <input id="joinCodeInput" placeholder="Например: 345812" style="max-width:260px;text-align:center" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6" />
-            <button class="btn" id="joinCodeBtn" disabled>Проверить</button>
+            <button class="btn btn--primary" id="joinCodeBtn" disabled>Проверить</button>
             <div id="joinCodeError" class="error" role="status" aria-live="polite"></div>
           </div>
         </section>
@@ -244,11 +248,11 @@
           <form id="formJoin" class="grid brick">
             <label>Имя <input id="guestName" required /></label>
             <div class="btn-group">
-              <button type="button" class="btn yes" data-rsvp="yes">Иду</button>
-              <button type="button" class="btn maybe" data-rsvp="maybe">Возможно</button>
-              <button type="button" class="btn no" data-rsvp="no">Не иду</button>
+              <button type="button" class="btn btn--primary" data-rsvp="yes">Иду</button>
+              <button type="button" class="btn btn--ghost" data-rsvp="maybe">Возможно</button>
+              <button type="button" class="btn btn--ghost" data-rsvp="no">Не иду</button>
             </div>
-            <button id="toGuestWishlist" class="btn" type="button">Выбрать подарок</button>
+            <button id="toGuestWishlist" class="btn btn--primary" type="button">Выбрать подарок</button>
           </form>
         </section>
 
@@ -257,8 +261,8 @@
           <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Выберите один пункт.</div></div>
           <div id="guestGifts" class="wishlist-grid"></div>
           <div class="bar-actions">
-            <button class="btn ghost" id="skipWishlist">Пропустить</button>
-            <button class="btn" id="toGuestFinal">Готово</button>
+            <button class="btn btn--ghost" id="skipWishlist">Пропустить</button>
+            <button class="btn btn--primary" id="toGuestFinal">Готово</button>
           </div>
         </section>
       </section>
@@ -281,23 +285,25 @@
         <input id="otpEmail" type="email" required>
       </label>
       <div class="row2">
-        <button class="btn primary" id="otpSendBtn" type="button">Отправить ссылку</button>
-        <button class="btn" value="cancel">Отмена</button>
+        <button class="btn btn--primary" id="otpSendBtn" type="button">Отправить</button>
+        <button class="btn btn--ghost" value="cancel">Отмена</button>
       </div>
       <p id="otpStatus" class="hint" aria-live="polite"></p>
     </form>
   </dialog>
-    <div id="cookieBanner" role="dialog" aria-modal="true" hidden>
-      <div class="cookie-text">
-        <p>Мы используем cookies. Согласны?</p>
-        <label><input type="checkbox" id="cookieAnalytics"> Аналитика</label>
-        <div id="cookieStatus" class="visually-hidden" aria-live="polite"></div>
+      <div id="cookieCard" class="card" style="display:none">
+        <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
+          <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
+        </svg>
+        <div class="cookieHeading">Cookies</div>
+        <div class="cookieDescription">
+          Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
+        </div>
+        <div class="buttonContainer">
+          <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
+          <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+        </div>
       </div>
-      <div class="cookie-actions">
-        <button id="cookieAccept" type="button" class="btn yes">Принять все</button>
-        <button id="cookieDecline" type="button" class="btn ghost">Сохранить выбор</button>
-      </div>
-    </div>
-    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-  </body>
-  </html>
+      <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    </body>
+    </html>
