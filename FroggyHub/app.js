@@ -1148,6 +1148,8 @@ let eventData = JSON.parse(localStorage.getItem(STORAGE)||'null') || {
 };
 const save=()=>localStorage.setItem(STORAGE,JSON.stringify(eventData));
 let isEventActionPending = false;
+// флаг, чтобы не было повторной отправки
+let creatingEvent = false;
 
 function genCode(){ return Math.floor(100000 + Math.random()*900000).toString(); }
 async function uniqueCode(sb){
@@ -1224,25 +1226,28 @@ $('#formDetails')?.addEventListener('submit', async (e)=>{
   const original = btn?.textContent;
   btn?.setAttribute('disabled','');
   btn && (btn.textContent='Создаём…');
-  Object.assign(eventData,{dress:$('#eventDress').value.trim(),bring:$('#eventBring').value.trim(),notes:$('#eventNotes').value.trim()});
+  Object.assign(eventData,{
+    dress:$('#eventDress').value.trim(),
+    bring:$('#eventBring').value.trim(),
+    notes:$('#eventNotes').value.trim()
+  });
   const status=$('#createEventStatus');
   status.textContent='';
   try{
-    const sb = await ensureSupabase();
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user){ toast('Войдите'); status.textContent='Войдите'; return; }
-    const payload = { title:eventData.title, date:eventData.date, time:eventData.time, address:eventData.address, notes:eventData.notes, dress_code:eventData.dress, bring:eventData.bring, owner_id:user.id };
-    if(DEBUG_EVENTS) console.log('[create-event] payload', payload);
-    const data = await callFnEx('create-event', { method:'POST', body: payload });
-    if(DEBUG_EVENTS) console.log('[create-event] ok');
-    Object.assign(eventData, data);
-    save();
+    const payload = {
+      title:eventData.title,
+      date:eventData.date,
+      time:eventData.time,
+      address:eventData.address,
+      dress_code:eventData.dress,
+      bring:eventData.bring,
+      notes:eventData.notes
+    };
+    await createEventAndGoLobby(payload);
     status.textContent='Событие создано';
-    withTransition(()=>{ showSlide('admin'); renderAdmin(); });
   }catch(err){
-    if(DEBUG_EVENTS) console.warn('[create-event] err', err);
-    status.textContent = explainFnError(err);
-    toast(explainFnError(err));
+    status.textContent = err.message || String(err);
+    toast(err.message || String(err));
   }finally{
     isEventActionPending=false;
     btn?.removeAttribute('disabled');
@@ -1749,8 +1754,17 @@ async function loadMyEvents(){
       for(const ev of data.events){
         const li = document.createElement('li');
         const date = ev.starts_at ? new Date(ev.starts_at).toLocaleDateString('ru-RU') : '';
-        li.textContent = `${ev.title||''} ${date && ('('+date+')')}`;
-        li.addEventListener('click', ()=>{ window.location.href = `/event.html?id=${ev.id}`; });
+        const span = document.createElement('span');
+        span.textContent = `${ev.title||''} ${date && ('('+date+')')}`;
+        span.style.cursor = 'pointer';
+        span.addEventListener('click', ()=>{ window.location.href = `/event.html?id=${ev.id}`; });
+        li.appendChild(span);
+        const del = document.createElement('button');
+        del.className = 'btn btn-danger';
+        del.dataset.action = 'delete';
+        del.dataset.id = ev.id;
+        del.textContent = 'Удалить';
+        li.appendChild(del);
         list.appendChild(li);
       }
     }else{
@@ -1895,104 +1909,6 @@ async function handleJoinEvent(formEl) {
   window.location.href = '/lobby.html';
 }
 
-// ==== Рендер лобби ====
-async function loadLobby() {
-  const url = new URL(window.location.href);
-  const code = (url.searchParams.get('code') || localStorage.getItem(FH_EVENT_CODE) || '').toUpperCase();
-  if (!code) { window.location.href = '/'; return; }
-
-  const { event, wishlist, guests } = await apiGet(`/events-get?code=${encodeURIComponent(code)}`);
-
-  // правый блок деталей
-  const right = document.querySelector('#lobby-right');
-  if (right) {
-    right.querySelector('[data-title]').textContent = event.title;
-    right.querySelector('[data-address]').textContent = event.address || '—';
-    right.querySelector('[data-dress]').textContent = event.dress || '—';
-    right.querySelector('[data-bring]').textContent = event.bring || '—';
-    right.querySelector('[data-notes]').textContent = event.notes || '—';
-    right.querySelector('[data-code]').textContent = code;
-
-    const wl = right.querySelector('[data-wishlist]');
-    if (wl) {
-      wl.innerHTML = '';
-      wishlist.forEach(w => {
-        const li = document.createElement('li');
-        li.textContent = w.title || (w.url || 'Пожелание');
-        wl.appendChild(li);
-      });
-      if (wishlist.length === 0) wl.innerHTML = '<li>Список пожеланий пока пуст</li>';
-    }
-
-    // списки гостей
-    const fillList = (sel, arr) => {
-      const ul = right.querySelector(sel);
-      if (ul) {
-        ul.innerHTML = '';
-        (arr || []).forEach(n => {
-          const li = document.createElement('li');
-          li.textContent = n;
-          ul.appendChild(li);
-        });
-        if (!arr || arr.length === 0) ul.innerHTML = '<li>—</li>';
-      }
-    };
-    fillList('[data-guest-yes]', guests.yes);
-    fillList('[data-guest-no]', guests.no);
-    fillList('[data-guest-maybe]', guests.maybe);
-
-    // копирование приглашения
-    const copyBtn = right.querySelector('#copyInviteBtn');
-    if (copyBtn) {
-      copyBtn.onclick = async () => {
-        const invite =
-`Привет! Приглашаю тебя на «${event.title}».
-Когда: ${event.date} ${event.time}
-Где: ${event.address || 'место уточняется'}
-Дресс-код: ${event.dress || 'на твоё усмотрение'}
-
-Чтобы присоединиться, введи код: ${code}
-Или перейди по ссылке: ${location.origin}/?join=${code}`;
-        await navigator.clipboard.writeText(invite);
-        copyBtn.textContent = 'Скопировано!';
-        setTimeout(()=> copyBtn.textContent = 'Скопировать приглашение', 2000);
-      };
-    }
-  }
-
-  // левый блок: счётчик
-  const left = document.querySelector('#lobby-left');
-  if (left) {
-    const big = left.querySelector('[data-countdown-big]');
-    const small = left.querySelector('[data-countdown-small]');
-    const target = new Date(`${event.date}T${(event.time || '00:00')}:00`);
-    const tick = () => {
-      const now = new Date();
-      let diff = target.getTime() - now.getTime();
-      if (diff < 0) diff = 0;
-      const totalMin = Math.floor(diff / 60000);
-      const hours = Math.floor(totalMin / 60);
-      const minutes = totalMin % 60;
-      if (big) big.textContent = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
-
-      const days = Math.floor(diff / 86400000);
-      if (small) {
-        if (days >= 1) {
-          // показываем дату (день и месяц)
-          const d = target.getDate();
-          const m = target.toLocaleString('ru-RU', { month: 'long' });
-          small.textContent = `${d} ${m}`;
-          small.style.display = '';
-        } else {
-          small.style.display = 'none';
-        }
-      }
-    };
-    tick();
-    setInterval(tick, 30000);
-  }
-}
-
 // ==== Привязки к формам (если есть на странице) ====
 document.addEventListener('DOMContentLoaded', () => {
   const createForm = document.querySelector('form[data-create-event]');
@@ -2008,7 +1924,246 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (document.body.dataset.page === 'lobby') {
-    loadLobby().catch(err => alert('Ошибка загрузки: ' + err.message));
+    const id = new URLSearchParams(location.search).get('id');
+    if (id) goLobby(id);
   }
 });
+
+// Делегированный обработчик удаления события
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="delete"][data-id]');
+  if (btn) onDeleteEventClick(btn.dataset.id);
+});
+
+async function onDeleteEventClick(eventId) {
+  if (!confirm('Удалить событие? Это действие необратимо.')) return;
+  const token = localStorage.getItem('FH_JWT');
+  const res = await fetch('/.netlify/functions/event-delete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({ event_id: eventId })
+  });
+  const json = await res.json().catch(()=> ({}));
+  if (!res.ok || json?.success !== true) {
+    alert('Не удалось удалить событие');
+    return;
+  }
+  loadMyEvents();
+}
+
+// ===== util helpers =====
+async function getCurrentUser(){
+  const sb = await ensureSupabase();
+  const { data:{ user } } = await sb.auth.getUser();
+  return user;
+}
+
+function generateEventCode(){
+  return Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+async function createEventAndGoLobby(payload){
+  if(creatingEvent) return;
+  creatingEvent = true;
+  try {
+    const user = await getCurrentUser();
+    if(!user) throw new Error('Необходимо войти');
+    const code = payload.code || generateEventCode();
+    const sb = await ensureSupabase();
+    const { data, error } = await sb
+      .from('events')
+      .upsert([{
+        code,
+        host_user_id: user.id,
+        title: payload.title,
+        date: payload.date,
+        time: payload.time,
+        address: payload.address || null,
+        dress_code: payload.dress_code || null,
+        bring: payload.bring || null,
+        notes: payload.notes || null
+      }], { onConflict: 'code' })
+      .select('*')
+      .single();
+    if(error) throw error;
+    goLobby(data.id);
+  } catch (e) {
+    alert('Ошибка сохранения: ' + (e.message || e));
+  } finally {
+    creatingEvent = false;
+  }
+}
+
+function goLobby(eventId){
+  renderLobbySkeleton();
+  loadLobby(eventId);
+}
+
+async function loadLobby(eventId){
+  const sb = await ensureSupabase();
+  const { data: ev, error } = await sb
+    .from('events')
+    .select('id, code, title, date, time, address, dress_code, bring, notes')
+    .eq('id', eventId)
+    .single();
+  if (error || !ev) {
+    showToast('Событие не найдено');
+    return;
+  }
+  renderLobbyContent(ev);
+  startCountdown(ev.date, ev.time);
+}
+
+function renderLobbySkeleton(){
+  document.body.classList.add('bg-frog');
+  const root = document.getElementById('app') || document.body;
+  root.innerHTML = `
+    <div class="final-layout">
+      <aside class="final-left">
+        <div class="final-count">
+          <div id="cd-time" class="cd-time">--:--</div>
+          <div id="cd-date" class="cd-date" hidden>—</div>
+        </div>
+        <div class="frog-stump" aria-hidden="true"></div>
+      </aside>
+      <main class="final-right">
+        <div id="final-card" class="final-card"></div>
+      </main>
+    </div>
+  `;
+}
+
+function renderLobbyContent(ev){
+  const card = document.getElementById('final-card');
+  card.innerHTML = `
+    <header class="final-head">
+      <h1>${escapeHtml(ev.title || 'Моё событие')}</h1>
+      <div class="pill-group" id="pill-group"></div>
+    </header>
+
+    <section class="final-meta">
+      <div class="meta-row"><strong>Дата и время:</strong> ${ev.date} · ${ev.time}</div>
+      ${ev.address ? `<div class="meta-row"><strong>Адрес:</strong> ${escapeHtml(ev.address)}</div>` : ''}
+      ${ev.dress_code ? `<div class="meta-row"><strong>Дресс-код:</strong> ${escapeHtml(ev.dress_code)}</div>` : ''}
+      ${ev.bring ? `<div class="meta-row"><strong>Что взять:</strong> ${escapeHtml(ev.bring)}</div>` : ''}
+      ${ev.notes ? `<div class="meta-row"><strong>Комментарий:</strong> ${escapeHtml(ev.notes)}</div>` : ''}
+    </section>
+
+    <section class="final-actions">
+      <div class="rsvp">
+        <button class="btn btn-primary" data-rsvp="yes">Иду</button>
+        <button class="btn" data-rsvp="maybe">Возможно</button>
+        <button class="btn" data-rsvp="no">Не иду</button>
+      </div>
+      <button class="btn btn-ghost" id="copy-invite">Скопировать приглашение</button>
+    </section>
+
+    <section class="final-stats">
+      <div class="stat"><div class="n" id="stat-yes">0</div><div class="t">Идут</div></div>
+      <div class="stat"><div class="n" id="stat-maybe">0</div><div class="t">Возможно</div></div>
+      <div class="stat"><div class="n" id="stat-no">0</div><div class="t">Не идут</div></div>
+    </section>
+
+    <section class="final-wishlist" id="wishlist">
+      <h2>Wishlist</h2>
+      <div class="wl-list" id="wl-list"></div>
+    </section>
+  `;
+
+  document.getElementById('copy-invite').addEventListener('click', () => copyInvite(ev));
+  wireRsvp(ev.id);
+  loadStats(ev.id);
+  loadWishlist(ev.id);
+}
+
+function startCountdown(dateStr, timeStr){
+  const cdTime = document.getElementById('cd-time');
+  const cdDate = document.getElementById('cd-date');
+  const target = new Date(`${dateStr}T${timeStr}:00`);
+  const showDate = () => {
+    const now = new Date();
+    const diff = target - now;
+    if (diff <= 0) {
+      cdTime.textContent = 'Старт!';
+      cdDate.hidden = true;
+      return;
+    }
+    const h = Math.floor(diff / 36e5);
+    const m = Math.floor((diff % 36e5) / 6e4);
+    cdTime.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+    cdDate.hidden = diff < 24 * 36e5;
+    if (!cdDate.hidden) {
+      const d = target.toLocaleDateString(undefined, { day:'2-digit', month:'short' });
+      cdDate.textContent = d;
+    }
+  };
+  showDate();
+  setInterval(showDate, 30 * 1000);
+}
+
+function copyInvite(ev){
+  const lines = [
+    'Привет! 👋',
+    `Приглашаю тебя на «${ev.title}».`,
+    `Когда: ${ev.date} в ${ev.time}`,
+    ev.address ? `Где: ${ev.address}` : null,
+    `Код для присоединения: ${ev.code}`,
+    '',
+    'Открой FroggyHub и введи код, чтобы отметить «Иду» и посмотреть wishlist.'
+  ].filter(Boolean);
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => showToast('Приглашение скопировано'))
+    .catch(() => showToast('Не удалось скопировать'));
+}
+
+function escapeHtml(str=''){
+  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+}
+
+function showToast(msg){
+  toast(msg);
+}
+
+async function wireRsvp(eventId){
+  document.querySelector('.rsvp')?.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-rsvp]');
+    if(!btn) return;
+    const status = btn.dataset.rsvp;
+    const sb = await ensureSupabase();
+    const { data:{ user } } = await sb.auth.getUser();
+    if(!user){ showToast('Войдите'); return; }
+    await sb.from('guests').upsert({ event_id:eventId, user_id:user.id, status }, { onConflict:'event_id,user_id' });
+    loadStats(eventId);
+  });
+}
+
+async function loadStats(eventId){
+  const sb = await ensureSupabase();
+  const { data } = await sb.from('guests').select('status').eq('event_id', eventId);
+  const counts = { yes:0, maybe:0, no:0 };
+  (data||[]).forEach(g=>{ counts[g.status] = (counts[g.status]||0)+1; });
+  const yesEl = document.getElementById('stat-yes'); if(yesEl) yesEl.textContent = counts.yes||0;
+  const maybeEl = document.getElementById('stat-maybe'); if(maybeEl) maybeEl.textContent = counts.maybe||0;
+  const noEl = document.getElementById('stat-no'); if(noEl) noEl.textContent = counts.no||0;
+}
+
+async function loadWishlist(eventId){
+  const sb = await ensureSupabase();
+  const { data } = await sb.from('wishlist_items').select('id, title, taken_by, claimed_by').eq('event_id', eventId);
+  const list = document.getElementById('wl-list');
+  if(!list) return;
+  list.innerHTML='';
+  (data||[]).forEach(it=>{
+    const div=document.createElement('div');
+    const taken = !!(it.taken_by || it.claimed_by);
+    div.className='wl-card';
+    div.innerHTML = `<div>${escapeHtml(it.title||'')}</div><div class="wl-tag ${taken?'wl-taken':'wl-free'}">${taken?'Занято':'Свободно'}</div>`;
+    list.appendChild(div);
+  });
+}
+
 

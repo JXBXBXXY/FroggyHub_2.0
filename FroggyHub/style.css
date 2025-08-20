@@ -441,3 +441,99 @@ body.scene-intro .speech{display:block}
 .fh-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; }
 .fh-logo { font-weight:800; text-decoration:none; }
 .fh-nav a, .fh-nav button { margin-left:12px; }
+
+/* фон меню без кувшинок */
+.bg-frog {
+  --bg1: #e5f5ef;
+  --bg2: #d8f1ea;
+  background: radial-gradient(1200px 800px at 50% -200px, var(--bg1), var(--bg2));
+  min-height: 100vh;
+}
+
+.final-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 0 16px;
+}
+
+.final-left {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  position: relative;
+}
+
+.frog-stump {
+  width: 320px;
+  height: 220px;
+  background: url('/assets/stump.png') center/contain no-repeat;
+  opacity: .95;
+}
+
+.final-count {
+  position: absolute;
+  top: 18%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+
+.cd-time {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  color: #0d5135;
+  text-shadow: 0 1px 0 #fff6;
+}
+
+.cd-date {
+  margin-top: 4px;
+  font-size: 16px;
+  color: #2d6a4f;
+}
+
+.final-right { display: grid; align-content: start; }
+
+.final-card {
+  background: #f5fff9;
+  border: 1px solid #bfe3d3;
+  box-shadow: 0 10px 30px #083d2a15;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.final-head h1 {
+  font-size: 28px;
+  margin: 0 0 12px;
+  color: #0b3d2a;
+}
+
+.pill-group { display: flex; gap: 8px; }
+
+.final-meta .meta-row { padding: 6px 0; color: #0b3d2a; }
+
+.final-actions { display: flex; gap: 12px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+
+.rsvp .btn { margin-right: 8px; }
+
+.final-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 8px 0 12px; }
+.final-stats .stat { background:#e9fbf3; border:1px solid #cbeada; border-radius:12px; padding:12px; text-align:center; }
+.final-stats .n { font-size: 22px; font-weight: 700; color:#0b3d2a; }
+
+.final-wishlist h2 { margin: 8px 0 10px; color:#0b3d2a; }
+.wl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 12px; }
+.wl-card { background:#fff; border:1px solid #d9efe4; border-radius:12px; padding:12px; }
+.wl-tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; }
+.wl-free { background:#d7fbe8; color:#0b3d2a; }
+.wl-taken { background:#ffe3e3; color:#7a1c1c; }
+
+/* кнопки в стиле проекта */
+.btn { border:1px solid #bfe3d3; background:#f1fff8; color:#0b3d2a; border-radius:10px; padding:10px 14px; cursor:pointer; }
+.btn:hover { background:#e7fbf3; }
+.btn-primary { background:#39b982; border-color:#39b982; color:white; }
+.btn-primary:hover { background:#2aa273; }
+.btn-ghost { background:transparent; border-color:#bfe3d3; }
+.btn-danger { background:#ff4d4f; border-color:#ff4d4f; color:white; }
+.btn-danger:hover { filter:brightness(.95); }
