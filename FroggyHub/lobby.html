@@ -33,7 +33,8 @@
   body.scene-final{background:radial-gradient(120% 120% at 50% 30%, var(--dark-2), var(--dark)); color:#eafff2}
   .wrap{display:grid;grid-template-rows:48vh auto;min-height:100vh;transition:opacity .45s ease}
   .wrap.fading{opacity:0}
-  body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
+body.scene-intro .wrap{grid-template-rows:100vh 0}
+body.scene-final .wrap{grid-template-rows:0 100vh}
   .pond{position:relative}
   .pads{position:absolute;inset:0;pointer-events:none}
   body.scene-intro .pads, body.scene-final .pads{display:none}
@@ -44,11 +45,12 @@
   .ripples:before,.ripples:after{content:"";position:absolute;left:50%;top:50%;width:70vmin;height:70vmin;border-radius:50%;border:8px solid #fff;transform:translate(-50%,-50%);animation:ripple 7s linear infinite}
   .ripples:after{animation-delay:3.5s}
   @keyframes ripple{0%{transform:translate(-50%,-50%) scale(.7);opacity:.25}100%{transform:translate(-50%,-50%) scale(1.3);opacity:0}}
-  .stump{display:none;position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);max-width:60vmin;height:auto;pointer-events:none}
-  body.scene-intro .stump, body.scene-final .stump{display:block}
-  #frog{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease,transform .2s ease}
-  body.scene-pond #frog{top:50%}
-  #frog.turn-left{transform:translate(-50%,-50%) scaleX(-1)}
+.stump{display:none;position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);max-width:60vmin;height:auto;pointer-events:none}
+body.scene-intro .stump{display:block}
+#frog{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);transition:left .45s ease,top .45s ease,transform .2s ease}
+body.scene-pond #frog{top:50%}
+body.scene-final #frog{display:none}
+#frog.turn-left{transform:translate(-50%,-50%) scaleX(-1)}
   #frog.jump{animation:jump .55s ease}
   @keyframes jump{0%{transform:translate(-50%,-50%)}35%{transform:translate(-50%,-85%)}100%{transform:translate(-50%,-50%)}}
   #frog img{width:140px;height:auto;display:block;background:transparent;border:none;padding:0;border-radius:0}
@@ -244,6 +246,53 @@ async function loadMiniProfile(){
 document.getElementById('miniLogout').onclick=()=>{ localStorage.removeItem(TOKEN_KEY); location.href='/'; };
 loadMiniProfile();
 
+/* API helpers */
+const api = {
+  async createEvent(payload){
+    const r = await fetch('/.netlify/functions/events-create', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', Authorization: 'Bearer '+(localStorage.getItem(TOKEN_KEY)||'')},
+      body: JSON.stringify(payload)
+    });
+    return r.json();
+  },
+  async getEvent(code){
+    const r = await fetch('/.netlify/functions/events-get?code='+encodeURIComponent(code));
+    return r.json();
+  },
+  async rsvp(payload){
+    const r = await fetch('/.netlify/functions/events-rsvp', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    return r.json();
+  },
+  async myEvents(){
+    const r = await fetch('/.netlify/functions/events-list', { headers:{ Authorization: 'Bearer '+(localStorage.getItem(TOKEN_KEY)||'') }});
+    return r.json();
+  }
+};
+
+let lastInviteText = '';
+function makeInviteText(ev){
+  const dt = `${ev.date||''} ${ev.time||''}`.trim();
+  const addr = ev.address ? `📍 ${ev.address}` : '';
+  const dress = ev.dress ? `👗 Дресс-код: ${ev.dress}` : '';
+  const bring = ev.bring ? `🧺 Что взять: ${ev.bring}` : '';
+  const notes = ev.notes ? `📝 ${ev.notes}` : '';
+  return `Привет! Приглашаю тебя на «${ev.title}».
+🗓 ${dt}
+${addr}
+${dress}
+${bring}
+${notes}
+
+Код участия: ${ev.code}
+Зайди на FroggyHub и введи код.
+До встречи! 🐸`;
+}
+async function copyInvite(ev){
+  try { await navigator.clipboard.writeText(makeInviteText(ev)); alert('Приглашение скопировано'); }
+  catch { alert('Не удалось скопировать'); }
+}
+
 /* ---------- lobby flow (localStorage prototype) ---------- */
 const FROG_IDLE="assets/frog_idle.png", FROG_JUMP="assets/frog_jump.png", CROAK_URL="assets/croak.mp3";
 const STORAGE='froggyhub_state_v7';
@@ -266,8 +315,8 @@ const root=document.getElementById('root');
 function setScene(scene){
   body.classList.remove('scene-intro','scene-pond','scene-final');
   body.classList.add(`scene-${scene}`);
-  document.getElementById('slides').style.display=(scene==='pond')?'block':'none';
-  speech.style.display=(scene==='pond')?'none':'block';
+  document.getElementById('slides').style.display=(scene==='pond'||scene==='final')?'block':'none';
+  speech.style.display=(scene==='intro')?'block':'none';
 }
 const stepsCreate=['create-1','create-wishlist','create-details','admin'];
 function renderPads(total=stepsCreate.length){
@@ -333,11 +382,23 @@ toDetails.onclick=()=>withTransition(()=>{ frogJumpToPad(2,true); showSlide('cre
 editor.addEventListener('click',e=>{ const r=editor.getBoundingClientRect(); if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) editor.close(); });
 
 /* details → admin */
-formDetails.addEventListener('submit',(e)=>{
+formDetails.addEventListener('submit', async (e)=>{
   e.preventDefault();
   Object.assign(eventData,{dress:eventDress.value.trim(),bring:eventBring.value.trim(),notes:eventNotes.value.trim()});
-  eventData.code=(Math.floor(100000+Math.random()*900000)).toString(); save();
-  withTransition(()=>{ frogJumpToPad(3,true); showSlide('admin'); renderAdmin(); });
+
+  // подготовим wishlist для сервера
+  const wishlist = eventData.wishlist.filter(i=>i.title||i.url).map(({title,url})=>({title,url}));
+
+  const payload = { title:eventData.title, date:eventData.date, time:eventData.time, address:eventData.address, dress:eventData.dress, bring:eventData.bring, notes:eventData.notes, wishlist };
+  const res = await api.createEvent(payload);
+  if (!res.ok) { alert('Ошибка сохранения: '+(res.error||'')); return; }
+
+  eventData.code = res.code; eventData.id = res.eventId;
+  save();
+
+  // копировать приглашение (кнопка появится в дашборде тоже)
+  lastInviteText = makeInviteText(eventData);
+  withTransition(()=> openDashboard({ code: eventData.code, role:'host' }));
 });
 function renderAdmin(){
   eventCode.textContent=eventData.code||'—';
@@ -347,22 +408,29 @@ function renderAdmin(){
 finishCreate.onclick=()=>withTransition(()=>toFinalScene('host'));
 
 /* join: code → rsvp */
-joinCodeBtn.onclick=()=>{
-  const v=(joinCodeInput.value||'').trim();
-  if(!v){alert('Введите код');return;}
-  if(!eventData.code){alert('Код ещё не создан');return;}
-  if(v===eventData.code){ withTransition(()=>{ showSlide('join-1'); renderPads(3); frogJumpToPad(1,false); }); }
-  else alert('Неверный код');
+joinCodeBtn.onclick = async ()=>{
+  const v = (joinCodeInput.value||'').trim();
+  if(!v){ alert('Введите код'); return; }
+  const res = await api.getEvent(v);
+  if (!res.ok) { alert('Код не найден'); return; }
+  eventData.code = v;
+  eventData.title = res.event.title; eventData.date=res.event.date; eventData.time=res.event.time;
+  eventData.address=res.event.address; eventData.dress=res.event.dress; eventData.bring=res.event.bring; eventData.notes=res.event.notes;
+  eventData.wishlist = (res.wishlist||[]).map(i=>({ id:i.id, title:i.title, url:i.url, claimedBy:i.claimed_by||'' }));
+  save();
+  withTransition(()=>{ showSlide('join-1'); renderPads(3); frogJumpToPad(1,false); });
 };
 
 /* RSVP + guest wishlist */
-document.querySelectorAll('[data-rsvp]').forEach(b=>b.addEventListener('click',e=>{
+document.querySelectorAll('[data-rsvp]').forEach(b=>b.addEventListener('click',async e=>{
   const code=e.currentTarget.dataset.rsvp, name=(guestName.value||'').trim();
   if(!name){alert('Введите имя');return;}
   currentGuestName=name;
   const ex=eventData.guests.find(g=>g.name.toLowerCase()===name.toLowerCase());
   if(ex) ex.rsvp=code; else eventData.guests.push({name,rsvp:code});
-  save(); croak();
+  save();
+  await api.rsvp({ code: eventData.code, name: currentGuestName, rsvp: code });
+  croak();
 }));
 toGuestWishlist.onclick=()=>{
   const name=(guestName.value||'').trim(); if(!name){alert('Введите имя и статус');return;}
@@ -379,15 +447,16 @@ function renderGuestWishlist(){
     const link=item.url?` • <a href="${item.url}" target="_blank" rel="noopener">ссылка</a>`:'';
     return `<div class="giftcard"><div><strong>${item.title||'Подарок'}</strong><span class="meta">${link}</span></div><div class="gift-actions">${status}${chooseBtn}</div></div>`;
   }).join('');
-  guestGifts.querySelectorAll('.choose').forEach(b=>b.addEventListener('click',e=>{
+  guestGifts.querySelectorAll('.choose').forEach(b=>b.addEventListener('click',async e=>{
     const id=+e.currentTarget.dataset.id; const it=eventData.wishlist.find(x=>x.id===id);
     if(it.claimedBy && it.claimedBy.toLowerCase()!==currentGuestName.toLowerCase()){ alert('Этот подарок уже выбрали'); return; }
     eventData.wishlist.forEach(x=>{ if(x.claimedBy && x.claimedBy.toLowerCase()===currentGuestName.toLowerCase()) x.claimedBy=''; });
     it.claimedBy=currentGuestName; save(); renderGuestWishlist();
+    await api.rsvp({ code: eventData.code, name: currentGuestName, claimItemId: id });
   }));
-  guestGifts.querySelectorAll('.unchoose').forEach(b=>b.addEventListener('click',e=>{
+  guestGifts.querySelectorAll('.unchoose').forEach(b=>b.addEventListener('click',async e=>{
     const id=+e.currentTarget.dataset.id; const it=eventData.wishlist.find(x=>x.id===id);
-    if(it.claimedBy && it.claimedBy.toLowerCase()===currentGuestName.toLowerCase()){ it.claimedBy=''; save(); renderGuestWishlist(); }
+    if(it.claimedBy && it.claimedBy.toLowerCase()===currentGuestName.toLowerCase()){ it.claimedBy=''; save(); renderGuestWishlist(); await api.rsvp({ code: eventData.code, name: currentGuestName, unclaimItemId: id }); }
   }));
 }
 skipWishlist.onclick=()=>withTransition(()=>toFinalScene('guest'));
@@ -395,30 +464,133 @@ toGuestFinal.onclick=()=>withTransition(()=>toFinalScene('guest'));
 
 /* final */
 function toFinalScene(role){
-  setScene('final'); frog.style.left='50%'; frog.style.top='42%'; croak();
-  const q=encodeURIComponent(eventData.address||''), addr=eventData.address?`<a style="color:#fff" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">${eventData.address}</a>`:'—';
-  const chosenCount=eventData.wishlist.filter(i=>i.claimedBy).length, totalWishes=eventData.wishlist.filter(i=>i.title||i.url).length, freeCount=totalWishes-chosenCount;
-  let extra='';
-  if(role==='guest'){
-    const g=eventData.guests.find(x=>x.name&&x.name.toLowerCase()===currentGuestName.toLowerCase());
-    const gift=eventData.wishlist.find(i=>i.claimedBy&&i.claimedBy.toLowerCase()===currentGuestName.toLowerCase());
-    const rsvp=g?g.rsvp:'—';
-    const giftTitle=gift?gift.title||'Подарок':'—';
-    extra=`<br>🙋‍♂️ Ваш статус: ${rsvp}<br>🎁 Ваш выбор: ${giftTitle}`;
+  setScene('final');
+
+  const leftHTML = `
+    <div style="display:grid;place-items:center;height:100vh">
+      <div style="text-align:center">
+        <div id="bigClock" style="font-weight:900;font-size:64px;line-height:1;margin-bottom:6px">--:--</div>
+        <div id="bigDate" style="font-weight:700;opacity:.9">—</div>
+        <img src="assets/stump.png" alt="" style="width:48vmin;max-width:420px;margin-top:16px;filter:drop-shadow(0 16px 28px rgba(0,0,0,.25))">
+        <img src="assets/frog_idle.png" alt="" style="position:relative;top:-18vmin;width:22vmin">
+      </div>
+    </div>`;
+
+  const addr = eventData.address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventData.address)}" target="_blank" rel="noopener">${eventData.address}</a>` : '—';
+  const chosen = eventData.wishlist.filter(i=>i.claimedBy).length;
+  const totalWL = eventData.wishlist.filter(i=>i.title||i.url).length;
+
+  const rightHTML = `
+    <div style="padding:24px 26px">
+      <h1 style="margin:0 0 8px 0">${eventData.title||'Событие'}</h1>
+      <div class="bubble">
+        <div class="bubble-head">Детали</div>
+        <div>🗓 ${eventData.date||'—'} • ⏰ ${eventData.time||'—'}</div>
+        <div>📍 ${addr}</div>
+        <div>👗 ${eventData.dress||'—'}</div>
+        <div>🧺 ${eventData.bring||'—'}</div>
+        ${eventData.notes?`<div>📝 ${eventData.notes}</div>`:''}
+      </div>
+
+      <div class="bubble">
+        <div class="bubble-head">Вишлист</div>
+        <div>Занято: ${chosen} • Свободно: ${Math.max(0,totalWL - chosen)}</div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn" id="btnCopyInvite">Скопировать приглашение</button>
+        <button class="btn ghost" id="btnToLobby">Перейти в лобби</button>
+      </div>
+    </div>`;
+
+  document.getElementById('slides').innerHTML = `
+    <section style="display:grid;grid-template-columns:1fr min(760px,60vw);gap:24px;height:100%">
+      <div>${leftHTML}</div>
+      <div>${rightHTML}</div>
+    </section>`;
+
+  const bigClock = document.getElementById('bigClock'), bigDate = document.getElementById('bigDate');
+  function tick(){
+    const now = new Date();
+    const t = new Date(`${eventData.date}T${eventData.time}`) - now;
+    if (isNaN(t)) { bigClock.textContent='--:--'; bigDate.textContent='—'; return; }
+    const H = Math.max(0, Math.floor((t % 86400000) / 3600000));
+    const M = Math.max(0, Math.floor((t % 3600000) / 60000));
+    bigClock.textContent = `${String(H).padStart(2,'0')}:${String(M).padStart(2,'0')}`;
+    const days = Math.floor(t/86400000);
+    if (days >= 1) {
+      const d = new Date(`${eventData.date}T00:00:00`);
+      const mName = d.toLocaleString('ru-RU',{ month:'long' });
+      bigDate.textContent = `${d.getDate()} ${mName}`;
+      bigDate.style.display = '';
+    } else {
+      bigDate.style.display = 'none';
+    }
   }
-  speech.style.display='block';
-  speechText.innerHTML=`<strong>${eventData.title||'Событие'}</strong><br>📅 ${eventData.date||'—'} • ⏰ ${eventData.time||'—'} • 📍 ${addr}<br>👗 ${eventData.dress||'—'} • 🧺 ${eventData.bring||'—'}<br>🎁 Пожелания: занято ${chosenCount} • свободно ${freeCount}${extra}<br>До начала: <span id="countdown">—</span>`;
-  if(role==='host'){
-    document.getElementById('speechActions').innerHTML=`<button class="pill secondary" id="toAdmin">Администрирование</button>`;
-    document.getElementById('toAdmin').onclick=()=>withTransition(()=>{ setScene('pond'); showSlide('admin'); renderPads(stepsCreate.length); frogJumpToPad(3,true); renderAdmin(); });
-  } else {
-    document.getElementById('speechActions').innerHTML='';
-  }
-  function tick(){ const out=document.getElementById('countdown'); if(!eventData.date||!eventData.time){ out.textContent='—'; return; }
-    const t=new Date(`${eventData.date}T${eventData.time}`)-new Date(); if(t<=0){ out.textContent='началось!'; return; }
-    const d=Math.floor(t/86400000),h=Math.floor((t%86400000)/3600000),m=Math.floor((t%3600000)/60000),s=Math.floor((t%60000)/1000);
-    out.textContent=`${d}д ${h}ч ${m}м ${s}с`; }
-  tick(); clearInterval(window._final_cd); window._final_cd=setInterval(tick,1000);
+  tick(); clearInterval(window._clock); window._clock = setInterval(tick, 1000);
+
+document.getElementById('btnCopyInvite').onclick = ()=> copyInvite(eventData);
+document.getElementById('btnToLobby').onclick = ()=> openDashboard({ code: eventData.code, role: role==='host'?'host':'guest' });
+}
+
+async function openDashboard({ code, role }){
+  setScene('pond'); // фон как в лобби
+  const box = document.getElementById('slides');
+  box.innerHTML = `
+    <section id="slide-dashboard">
+      <div class="bubble"><div class="bubble-head">Лобби</div>
+        <div class="btn-group">
+          <button class="btn" id="backToMenu">Вернуться в меню</button>
+          <button class="btn" id="copyInviteDash">Скопировать приглашение</button>
+        </div>
+      </div>
+      <div id="dashBody" class="grid"></div>
+    </section>`;
+  document.getElementById('backToMenu').onclick = ()=>{ location.href='/lobby.html'; };
+  document.getElementById('copyInviteDash').onclick = ()=> copyInvite(eventData);
+
+  const data = await api.getEvent(code);
+  if (!data.ok){ box.querySelector('#dashBody').innerHTML = `<div class="bubble">Код не найден</div>`; return; }
+
+  // синхронизируем локальное
+  eventData.code = code;
+  eventData.title = data.event.title; eventData.date=data.event.date; eventData.time=data.event.time;
+  eventData.address=data.event.address; eventData.dress=data.event.dress; eventData.bring=data.event.bring; eventData.notes=data.event.notes;
+  eventData.wishlist = data.wishlist.map(i=>({ id:i.id, title:i.title, url:i.url, claimedBy:i.claimed_by||'' }));
+  save();
+
+  const yes = (data.guests||[]).filter(g=>g.rsvp==='yes').map(g=>g.name);
+  const no  = (data.guests||[]).filter(g=>g.rsvp==='no').map(g=>g.name);
+  const maybe = (data.guests||[]).filter(g=>g.rsvp==='maybe').map(g=>g.name);
+
+  document.getElementById('dashBody').innerHTML = `
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
+      <div class="bubble"><div class="bubble-head">Событие</div>
+        <div><strong>${data.event.title}</strong></div>
+        <div>Код: <code>${data.event.code}</code></div>
+        <div>Дата: ${data.event.date} • ${data.event.time}</div>
+        <div>Адрес: ${data.event.address||'—'}</div>
+      </div>
+      <div class="bubble"><div class="bubble-head">Статистика</div>
+        <div class="stats">
+          <div class="stat"><div class="num">${yes.length}</div><div>Идут</div></div>
+          <div class="stat"><div class="num">${maybe.length}</div><div>Возможно</div></div>
+          <div class="stat"><div class="num">${no.length}</div><div>Не идут</div></div>
+        </div>
+      </div>
+      <div class="bubble"><div class="bubble-head">Иду</div><ul class="list">${yes.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul></div>
+      <div class="bubble"><div class="bubble-head">Не иду</div><ul class="list">${no.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul></div>
+      <div class="bubble" style="grid-column:1 / -1">
+        <div class="bubble-head">Вишлист</div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+          ${eventData.wishlist.map(i=>{
+            const tag = i.claimedBy ? `<span class=\"pill-mini takenTag\">Занято: ${i.claimedBy}</span>` : `<span class=\"pill-mini\" style=\"background:#d8ffdb;color:#0b3b22\">Свободно</span>`;
+            const link = i.url ? ` • <a href=\"${i.url}\" target=\"_blank\" rel=\"noopener\">ссылка</a>` : '';
+            return `<div class=\"giftcard\"><div><strong>${i.title||'Подарок'}</strong><span class=\"meta\">${link}</span></div><div>${tag}</div></div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
 }
 
 /* start */
