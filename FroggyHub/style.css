@@ -508,6 +508,7 @@ body.scene-intro .speech{display:block}
 .fh-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; }
 .fh-logo { font-weight:800; text-decoration:none; }
 .fh-nav a, .fh-nav button { margin-left:12px; }
+.topbar a, .topbar button { margin-left:12px; }
 
 /* фон меню без кувшинок */
 .bg-frog {

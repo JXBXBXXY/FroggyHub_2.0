@@ -7,14 +7,14 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body data-page="lobby">
-  <header class="fh-header">
-    <a class="fh-logo" href="/">FroggyHub</a>
-    <nav class="fh-nav">
-      <a href="/index.html">Меню</a>
-      <a href="/profile.html">Профиль</a>
-      <button class="btn btn--ghost" onclick="localStorage.removeItem('FH_JWT');location.href='/'">Выйти</button>
-    </nav>
-  </header>
+    <header class="fh-header">
+      <a class="fh-logo" href="/">FroggyHub</a>
+      <nav class="topbar">
+        <a href="/" class="btn btn--ghost btn--sm">Меню</a>
+        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
+        <button id="logoutBtn" class="btn btn--ghost btn--sm">Выйти</button>
+      </nav>
+    </header>
 
   <main class="lobby-grid">
     <!-- Левая колонка: лягушка + счётчик -->
