@@ -1,9 +1,10 @@
 const LS_NICK = 'fh:nickname';
 const $ = (s, r=document)=>r.querySelector(s);
 
-function setToken(t){ localStorage.setItem('FH_JWT', t); }
-function getToken(){ return localStorage.getItem('FH_JWT'); }
-function clearToken(){ localStorage.removeItem('FH_JWT'); }
+const TOKEN_KEY = 'FH_JWT';
+const setToken = t => localStorage.setItem(TOKEN_KEY, t);
+const getToken = () => localStorage.getItem(TOKEN_KEY);
+const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
 function toast(msg, type='info'){
   console[type==='error'?'error':'log']('[toast]', msg);
@@ -1677,7 +1678,8 @@ if (joinBtn2){
   }));
 }
 
-$('#login-btn')?.addEventListener('click', withBusy($('#login-btn'), async ()=>{
+$('#loginForm')?.addEventListener('submit', withBusy($('#login-btn'), async (e)=>{
+  e.preventDefault();
   const nickname = $('#login-nickname')?.value?.trim();
   const password = $('#login-password')?.value||'';
   if(!nickname || !password){ toast('Введите ник и пароль', 'error'); return; }
@@ -1685,26 +1687,22 @@ $('#login-btn')?.addEventListener('click', withBusy($('#login-btn'), async ()=>{
     const { token } = await callFn('local-login', { nickname, password });
     if(token){ setToken(token); }
     setNickname(nickname);
-    console.debug('auth:login:ok');
     window.location.href = '/profile.html';
-  }
-  catch(e){ toast(e.message||'Не удалось войти','error'); }
+  }catch(e){ toast(e.message||'Не удалось войти','error'); }
 }));
 
-$('#signup-btn')?.addEventListener('click', withBusy($('#signup-btn'), async ()=>{
+$('#signupForm')?.addEventListener('submit', withBusy($('#signup-btn'), async (e)=>{
+  e.preventDefault();
   const nickname = $('#signup-nickname')?.value?.trim();
   const p1 = $('#signup-password')?.value||'', p2 = $('#signup-password2')?.value||'';
   if(!nickname || !p1 || p1!==p2){ toast('Проверьте ник и пароли', 'error'); return; }
   try{
     await callFn('local-signup', { nickname, password:p1 });
-    toast('Регистрация успешна');
     const { token } = await callFn('local-login', { nickname, password:p1 });
     if(token){ setToken(token); }
     setNickname(nickname);
-    console.debug('auth:signup+auto:ok');
     window.location.href = '/profile.html';
-  }
-  catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
+  }catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
 }));
 
 $('#logout-btn')?.addEventListener('click', withBusy($('#logout-btn'), async ()=>{
@@ -1726,24 +1724,25 @@ async function loadProfile(){
       return;
     }
     const data = await res.json().catch(()=> ({}));
-    if(data?.profile?.nickname){ setNickname(data.profile.nickname); }
+    const profile = data?.profile||{};
+    if(profile.nickname){ setNickname(profile.nickname); }
+    const n = $('#profile-nickname');
+    if(n) n.textContent = profile.nickname || '';
+    const d = $('#profile-created');
+    if(d && profile.created_at){
+      try{ d.textContent = new Date(profile.created_at).toLocaleString('ru-RU'); }catch{}
+    }
     console.debug('auth:profile:load ok');
   }catch(e){ console.warn('profile load failed', e); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const token = getToken();
-  const onProfile = /\/profile\.html$/.test(location.pathname);
-  if(token){
-    if(onProfile){
-      loadProfile();
-    }else{
-      window.location.href = '/profile.html';
-    }
-  }else{
-    if(onProfile){
+  if(/\/profile\.html$/.test(location.pathname)){
+    if(!getToken()){
       window.location.href = '/';
+      return;
     }
+    loadProfile();
   }
 });
 
