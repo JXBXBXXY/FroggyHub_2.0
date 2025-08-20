@@ -1,14 +1,14 @@
 const { getServiceClient } = require('./_supabase');
 
 exports.handler = async () => {
+  const urlDefined = !!process.env.SUPABASE_URL;
+  const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  let tableExists = null;
+  let count = null;
+  let supabaseError = null;
+
   try {
-    const urlDefined = !!process.env.SUPABASE_URL;
-    const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    let tableExists = null;
-    let count = null;
-    let supabaseError = null;
-
     if (urlDefined && hasServiceRole) {
       const sb = getServiceClient();
       const { count: c, error } = await sb
@@ -23,17 +23,15 @@ exports.handler = async () => {
         count = c ?? 0;
       }
     }
-
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, urlDefined, hasServiceRole, tableExists, count, supabaseError }),
-    };
   } catch (e) {
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: false, error: e.message }),
-    };
+    supabaseError = e.code || e.message || String(e);
   }
+
+  const ok = urlDefined && hasServiceRole && !supabaseError;
+
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ok, urlDefined, hasServiceRole, tableExists, count, supabaseError }),
+  };
 };
