@@ -1,9 +1,7 @@
 // netlify/functions/local-signup.js
 const { getServiceClient } = require('./_supabase');
 const bcrypt = require('bcryptjs');
-
-const ok = (b, s=200)=>({ statusCode:s, headers:{'Content-Type':'application/json'}, body:JSON.stringify(b) });
-const err = (m, s=400)=> ok({ success:false, error:m }, s);
+const { ok, err } = require('./_auth');
 
 exports.handler = async (event) => {
   try {
@@ -17,8 +15,15 @@ exports.handler = async (event) => {
       .insert({ nickname, password_hash }) // email не указываем
       .select('id, nickname, email, created_at')
       .single();
-    if (error) return err(status === 409 || error.code === '23505' ? 'Nickname already exists' : (error.message || 'signup failed'), status || 500);
-    return ok({ success:true, user: data }, 201);
+    if (error) {
+      return err(
+        status === 409 || error.code === '23505'
+          ? 'Nickname already exists'
+          : (error.message || 'signup failed'),
+        status || 500
+      );
+    }
+    return ok({ success: true, user: data }, 201);
   } catch (e) {
     return err(e.message || 'signup failed', 500);
   }
