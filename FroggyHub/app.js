@@ -1685,6 +1685,10 @@ if (joinBtn2){
   }));
 }
 
+function goMenu(){
+  window.location.href = '/';
+}
+
 $('#loginForm')?.addEventListener('submit', withBusy($('#login-btn'), async (e)=>{
   e.preventDefault();
   const nickname = $('#login-nickname')?.value?.trim();
@@ -1694,7 +1698,7 @@ $('#loginForm')?.addEventListener('submit', withBusy($('#login-btn'), async (e)=
     const { token } = await callFn('local-login', { nickname, password });
     if(token){ setToken(token); }
     setNickname(nickname);
-    window.location.href = '/lobby.html';
+    goMenu();
   }catch(e){ toast(e.message||'Не удалось войти','error'); }
 }));
 
@@ -1708,17 +1712,20 @@ $('#signupForm')?.addEventListener('submit', withBusy($('#signup-btn'), async (e
     const { token } = await callFn('local-login', { nickname, password:p1 });
     if(token){ setToken(token); }
     setNickname(nickname);
-    window.location.href = '/lobby.html';
+    goMenu();
   }catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
 }));
 
-$('#logout-btn')?.addEventListener('click', withBusy($('#logout-btn'), async ()=>{
-  try{ await callFn('local-logout', {});}catch(e){ console.warn(e); }
-  clearToken();
-  setNickname('');
-  toast('Вы вышли');
-  window.location.href = '/';
-}));
+['logout-btn','logoutBtn'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('click', withBusy(el, async ()=>{
+    try{ await callFn('local-logout', {});}catch(e){ console.warn(e); }
+    clearToken();
+    setNickname('');
+    toast('Вы вышли');
+    goMenu();
+  }));
+});
 
 async function loadProfile(){
   try{
@@ -1858,7 +1865,6 @@ if(DEBUG_AUTH){
 
 // ==== API helpers (не трогаем существующие экспорты, просто добавляем) ====
 const FH_TOKEN_KEY = 'FH_JWT';
-const FH_EVENT_CODE = 'FH_EVENT_CODE';
 const API_BASE = '/.netlify/functions';
 
 async function apiGet(path) {
@@ -1895,9 +1901,8 @@ async function handleCreateEvent(formEl) {
   payload.wishlist = wishlist;
 
   const data = await apiPost('/events-create', payload, true);
-  localStorage.setItem(FH_EVENT_CODE, data.code);
-  // сразу в лобби
-  window.location.href = '/lobby.html';
+  // сразу в лобби с id
+  window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.eventId)}`;
 }
 
 // ==== Присоединение гостя по коду ====
@@ -1906,9 +1911,8 @@ async function handleJoinEvent(formEl) {
   const code = String(fd.get('code') || '').trim().toUpperCase();
   const name = String(fd.get('name') || fd.get('guest_name') || '').trim();
   if (!code || !name) throw new Error('Заполните код и имя');
-  await apiPost('/events-join', { code, name });
-  localStorage.setItem(FH_EVENT_CODE, code);
-  window.location.href = '/lobby.html';
+  const data = await apiPost('/events-join', { code, name });
+  window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.eventId)}`;
 }
 
 // ==== Привязки к формам (если есть на странице) ====
@@ -1926,9 +1930,29 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (document.body.dataset.page === 'lobby') {
-    const id = new URLSearchParams(location.search).get('id');
-    if (id) goLobby(id);
+    const qp = new URLSearchParams(location.search);
+    const code = qp.get('code');
+    const eventId = qp.get('eventId') || qp.get('id');
+    if (!code && !eventId) {
+      location.replace('/');
+      throw new Error('No event code');
+    }
+    if (code) goLobbyByCode(code); else if (eventId) goLobby(eventId);
   }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('button').forEach(b => {
+    if (!b.classList.contains('btn')) {
+      b.classList.add('btn', 'btn--primary');
+    }
+  });
+
+  document.querySelectorAll("a[data-btn], a.button, a.btn, a[href^='#btn']").forEach(a => {
+    if (!a.classList.contains('btn')) {
+      a.classList.add('btn', 'btn--ghost');
+    }
+  });
 });
 
 // Делегированный обработчик удаления события
@@ -2004,6 +2028,21 @@ function goLobby(eventId){
   loadLobby(eventId);
 }
 
+function goLobbyByCode(code){
+  renderLobbySkeleton();
+  loadLobbyByCode(code);
+}
+
+async function loadLobbyByCode(code){
+  try{
+    const { event } = await apiGet(`/events-get?code=${encodeURIComponent(code)}`);
+    if(!event){ showToast('Событие не найдено'); return; }
+    const ev = { ...event, dress_code: event.dress };
+    renderLobbyContent(ev);
+    startCountdown(ev.date, ev.time);
+  }catch(e){ showToast(e.message||'Событие не найдено'); }
+}
+
 async function loadLobby(eventId){
   const sb = await ensureSupabase();
   const { data: ev, error } = await sb
@@ -2056,11 +2095,11 @@ function renderLobbyContent(ev){
 
     <section class="final-actions">
       <div class="rsvp">
-        <button class="btn btn-primary" data-rsvp="yes">Иду</button>
-        <button class="btn" data-rsvp="maybe">Возможно</button>
-        <button class="btn" data-rsvp="no">Не иду</button>
+        <button class="btn btn--primary" data-rsvp="yes">Иду</button>
+        <button class="btn btn--ghost" data-rsvp="maybe">Возможно</button>
+        <button class="btn btn--danger" data-rsvp="no">Не иду</button>
       </div>
-      <button class="btn btn-ghost" id="copy-invite">Скопировать приглашение</button>
+      <button class="btn btn--ghost btn--sm" id="copy-invite">Скопировать приглашение</button>
     </section>
 
     <section class="final-stats">
