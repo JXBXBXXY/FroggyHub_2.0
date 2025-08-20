@@ -1,6 +1,6 @@
 // netlify/functions/local-login.js
-const bcrypt = require('bcryptjs');
 const { getServiceClient } = require('./_supabase');
+const bcrypt = require('bcryptjs');
 const { ok, err, signToken } = require('./_auth');
 
 exports.handler = async (event) => {

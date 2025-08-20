@@ -1,6 +1,6 @@
 // netlify/functions/local-signup.js
-const bcrypt = require('bcryptjs');
 const { getServiceClient } = require('./_supabase');
+const bcrypt = require('bcryptjs');
 
 const ok = (b, s=200)=>({ statusCode:s, headers:{'Content-Type':'application/json'}, body:JSON.stringify(b) });
 const err = (m, s=400)=> ok({ success:false, error:m }, s);
