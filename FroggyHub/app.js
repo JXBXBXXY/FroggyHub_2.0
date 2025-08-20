@@ -1685,36 +1685,74 @@ if (joinBtn2){
   }));
 }
 
-function goMenu(){
-  window.location.href = '/';
+function safeRedirect(url){
+  try { window.location.assign(url); }
+  catch { window.location.href = url; }
 }
 
-$('#loginForm')?.addEventListener('submit', withBusy($('#login-btn'), async (e)=>{
-  e.preventDefault();
-  const nickname = $('#login-nickname')?.value?.trim();
-  const password = $('#login-password')?.value||'';
-  if(!nickname || !password){ toast('Введите ник и пароль', 'error'); return; }
-  try{
-    const { token } = await callFn('local-login', { nickname, password });
-    if(token){ setToken(token); }
-    setNickname(nickname);
-    goMenu();
-  }catch(e){ toast(e.message||'Не удалось войти','error'); }
-}));
+async function login(nickname, password){
+  const { token } = await callFn('local-login', { nickname, password });
+  if(token){ setToken(token); }
+  setNickname(nickname);
+  return { token };
+}
 
-$('#signupForm')?.addEventListener('submit', withBusy($('#signup-btn'), async (e)=>{
-  e.preventDefault();
-  const nickname = $('#signup-nickname')?.value?.trim();
-  const p1 = $('#signup-password')?.value||'', p2 = $('#signup-password2')?.value||'';
-  if(!nickname || !p1 || p1!==p2){ toast('Проверьте ник и пароли', 'error'); return; }
-  try{
-    await callFn('local-signup', { nickname, password:p1 });
-    const { token } = await callFn('local-login', { nickname, password:p1 });
-    if(token){ setToken(token); }
-    setNickname(nickname);
-    goMenu();
-  }catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
-}));
+async function signup(nickname, password){
+  await callFn('local-signup', { nickname, password });
+  const { token } = await callFn('local-login', { nickname, password });
+  if(token){ setToken(token); }
+  setNickname(nickname);
+  return { token };
+}
+
+async function handleLoginSubmit(e){
+  e.preventDefault(); e.stopPropagation();
+  const form = e.currentTarget;
+  const nickname = form.querySelector('input[name="nickname"], [data-field="nickname"]')?.value?.trim();
+  const password = form.querySelector('input[name="password"], [data-field="password"]')?.value ?? '';
+  if(!nickname || !password) return;
+  try {
+    const res = await login(nickname, password);
+    if(res?.token || res?.success){
+      safeRedirect('/');
+    }
+  } catch (err) {
+    // опционально: показать сообщение
+  }
+}
+
+async function handleSignupSubmit(e){
+  e.preventDefault(); e.stopPropagation();
+  const form = e.currentTarget;
+  const nickname = form.querySelector('input[name="nickname"], [data-field="nickname"]')?.value?.trim();
+  const password = form.querySelector('input[name="password"], [data-field="password"]')?.value ?? '';
+  const password2 = form.querySelector('input[name="password2"], [data-field="password2"]')?.value ?? '';
+  if(!nickname || !password || (password2 && password!==password2)) return;
+  try {
+    await signup(nickname, password);
+    safeRedirect('/');
+  } catch (err) {
+    // опционально: показать сообщение
+  }
+}
+
+function bindAuthForms(){
+  const loginForm  = document.querySelector('form#loginForm, form[data-auth="login"]');
+  const signupForm = document.querySelector('form#signupForm, form[data-auth="signup"]');
+
+  if(loginForm){
+    loginForm.addEventListener('submit', handleLoginSubmit, { once:false });
+    const btn = loginForm.querySelector('button:not([type]), button[type="button"]');
+    if(btn) btn.type = 'submit';
+  }
+  if(signupForm){
+    signupForm.addEventListener('submit', handleSignupSubmit, { once:false });
+    const btn = signupForm.querySelector('button:not([type]), button[type="button"]');
+    if(btn) btn.type = 'submit';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bindAuthForms);
 
 ['logout-btn','logoutBtn'].forEach(id=>{
   const el = document.getElementById(id);
@@ -1723,7 +1761,7 @@ $('#signupForm')?.addEventListener('submit', withBusy($('#signup-btn'), async (e
     clearToken();
     setNickname('');
     toast('Вы вышли');
-    goMenu();
+    safeRedirect('/');
   }));
 });
 
