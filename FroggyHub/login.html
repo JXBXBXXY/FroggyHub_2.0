@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Вход</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container" role="main">
+    <div class="card" style="max-width:480px;margin:40px auto">
+      <h1>Вход</h1>
+      <form id="login-form" class="grid" novalidate>
+        <label>Никнейм
+          <input id="login-nick" type="text" autocomplete="username" required />
+        </label>
+        <label>Пароль
+          <input id="login-pass" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn--primary" type="submit">Войти</button>
+      </form>
+    </div>
+  </div>
+  <script src="/login.js" defer></script>
+</body>
+</html>
