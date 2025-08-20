@@ -359,3 +359,85 @@ body.scene-intro .speech{display:block}
   box-shadow:none;
   cursor:default;
 }
+
+/* Lobby layout */
+.lobby-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(420px, 700px);
+  gap: 24px;
+  padding: 24px;
+  align-items: start;
+}
+
+.lobby-left {
+  position: relative;
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frog-hero {
+  width: 100%;
+  min-height: 360px;
+  background: url('/img/frog-stump.svg') center/contain no-repeat;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,.25));
+}
+
+.countdown {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.countdown-big {
+  font-size: clamp(40px, 8vw, 72px);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.countdown-small {
+  margin-top: 6px;
+  opacity: .85;
+}
+
+.lobby-right.card {
+  background: rgba(255,255,255,.06);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+}
+
+.event-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.guests-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.list { margin: 8px 0; padding-left: 18px; }
+.list li { margin: 3px 0; }
+
+.btn {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #2ea44f;
+  color: #fff;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+
+.fh-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; }
+.fh-logo { font-weight:800; text-decoration:none; }
+.fh-nav a, .fh-nav button { margin-left:12px; }

@@ -1,44 +1,60 @@
-// ESM
-import jwt from 'jsonwebtoken';
+// netlify/functions/events-create.js
 import { getServiceClient } from './_supabase.js';
+import { cors, ok, err, requireAuth } from './_auth.js';
 
-const getUserId = (event) => {
-  const h = event.headers?.authorization || '';
-  const t = h.startsWith('Bearer ') ? h.slice(7) : null;
-  if (!t) return null;
-  try { return jwt.verify(t, process.env.JWT_SECRET).sub; } catch { return null; }
-};
+export async function handler(event) {
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors() };
+  if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
 
-const genCode = () => (Math.floor(100000 + Math.random()*900000)).toString();
-
-export const handler = async (event) => {
-  if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
-  const uid = getUserId(event);
-  if (!uid) return { statusCode: 401, body: 'Unauthorized' };
-
-  const sb = getServiceClient();
-  const { title, date, time, address, dress, bring, notes, wishlist = [] } = JSON.parse(event.body || '{}');
+  const auth = await requireAuth(event);
+  if (!auth || !auth.user?.sub) return err('Unauthorized', 401);
 
   try {
-    // уникальный код
-    let code; for (let i=0;i<7;i++){ code = genCode();
-      const { data:ex } = await sb.from('events').select('id').eq('code', code).maybeSingle();
-      if (!ex) break; code=null;
+    const payload = JSON.parse(event.body || '{}');
+    const { title, date, time, address, dress, bring, notes, wishlist = [] } = payload;
+    if (!title || !date || !time) return err('Missing required fields', 400);
+
+    const sb = getServiceClient();
+
+    // сгенерировать уникальный 6-символьный код
+    let code;
+    for (let i = 0; i < 6; i++) {
+      code = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const { data: exists } = await sb.from('events').select('id').eq('code', code).maybeSingle();
+      if (!exists) break;
     }
-    if (!code) throw new Error('Failed to generate code');
 
-    const { data: ev, error } = await sb.from('events')
-      .insert({ code, host_user_id: uid, title, date, time, address, dress, bring, notes })
-      .select('id, code').single();
-    if (error) throw error;
+    // создать событие
+    const { data: evt, error: e1 } = await sb
+      .from('events')
+      .insert({
+        code,
+        host_user_id: auth.user.sub,
+        title,
+        date,
+        time,
+        address: address || null,
+        dress: dress || null,
+        bring: bring || null,
+        notes: notes || null
+      })
+      .select('id, code, title, date, time, address, dress, bring, notes, host_user_id, created_at')
+      .single();
+    if (e1) throw e1;
 
+    // вишлист (bulk insert, если есть)
     if (Array.isArray(wishlist) && wishlist.length) {
-      const rows = wishlist.map(i => ({ event_id: ev.id, title: i.title || '', url: i.url || '' }));
-      await sb.from('wishlist_items').insert(rows);
+      const rows = wishlist.map(w => ({
+        event_id: evt.id,
+        title: w?.title || null,
+        url: w?.url || null
+      }));
+      const { error: e2 } = await sb.from('wishlist_items').insert(rows);
+      if (e2) throw e2;
     }
 
-    return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok:true, code: ev.code, eventId: ev.id }) };
+    return ok({ ok: true, code: evt.code, eventId: evt.id, event: evt }, 201);
   } catch (e) {
-    return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok:false, error: e.message }) };
+    return err(e.message || 'Failed to create event', 500);
   }
-};
+}

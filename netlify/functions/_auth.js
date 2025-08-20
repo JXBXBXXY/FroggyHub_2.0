@@ -42,19 +42,33 @@ export function getBearerToken(event) {
 }
 
 // Обёртка для защищённых хендлеров
-export function requireAuth(handler) {
-  return async (event, context) => {
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
-    try {
-      const token = getBearerToken(event);
-      if (!token) return err('Unauthorized', 401);
-      const claims = verifyToken(token);
-      // прокинем user в context
-      context.user = claims;
-      return handler(event, context);
-    } catch (e) {
-      return err('Unauthorized', 401);
-    }
-  };
+export function requireAuth(arg) {
+  // Если передали обработчик, вернём враппер (старый синтаксис)
+  if (typeof arg === 'function') {
+    const handler = arg;
+    return async (event, context = {}) => {
+      if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
+      try {
+        const token = getBearerToken(event);
+        if (!token) return err('Unauthorized', 401);
+        const claims = verifyToken(token);
+        context.user = claims;
+        return handler(event, context);
+      } catch (e) {
+        return err('Unauthorized', 401);
+      }
+    };
+  }
+
+  // Иначе считаем, что передали событие и просто вернём распарсенный токен
+  const event = arg;
+  try {
+    const token = getBearerToken(event);
+    if (!token) return null;
+    const claims = verifyToken(token);
+    return { user: claims };
+  } catch {
+    return null;
+  }
 }
 
