@@ -1,6 +1,6 @@
 import { getClient } from '../../utils/db.js';
 
-export async function handler() {
+export async function handler(event, context) {
   try {
     const client = await getClient();
     const res = await client.query("SELECT NOW()");

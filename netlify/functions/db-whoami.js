@@ -8,7 +8,7 @@ function json(body, status = 200) {
   });
 }
 
-export default async function handler() {
+export async function handler(event, context) {
   const url = process.env.DATABASE_URL;
   if (!url) return json({ ok: false, error: 'DATABASE_URL is not set' }, 500);
 

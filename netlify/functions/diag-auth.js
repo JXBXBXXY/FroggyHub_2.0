@@ -1,6 +1,6 @@
-const { getServiceClient } = require('./_supabase');
+import { getServiceClient } from './_supabase.js';
 
-exports.handler = async () => {
+export async function handler(event, context) {
   const urlDefined = !!process.env.SUPABASE_URL;
   const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -34,4 +34,4 @@ exports.handler = async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok, urlDefined, hasServiceRole, tableExists, count, supabaseError }),
   };
-};
+}

@@ -1,9 +1,9 @@
 // netlify/functions/local-login.js
-const { getServiceClient } = require('./_supabase');
-const bcrypt = require('bcryptjs');
-const { ok, err, signToken } = require('./_auth');
+import { getServiceClient } from './_supabase.js';
+import bcrypt from 'bcryptjs';
+import { ok, err, signToken } from './_auth.js';
 
-exports.handler = async (event) => {
+export async function handler(event, context) {
   try {
     const { nickname, password } = JSON.parse(event.body || '{}');
     if (!nickname || !password) return err('nickname and password required', 400);
@@ -22,4 +22,4 @@ exports.handler = async (event) => {
   } catch (e) {
     return err(e.message || 'login failed', 500);
   }
-};
+}
