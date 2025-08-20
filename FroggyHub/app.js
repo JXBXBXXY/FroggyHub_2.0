@@ -1839,3 +1839,176 @@ uiSmoke();
 if(DEBUG_AUTH){
   dbgAuth('sb_mode', sessionStorage.getItem('sb_mode') || 'direct');
 }
+
+// ==== API helpers (не трогаем существующие экспорты, просто добавляем) ====
+const FH_TOKEN_KEY = 'FH_JWT';
+const FH_EVENT_CODE = 'FH_EVENT_CODE';
+const API_BASE = '/.netlify/functions';
+
+async function apiGet(path) {
+  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+  const data = await res.json();
+  if (!res.ok || data?.error) throw new Error(data?.error || res.statusText);
+  return data;
+}
+
+async function apiPost(path, body, useAuth = false) {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = localStorage.getItem(FH_TOKEN_KEY);
+  if (useAuth && token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok || data?.error) throw new Error(data?.error || res.statusText);
+  return data;
+}
+
+// ==== Создание события (owner) ====
+async function handleCreateEvent(formEl) {
+  const fd = new FormData(formEl);
+  const payload = {
+    title: fd.get('title') || fd.get('party_name') || 'Моё событие',
+    date: fd.get('date') || fd.get('party_date'),
+    time: fd.get('time') || fd.get('party_time'),
+    address: fd.get('address') || fd.get('party_address') || '',
+    dress: fd.get('dress') || '',
+    bring: fd.get('bring') || '',
+    notes: fd.get('notes') || ''
+  };
+  const wishlist = [];
+  (fd.getAll('wishlist[]') || []).forEach(t => wishlist.push({ title: t }));
+  payload.wishlist = wishlist;
+
+  const data = await apiPost('/events-create', payload, true);
+  localStorage.setItem(FH_EVENT_CODE, data.code);
+  // сразу в лобби
+  window.location.href = '/lobby.html';
+}
+
+// ==== Присоединение гостя по коду ====
+async function handleJoinEvent(formEl) {
+  const fd = new FormData(formEl);
+  const code = String(fd.get('code') || '').trim().toUpperCase();
+  const name = String(fd.get('name') || fd.get('guest_name') || '').trim();
+  if (!code || !name) throw new Error('Заполните код и имя');
+  await apiPost('/events-join', { code, name });
+  localStorage.setItem(FH_EVENT_CODE, code);
+  window.location.href = '/lobby.html';
+}
+
+// ==== Рендер лобби ====
+async function loadLobby() {
+  const url = new URL(window.location.href);
+  const code = (url.searchParams.get('code') || localStorage.getItem(FH_EVENT_CODE) || '').toUpperCase();
+  if (!code) { window.location.href = '/'; return; }
+
+  const { event, wishlist, guests } = await apiGet(`/events-get?code=${encodeURIComponent(code)}`);
+
+  // правый блок деталей
+  const right = document.querySelector('#lobby-right');
+  if (right) {
+    right.querySelector('[data-title]').textContent = event.title;
+    right.querySelector('[data-address]').textContent = event.address || '—';
+    right.querySelector('[data-dress]').textContent = event.dress || '—';
+    right.querySelector('[data-bring]').textContent = event.bring || '—';
+    right.querySelector('[data-notes]').textContent = event.notes || '—';
+    right.querySelector('[data-code]').textContent = code;
+
+    const wl = right.querySelector('[data-wishlist]');
+    if (wl) {
+      wl.innerHTML = '';
+      wishlist.forEach(w => {
+        const li = document.createElement('li');
+        li.textContent = w.title || (w.url || 'Пожелание');
+        wl.appendChild(li);
+      });
+      if (wishlist.length === 0) wl.innerHTML = '<li>Список пожеланий пока пуст</li>';
+    }
+
+    // списки гостей
+    const fillList = (sel, arr) => {
+      const ul = right.querySelector(sel);
+      if (ul) {
+        ul.innerHTML = '';
+        (arr || []).forEach(n => {
+          const li = document.createElement('li');
+          li.textContent = n;
+          ul.appendChild(li);
+        });
+        if (!arr || arr.length === 0) ul.innerHTML = '<li>—</li>';
+      }
+    };
+    fillList('[data-guest-yes]', guests.yes);
+    fillList('[data-guest-no]', guests.no);
+    fillList('[data-guest-maybe]', guests.maybe);
+
+    // копирование приглашения
+    const copyBtn = right.querySelector('#copyInviteBtn');
+    if (copyBtn) {
+      copyBtn.onclick = async () => {
+        const invite =
+`Привет! Приглашаю тебя на «${event.title}».
+Когда: ${event.date} ${event.time}
+Где: ${event.address || 'место уточняется'}
+Дресс-код: ${event.dress || 'на твоё усмотрение'}
+
+Чтобы присоединиться, введи код: ${code}
+Или перейди по ссылке: ${location.origin}/?join=${code}`;
+        await navigator.clipboard.writeText(invite);
+        copyBtn.textContent = 'Скопировано!';
+        setTimeout(()=> copyBtn.textContent = 'Скопировать приглашение', 2000);
+      };
+    }
+  }
+
+  // левый блок: счётчик
+  const left = document.querySelector('#lobby-left');
+  if (left) {
+    const big = left.querySelector('[data-countdown-big]');
+    const small = left.querySelector('[data-countdown-small]');
+    const target = new Date(`${event.date}T${(event.time || '00:00')}:00`);
+    const tick = () => {
+      const now = new Date();
+      let diff = target.getTime() - now.getTime();
+      if (diff < 0) diff = 0;
+      const totalMin = Math.floor(diff / 60000);
+      const hours = Math.floor(totalMin / 60);
+      const minutes = totalMin % 60;
+      if (big) big.textContent = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
+
+      const days = Math.floor(diff / 86400000);
+      if (small) {
+        if (days >= 1) {
+          // показываем дату (день и месяц)
+          const d = target.getDate();
+          const m = target.toLocaleString('ru-RU', { month: 'long' });
+          small.textContent = `${d} ${m}`;
+          small.style.display = '';
+        } else {
+          small.style.display = 'none';
+        }
+      }
+    };
+    tick();
+    setInterval(tick, 30000);
+  }
+}
+
+// ==== Привязки к формам (если есть на странице) ====
+document.addEventListener('DOMContentLoaded', () => {
+  const createForm = document.querySelector('form[data-create-event]');
+  if (createForm) createForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await handleCreateEvent(createForm); } catch (err) { alert('Ошибка сохранения: ' + err.message); }
+  });
+
+  const joinForm = document.querySelector('form[data-join-event]');
+  if (joinForm) joinForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await handleJoinEvent(joinForm); } catch (err) { alert('Ошибка: ' + err.message); }
+  });
+
+  if (document.body.dataset.page === 'lobby') {
+    loadLobby().catch(err => alert('Ошибка загрузки: ' + err.message));
+  }
+});
+
