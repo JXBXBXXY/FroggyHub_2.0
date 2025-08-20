@@ -1,23 +1,71 @@
-// src/api.ts (добавить хелперы использования токена)
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+
+const TOKEN_KEY = 'FH_JWT';
+
+// migrate old token
+const legacyToken = localStorage.getItem('token');
+if (legacyToken) {
+  localStorage.setItem(TOKEN_KEY, legacyToken);
+  localStorage.removeItem('token');
+}
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/.netlify/functions'
+  baseURL: '/.netlify/functions'
 });
 
-export function setToken(t: string) { localStorage.setItem('FH_JWT', t); }
-export function getToken() { return localStorage.getItem('FH_JWT'); }
-export function clearToken() { localStorage.removeItem('FH_JWT'); }
+export function setToken(t: string) {
+  localStorage.setItem(TOKEN_KEY, t);
+}
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
 
-export const login = async (nickname: string, password: string) => {
-  const { data } = await api.post('/local-login', { nickname, password });
-  if (data?.token) setToken(data.token);
-  return data;
-};
+interface LoginResponse { token: string; }
+interface Profile {
+  id: number;
+  nickname: string;
+  email?: string;
+  created_at?: string;
+}
+interface ProfileResponse { profile: Profile; }
 
-export const getProfile = async () => {
-  const { data } = await api.get('/profile', {
-    headers: { Authorization: 'Bearer ' + getToken() }
+export const login = async (
+  nickname: string,
+  password: string
+): Promise<LoginResponse> => {
+  const { data } = await api.post<LoginResponse>('/local-login', {
+    nickname,
+    password
   });
+  if (data.token) setToken(data.token);
   return data;
 };
+
+export const signup = async (
+  nickname: string,
+  password: string
+): Promise<LoginResponse> => {
+  await api.post('/local-signup', { nickname, password });
+  return login(nickname, password);
+};
+
+export const getProfile = async (): Promise<Profile> => {
+  try {
+    const { data } = await api.get<ProfileResponse>('/profile', {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    return data.profile;
+  } catch (e) {
+    const err = e as AxiosError;
+    if (err.response?.status === 401) {
+      clearToken();
+      window.location.href = '/';
+    }
+    throw e;
+  }
+};
+
+export default api;
