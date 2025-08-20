@@ -1687,7 +1687,7 @@ $('#loginForm')?.addEventListener('submit', withBusy($('#login-btn'), async (e)=
     const { token } = await callFn('local-login', { nickname, password });
     if(token){ setToken(token); }
     setNickname(nickname);
-    window.location.href = '/hub.html';
+    window.location.href = '/lobby.html';
   }catch(e){ toast(e.message||'Не удалось войти','error'); }
 }));
 
@@ -1701,7 +1701,7 @@ $('#signupForm')?.addEventListener('submit', withBusy($('#signup-btn'), async (e
     const { token } = await callFn('local-login', { nickname, password:p1 });
     if(token){ setToken(token); }
     setNickname(nickname);
-    window.location.href = '/hub.html';
+    window.location.href = '/lobby.html';
   }catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
 }));
 
