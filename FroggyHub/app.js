@@ -810,25 +810,30 @@ document.addEventListener('DOMContentLoaded', () => {
   renderUserBadge({ nickname: getNickname(), email });
 });
 
+const url = new URL(location.href);
+const isHome = url.pathname === '/' || url.pathname.endsWith('/index.html');
+
 ensureSupabase().then(async sb => {
   if(!sb) return;
   const { data:{ session } } = await sb.auth.getSession();
   currentUser = session?.user || null;
   toggleAuthButtons(!currentUser);
-  if(currentUser){
-    window.currentUserEmail = currentUser.email || '';
-    renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
-    show('#screen-lobby');
-    const pending = sessionStorage.getItem('pendingCreate');
-    if(pending){
-      Object.assign(eventData, JSON.parse(pending));
-      sessionStorage.removeItem('pendingCreate');
-      save();
-      startCreateFlow();
+  if(isHome){
+    if(currentUser){
+      window.currentUserEmail = currentUser.email || '';
+      renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
+      show('#screen-lobby');
+      const pending = sessionStorage.getItem('pendingCreate');
+      if(pending){
+        Object.assign(eventData, JSON.parse(pending));
+        sessionStorage.removeItem('pendingCreate');
+        save();
+        startCreateFlow();
+      }
+    } else {
+      show('#screen-auth');
+      setAuthState('login');
     }
-  } else {
-    show('#screen-auth');
-    setAuthState('login');
   }
   sb.auth.onAuthStateChange(async (event, session)=>{
     if(event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN'){
@@ -852,32 +857,36 @@ ensureSupabase().then(async sb => {
     currentUser = session?.user || null;
     toggleAuthButtons(!currentUser);
     if(event === 'PASSWORD_RECOVERY'){
-      setAuthState('reset');
-      resetEmailBlock.hidden = true;
-      resetPassBlock.hidden = false;
-      show('#screen-auth');
+      if(isHome){
+        setAuthState('reset');
+        resetEmailBlock.hidden = true;
+        resetPassBlock.hidden = false;
+        show('#screen-auth');
+      }
       return;
     }
     if(event === 'SIGNED_IN' && currentUser){
       window.currentUserEmail = currentUser.email || '';
       renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
-      show('#screen-lobby');
-      const pendingProfile = sessionStorage.getItem('pendingProfileName');
-      if(pendingProfile){
-        try{ await sb.from('profiles').upsert({ id: currentUser.id, nickname: pendingProfile }); }catch(e){ console.warn('profile upsert', e); }
-        sessionStorage.removeItem('pendingProfileName');
-      }
-      const hash = location.hash || '';
-      if(hash.includes('error=')){
-        const code = new URLSearchParams(hash.slice(1)).get('error');
-        sessionBanner.innerHTML = `Ошибка: ${code}. <button id="resendFromBanner" class="btn ghost">Переотправить письмо</button>`;
-        sessionBanner.hidden = false;
-        document.getElementById('resendFromBanner')?.addEventListener('click', async ()=>{
-          try{ await sb.auth.resend({ type:'signup', email: currentUser.email }); sessionBanner.textContent='Письмо отправлено'; }catch(_){ sessionBanner.textContent='Не удалось отправить'; }
-        });
-        sendAuthTelemetry('redirect_error_'+code);
-      } else {
-        sessionBanner.hidden = true;
+      if(isHome){
+        show('#screen-lobby');
+        const pendingProfile = sessionStorage.getItem('pendingProfileName');
+        if(pendingProfile){
+          try{ await sb.from('profiles').upsert({ id: currentUser.id, nickname: pendingProfile }); }catch(e){ console.warn('profile upsert', e); }
+          sessionStorage.removeItem('pendingProfileName');
+        }
+        const hash = location.hash || '';
+        if(hash.includes('error=')){
+          const code = new URLSearchParams(hash.slice(1)).get('error');
+          sessionBanner.innerHTML = `Ошибка: ${code}. <button id="resendFromBanner" class="btn ghost">Переотправить письмо</button>`;
+          sessionBanner.hidden = false;
+          document.getElementById('resendFromBanner')?.addEventListener('click', async ()=>{
+            try{ await sb.auth.resend({ type:'signup', email: currentUser.email }); sessionBanner.textContent='Письмо отправлено'; }catch(_){ sessionBanner.textContent='Не удалось отправить'; }
+          });
+          sendAuthTelemetry('redirect_error_'+code);
+        } else {
+          sessionBanner.hidden = true;
+        }
       }
       const temp = localStorage.getItem(COOKIE_TEMP_KEY);
       const uid = session?.user?.id;
@@ -1685,11 +1694,6 @@ if (joinBtn2){
   }));
 }
 
-function safeRedirect(url){
-  try { window.location.assign(url); }
-  catch { window.location.href = url; }
-}
-
 async function login(nickname, password){
   const { token } = await callFn('local-login', { nickname, password });
   if(token){ setToken(token); }
@@ -2271,5 +2275,72 @@ document.querySelectorAll('#copyInviteBtn').forEach(copyBtn => {
   ok?.addEventListener('click', close);
   no?.addEventListener('click', close);
 })();
+
+// ---------- Auth intercept (global, capture) ----------
+function safeRedirect(url) {
+  try { window.location.assign(url); } catch { window.location.href = url; }
+}
+
+// Пытаемся угадать тип формы, если нет data-auth
+function guessAuthFormKind(form) {
+  if (form.dataset.auth) return form.dataset.auth; // 'login' | 'signup'
+  if (form.id === 'loginForm'  || form.matches('.login-form'))  return 'login';
+  if (form.id === 'signupForm' || form.matches('.signup-form')) return 'signup';
+  const txt = (form.querySelector('button[type="submit"],button')?.textContent || '').toLowerCase();
+  if (txt.includes('войти') || txt.includes('login')) return 'login';
+  if (txt.includes('рег')   || txt.includes('sign'))  return 'signup';
+  return null;
+}
+
+async function handleAuthSubmit(e) {
+  const form = e.target;
+  if (!(form instanceof HTMLFormElement)) return;
+
+  // Обрабатываем только auth-формы
+  const kind = guessAuthFormKind(form);
+  if (!kind) return;
+
+  // Гасим нативный сабмит ДО того, как браузер перезагрузит страницу
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Подготавливаем данные
+  const nickname = form.querySelector('input[name="nickname"], #nickname, [data-field="nickname"]')?.value?.trim();
+  const password = form.querySelector('input[name="password"], #password, [data-field="password"]')?.value ?? '';
+  if (!nickname || !password) {
+    console.warn('Auth: пустые поля'); 
+    return;
+  }
+
+  try {
+    if (kind === 'login') {
+      // используй существующую функцию клиента
+      await login(nickname, password);
+    } else {
+      await signup(nickname, password); // твоя существующая signup уже логинит
+    }
+    // После успешной auth → в меню
+    safeRedirect('/');
+  } catch (err) {
+    console.error('Auth error', err);
+    // здесь можно показать тост/модалку, если в проекте есть хелпер
+  }
+}
+
+// Глобальный перехват всех submit'ов на фазе захвата
+function installAuthIntercept() {
+  // Уберём action у auth-форм, если он задан
+  document.querySelectorAll('form[data-auth], form.login-form, form.signup-form, #loginForm, #signupForm')
+    .forEach(f => { f.setAttribute('action', 'javascript:void(0)'); f.setAttribute('novalidate',''); });
+
+  window.addEventListener('submit', handleAuthSubmit, true); // capture=true
+}
+
+// Гарантируем установку перехватчика
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', installAuthIntercept);
+} else {
+  installAuthIntercept();
+}
 
 
