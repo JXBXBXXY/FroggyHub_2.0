@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Хаб</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="mini-profile" style="position:absolute;top:10px;right:10px;text-align:right;">
+    Ник: <span id="mp-nick"></span>, Создан: <span id="mp-created"></span>
+    <button id="hub-logout" class="btn small">Выйти</button>
+  </div>
+  <main class="container" role="main">
+    <div class="card" style="max-width:760px;margin:40px auto">
+      <h1>Хаб</h1>
+      <div class="grid">
+        <div class="card inner">
+          <a class="btn" href="/event-edit.html" data-action="create">Создать ивент</a>
+        </div>
+        <div class="card inner">
+          <h3>Войти в ивент</h3>
+          <div class="row2">
+            <input data-input="join-code" placeholder="Код или ссылка" />
+            <button class="btn" data-action="join">Войти</button>
+          </div>
+        </div>
+      </div>
+      <section>
+        <h2>Мои ивенты</h2>
+        <ul id="my-events"></ul>
+      </section>
+    </div>
+  </main>
+  <script>
+    window.SUPABASE_URL = "https://smamhlfzserjkdfhthwhdv.supabase.co";
+    window.PROXY_SUPABASE_URL = location.origin + '/supabase';
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4";
+  </script>
+  <script defer type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
+  <script defer src="app.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
+</body>
+</html>
