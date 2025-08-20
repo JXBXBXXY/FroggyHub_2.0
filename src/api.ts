@@ -7,14 +7,27 @@ const api = axios.create({
 
 export const login = async (nickname: string, password: string) => {
   const { data } = await api.post('/local-login', { nickname, password });
-  if (data?.token) localStorage.setItem('token', data.token);
+  if (data?.token) localStorage.setItem('FH_JWT', data.token);
   return data;
 };
 
+export const signup = async (nickname: string, password: string) => {
+  await api.post('/local-signup', { nickname, password });
+  return login(nickname, password);
+};
+
 export const getProfile = async () => {
-  const token = localStorage.getItem('token');
-  const { data } = await api.get('/profile', {
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
-  });
-  return data;
+  const token = localStorage.getItem('FH_JWT');
+  try {
+    const { data } = await api.get('/profile', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    return data;
+  } catch (e: any) {
+    if (e?.response?.status === 401) {
+      localStorage.removeItem('FH_JWT');
+      window.location.href = '/';
+    }
+    throw e;
+  }
 };
