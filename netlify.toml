@@ -5,6 +5,6 @@
   publish = "FroggyHub"
 
 [functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["pg","bcryptjs","jsonwebtoken"]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["@supabase/supabase-js","bcryptjs"]
