@@ -28,7 +28,7 @@
       </div>
 
       <section id="pane-login" class="pane" role="tabpanel" aria-labelledby="tab-login">
-        <form id="loginForm" data-auth="login" action="javascript:void(0)" class="grid">
+        <form id="loginForm" class="grid" novalidate>
           <label>Никнейм
             <input id="login-nickname" name="nickname" type="text" placeholder="Никнейм" required autocomplete="username">
           </label>
@@ -50,7 +50,7 @@
       </section>
 
       <section id="pane-register" class="pane is-hidden" role="tabpanel" aria-labelledby="tab-register">
-        <form id="signupForm" data-auth="signup" action="javascript:void(0)" class="grid">
+        <form id="signupForm" class="grid" novalidate>
           <label>Имя / Никнейм
             <input id="signup-nickname" name="nickname" required minlength="2" autocomplete="nickname">
           </label>
