@@ -1,9 +1,10 @@
 // netlify/functions/local-login.js
-const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
 const { cors, ok, err, signToken } = require('./_auth');
+const { getServiceClient } = require('./_supabase');
 
 exports.handler = async (event) => {
+  console.log('[auth] using supabase sdk');
   try {
     if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
     if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
@@ -14,24 +15,21 @@ exports.handler = async (event) => {
     const { nickname, password } = payload;
     if (!nickname || !password) return err('Missing nickname or password', 400);
 
-    const conn = process.env.DATABASE_URL;
-    if (!conn) return err('DATABASE_URL is not set', 500);
+    const sb = getServiceClient();
+    const { data: user, error } = await sb
+      .from('users_local')
+      .select('id, nickname, password_hash')
+      .eq('nickname', nickname)
+      .single();
 
-    const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
-    await client.connect();
+    if (error) {
+      if (error.code === 'PGRST116') return err('User not found', 401);
+      console.error('local-login select error:', error);
+      return err(error.message || 'Internal error', 500);
+    }
 
-    const { rows } = await client.query(
-      'SELECT id, nickname, password_hash FROM public.users_local WHERE nickname=$1 LIMIT 1',
-      [nickname]
-    );
-
-    if (!rows[0]) { await client.end(); return err('User not found', 401); }
-
-    const user = rows[0];
     const okPass = await bcrypt.compare(password, user.password_hash);
-    if (!okPass) { await client.end(); return err('Invalid password', 401); }
-
-    await client.end();
+    if (!okPass) return err('Invalid password', 401);
 
     // JWT
     const token = signToken({ sub: user.id, nickname: user.nickname });
