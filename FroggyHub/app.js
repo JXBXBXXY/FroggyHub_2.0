@@ -1687,7 +1687,7 @@ $('#loginForm')?.addEventListener('submit', withBusy($('#login-btn'), async (e)=
     const { token } = await callFn('local-login', { nickname, password });
     if(token){ setToken(token); }
     setNickname(nickname);
-    window.location.href = '/profile.html';
+    window.location.href = '/hub.html';
   }catch(e){ toast(e.message||'Не удалось войти','error'); }
 }));
 
@@ -1701,7 +1701,7 @@ $('#signupForm')?.addEventListener('submit', withBusy($('#signup-btn'), async (e
     const { token } = await callFn('local-login', { nickname, password:p1 });
     if(token){ setToken(token); }
     setNickname(nickname);
-    window.location.href = '/profile.html';
+    window.location.href = '/hub.html';
   }catch(e){ toast(e.message||'Не удалось зарегистрироваться','error'); }
 }));
 
@@ -1736,6 +1736,79 @@ async function loadProfile(){
   }catch(e){ console.warn('profile load failed', e); }
 }
 
+async function loadMyEvents(){
+  const list = $('#my-events');
+  if(!list) return;
+  list.innerHTML = '';
+  try{
+    const res = await fetch('/.netlify/functions/events-my', {
+      headers:{ Authorization: 'Bearer ' + getToken() }
+    });
+    const data = await res.json().catch(()=> ({}));
+    if(data?.success && Array.isArray(data.events) && data.events.length){
+      for(const ev of data.events){
+        const li = document.createElement('li');
+        const date = ev.starts_at ? new Date(ev.starts_at).toLocaleDateString('ru-RU') : '';
+        li.textContent = `${ev.title||''} ${date && ('('+date+')')}`;
+        li.addEventListener('click', ()=>{ window.location.href = `/event.html?id=${ev.id}`; });
+        list.appendChild(li);
+      }
+    }else{
+      const li = document.createElement('li');
+      li.textContent = 'Событий нет';
+      list.appendChild(li);
+    }
+  }catch(e){
+    console.warn('loadMyEvents failed', e);
+    const li = document.createElement('li');
+    li.textContent = 'Ошибка загрузки';
+    list.appendChild(li);
+  }
+}
+
+async function initHubPage(){
+  if(!/\/hub\.html$/.test(location.pathname)) return;
+  if(!getToken()){ window.location.href='/'; return; }
+  try{
+    const res = await fetch('/.netlify/functions/profile', {
+      headers:{ Authorization:'Bearer '+getToken() }
+    });
+    if(res.status===401 || res.status===403){
+      clearToken();
+      window.location.href='/';
+      return;
+    }
+    const data = await res.json().catch(()=> ({}));
+    const p = data?.profile || {};
+    const nickEl = $('#mp-nick');
+    if(nickEl) nickEl.textContent = p.nickname || '';
+    if(p.created_at){
+      try{
+        const crEl = $('#mp-created');
+        if(crEl) crEl.textContent = new Date(p.created_at).toLocaleDateString('ru-RU');
+      }catch{}
+    }
+  }catch(e){ console.warn('hub profile load failed', e); }
+  loadMyEvents();
+  $('#hub-logout')?.addEventListener('click', ()=>{
+    clearToken();
+    window.location.href = '/';
+  });
+  $('[data-action="create"]')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    window.location.href = '/event-edit.html';
+  });
+  $('[data-action="join"]')?.addEventListener('click', ()=>{
+    const code = $('[data-input="join-code"]')?.value?.trim();
+    if(!code) return;
+    if(/^https?:/i.test(code)){
+      window.location.href = code;
+    }else{
+      window.location.href = '/event.html?code=' + encodeURIComponent(code);
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if(/\/profile\.html$/.test(location.pathname)){
     if(!getToken()){
@@ -1745,6 +1818,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadProfile();
   }
 });
+
+document.addEventListener('DOMContentLoaded', initHubPage);
 
 async function uiSmoke(){
   const report = [];
