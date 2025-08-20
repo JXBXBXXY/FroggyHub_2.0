@@ -1,6 +1,5 @@
 // src/pages/Login.tsx
 import { login } from '../api';
-import axios from 'axios';
 
 export async function doLogin(
   nickname: string,
@@ -8,8 +7,9 @@ export async function doLogin(
   setMsg: (s: string) => void
 ) {
   try {
-    const res = await login(nickname, password);
+    await login(nickname, password);
     setMsg('Вход выполнен');
+    window.location.href = '/profile.html';
   } catch (e: any) {
     setMsg(e?.response?.data?.error || 'Ошибка входа');
   }
