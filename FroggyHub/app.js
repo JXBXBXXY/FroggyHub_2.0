@@ -32,11 +32,29 @@ const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} }
 const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
 const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} };
 
-function showScreen(name){
-  $$('[id^="screen-"]').forEach(s => s.hidden = s.id !== `screen-${name}`);
+const TOK = 'FH_JWT';
+const getTok = () => localStorage.getItem(TOK);
+
+function openModal(dlg){
+  if (typeof dlg === 'string') dlg = document.getElementById(dlg);
+  if (!dlg) return;
+  dlg.hidden = false;
+  if (dlg.showModal) dlg.showModal();
+}
+function closeModal(dlg){
+  if (typeof dlg === 'string') dlg = document.getElementById(dlg);
+  if (!dlg) return;
+  if (dlg.close) try { dlg.close(); } catch {}
+  dlg.hidden = true;
+}
+
+function show(name){
+  document.querySelectorAll('section[id^="screen-"]').forEach(s => {
+    s.hidden = s.id !== `screen-${name}`;
+  });
   document.body.dataset.screen = name;
   const navMenu = document.getElementById('nav-menu');
-  if (navMenu) navMenu.hidden = (name === 'menu');
+  if (navMenu) navMenu.hidden = (name === 'menu' || name === 'auth');
   console.log('[screen] =>', name);
 }
 
@@ -122,10 +140,11 @@ async function renderProfile() {
 document.addEventListener('click', (e)=>{
   const go = e.target.closest('[data-go]');
   if (!go) return;
+  if (go.matches('#create-event, [data-go="app"][data-mode="create"]')) return;
   e.preventDefault();
   const dest = go.getAttribute('data-go');
   if (dest === 'settings') return;
-  showScreen(dest);
+  show(dest);
   if (dest === 'profile') loadProfileAndEvents().catch(console.error);
   if (dest === 'app') {
     const mode = go.getAttribute('data-mode') || null;
@@ -134,9 +153,12 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-$('#create-event')?.addEventListener('click', (e)=>{
-  e.preventDefault();
-  $('#dlg-type')?.removeAttribute('hidden');
+document.addEventListener('click', (e)=>{
+  const btnCreate = e.target.closest('#create-event, [data-go="app"][data-mode="create"]');
+  if (btnCreate){
+    e.preventDefault();
+    openModal('type-modal');
+  }
 });
 
 $('#join-form')?.addEventListener('submit', (e)=>{
@@ -163,19 +185,60 @@ const flowState = {
 };
 
 function showCreate(step){
-  showScreen('create-' + step);
+  show('create-' + step);
 }
 
-onDelegated('#dlg-type [data-type]', 'click', (e, el)=>{
-  flowState.flow.type = el.dataset.type;
-  const isBiz = flowState.flow.type === 'business';
-  $('#lbl-title').textContent = isBiz ? 'Название встречи' : 'Название праздника';
-  $('#lbl-date').textContent  = isBiz ? 'Дата встречи' : 'Дата праздника';
-  $('#lbl-time').textContent  = 'Время';
-  $('#lbl-place').textContent = isBiz ? 'Место' : 'Место проведения';
-  $('#dlg-type').hidden = true;
-  showCreate('details');
+const typeModal = document.getElementById('type-modal');
+
+document.addEventListener('click', (e)=>{
+  const pick = e.target.closest('#type-modal [data-type]');
+  if (pick){
+    const type = pick.dataset.type;
+    window.__FH__ = window.__FH__ || {};
+    window.__FH__.createType = type;
+    flowState.flow.type = type;
+    configureCreateForm(type);
+    closeModal(typeModal);
+    setWizardMode?.('create');
+    show('app');
+  }
+
+  if (e.target.closest('#type-modal [data-close]')){
+    closeModal(typeModal);
+  }
 });
+
+typeModal?.addEventListener('click', (e)=>{
+  const form = e.target.closest('form');
+  if (!form) closeModal(typeModal);
+});
+typeModal?.addEventListener('cancel', (e)=>{ e.preventDefault(); closeModal(typeModal); });
+document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !typeModal.hidden) closeModal(typeModal); });
+
+function configureCreateForm(type){
+  const lTitle = document.querySelector('#eventTitle')?.closest('label');
+  const title = document.getElementById('eventTitle');
+  const date  = document.getElementById('eventDate');
+  const time  = document.getElementById('eventTime');
+  const addr  = document.getElementById('eventAddress');
+
+  if (!lTitle) return;
+
+  if (type === 'business'){
+    lTitle.firstChild.nodeValue = 'Название встречи ';
+    title?.setAttribute('placeholder','Например: Планёрка отдела');
+    date?.setAttribute('placeholder','Дата встречи');
+    time?.setAttribute('placeholder','Время встречи');
+    addr?.setAttribute('placeholder','Место встречи');
+  } else {
+    lTitle.firstChild.nodeValue = 'Название праздника ';
+    title?.setAttribute('placeholder','Например: День рождения');
+    date?.setAttribute('placeholder','Дата праздника');
+    time?.setAttribute('placeholder','Время праздника');
+    addr?.setAttribute('placeholder','Место проведения');
+  }
+}
+
 
 $('#details-next')?.addEventListener('click', ()=>{
   flowState.flow.details = {
@@ -188,7 +251,7 @@ $('#details-next')?.addEventListener('click', ()=>{
 });
 
 $('#details-back')?.addEventListener('click', ()=>{
-  showScreen('menu');
+  show('menu');
 });
 
 $('#req-next')?.addEventListener('click', ()=>{
@@ -245,7 +308,7 @@ $('#wish-next')?.addEventListener('click', ()=>{
 function openFinal(data){
   if (typeof data === 'string') data = { code:data };
   data = data || {};
-  showScreen('app');
+  show('app');
   $('#event-code').textContent = data.code || '—';
   const when = [data.details?.date, data.details?.time].filter(Boolean).join(' ');
   $('#event-when').textContent = when || '—';
@@ -318,7 +381,7 @@ document.addEventListener('click', async (e)=>{
     else if (typeof openEvent === 'function')  await openEvent(event);
     else {
       const ft=$('#final-title'); if(ft) ft.textContent = event.title || '—';
-      showScreen('app');
+      show('app');
     }
   }catch(err){ alert(err.message || 'Не удалось открыть событие'); }
 });
@@ -434,7 +497,7 @@ async function renderEvent(eventIdOrObj) {
 
 async function openEvent(id) {
   await renderEvent(id);
-  showScreen('app');
+  show('app');
 }
 
 // Обработчики create/join удалены: навигация осуществляется через общий делегат
@@ -793,9 +856,9 @@ function trapFocus(node){
   node.addEventListener('keydown',handler);
   return ()=>node.removeEventListener('keydown',handler);
 }
-function show(idToShow){
+function showById(idToShow){
   const map = {'#screen-auth':'auth', '#screen-menu':'menu', '#screen-app':'app', '#screen-profile':'profile'};
-  if (map[idToShow]) return showScreen(map[idToShow]);
+  if (map[idToShow]) return show(map[idToShow]);
   ['#screen-auth','#screen-menu','#screen-app','#screen-profile'].forEach(id=>{
     const el=$(id); if(!el) return; el.hidden = (id!==idToShow);
   });
@@ -2652,7 +2715,7 @@ function wireAuthForms(){
         const data = await apiLogin(nickname, password);
         if (data?.token){
           saveToken(data.token);
-          showScreen('menu');        // ← показываем меню/лобби
+          show('menu');        // ← показываем меню/лобби
           if (typeof loadLobby === 'function') loadLobby();
         } else {
           alert(data?.error || 'Ошибка входа');
@@ -2686,7 +2749,7 @@ function wireAuthForms(){
           const lg = await apiLogin(nickname, password);
           if (lg?.token){
             saveToken(lg.token);
-            showScreen('menu');
+            show('menu');
             if (typeof loadLobby === 'function') loadLobby();
             return;
           }
@@ -2703,8 +2766,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   wireAuthForms();
 
   // если уже залогинен — сразу меню
-  if (getToken()) showScreen('menu');
-  else            showScreen('auth');
+  if (getTok()) show('menu');
+  else show('auth');
 
   // Навешанные делегированные клики работают всегда, ничего больше не нужно
 });
@@ -2722,4 +2785,4 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-if (!document.body.dataset.screen) showScreen('menu');
+if (!document.body.dataset.screen) show('menu');
