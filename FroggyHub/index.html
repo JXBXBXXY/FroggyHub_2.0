@@ -16,43 +16,57 @@
 
   <!-- 1) Меню — выбор действия после авторизации -->
   <section id="screen-menu" class="screen">
-    <div class="container stack-md">
-      <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
-      <form id="join-form" class="row gap-sm" autocomplete="off">
-        <input id="join-code" class="input" inputmode="numeric" maxlength="6" placeholder="Введите 6-значный код" />
-        <button id="join-event" class="btn btn-secondary" data-go="app" data-mode="join">Присоединиться</button>
-      </form>
+    <div class="container">
+      <div class="panel">
+        <div class="lobby-grid">
+          <button id="create-event" class="btn btn-primary" data-go="app">Создать событие</button>
+          <form id="join-form" class="join-row" autocomplete="off">
+            <input id="join-code" class="input" placeholder="Введите 6-значный код" inputmode="numeric" maxlength="6" />
+            <button id="join-btn" class="btn">Присоединиться</button>
+          </form>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- 2) Мастер создания/подключения (контент уже есть в проекте) -->
   <section id="screen-app" class="screen" hidden>
-    <!-- существующая разметка мастера; никакой финальной карточки здесь -->
+    <div class="container">
+      <div class="panel">
+        <!-- существующая разметка мастера; никакой финальной карточки здесь -->
+      </div>
+    </div>
   </section>
 
   <!-- 3) Финальная информация (только этот экран показывает итоговую карточку) -->
   <section id="screen-final" class="screen" hidden>
-    <div id="final-card" class="final-card container">
-      <!-- здесь отрисовывается итог события -->
-    </div>
-    <div class="actions">
-      <button class="btn" data-go="menu">Вернуться в меню</button>
+    <div class="container">
+      <div class="panel">
+        <div id="final-card" class="final-card">
+          <!-- здесь отрисовывается итог события -->
+        </div>
+        <div class="actions">
+          <button class="btn" data-go="menu">Вернуться в меню</button>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- 4) Профиль — список моих событий -->
   <section id="screen-profile" class="screen" hidden>
     <div class="container">
-      <h2>Профиль</h2>
-      <div class="profile-grid">
-        <section>
-          <h3>Скоро</h3>
-          <div id="profile-upcoming" class="event-grid"></div>
-        </section>
-        <section>
-          <h3>Прошедшие</h3>
-          <div id="profile-past" class="event-grid"></div>
-        </section>
+      <div class="panel">
+        <h2>Профиль</h2>
+        <div class="profile-grid">
+          <section>
+            <h3>Скоро</h3>
+            <div id="profile-upcoming" class="event-grid"></div>
+          </section>
+          <section>
+            <h3>Прошедшие</h3>
+            <div id="profile-past" class="event-grid"></div>
+          </section>
+        </div>
       </div>
     </div>
   </section>
