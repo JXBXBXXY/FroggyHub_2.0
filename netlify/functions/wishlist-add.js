@@ -5,11 +5,10 @@ const ok=(b)=>new Response(JSON.stringify(b),{status:200,headers:{'Content-Type'
 const bad=(s,e)=>ok({success:false,error:e,status:s});
 
 export async function onRequestPost({ request }) {
-  try{
-    const { code, nickname } = await request.json();
-    const { data:ev, error:e1 } = await db.from('events').select('id,code').eq('code', code).single();
-    if (e1 || !ev) return bad(404,'Код не найден');
-    await db.from('guests').insert({ event_id: ev.id, nickname });
-    return ok({ success:true });
-  }catch(e){ return bad(400, e.message); }
+  const { code, title, url } = await request.json();
+  const { data:ev, error } = await db.from('events').select('id').eq('code', code).single();
+  if (error || !ev) return bad(404,'Событие не найдено');
+  const { error:err } = await db.from('wishlist_items').insert({ event_id: ev.id, title, url });
+  if (err) return bad(500, err.message);
+  return ok({ success:true });
 }
