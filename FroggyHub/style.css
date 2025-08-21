@@ -566,13 +566,16 @@ body.scene-intro .speech{display:block}
 }
 
 .final-layout {
-  display: grid;
+  display: none;
   grid-template-columns: 1fr 1.3fr;
   gap: 32px;
   max-width: 1200px;
   margin: 32px auto;
   padding: 0 16px;
 }
+body.scene-final .final-layout { display: flex; }
+body.scene-intro .final-layout,
+body.scene-pond  .final-layout { display: none !important; }
 
 .final-left {
   display: grid;
