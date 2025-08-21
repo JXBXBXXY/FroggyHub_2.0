@@ -158,7 +158,7 @@ document.addEventListener('click', (e)=>{
   const dest = go.getAttribute('data-go');
   if (dest === 'settings') return;
   show(dest);
-  if (dest === 'profile') loadProfileAndEvents().catch(console.error);
+  if (dest === 'profile') openProfileScreen();
   if (dest === 'app') {
     const mode = go.getAttribute('data-mode') || null;
     setWizardMode?.(mode || 'create');
@@ -929,6 +929,26 @@ function showAuthPane(kind){
   document.getElementById(`pane-${kind}`)?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
+// табы логин/регистрация — после твоей логики переключения
+const tabLogin = document.getElementById('tab-login');
+const tabRegister = document.getElementById('tab-register');
+const chips = document.getElementById('authSteps')?.querySelectorAll('.chip');
+
+function setAuthStep(mode){ // mode: 'login' | 'register' | 'profile'
+  if(!chips) return;
+  chips.forEach(ch => ch.classList.remove('chip-on'));
+  const active = (mode === 'profile')
+      ? document.querySelector('.chip[data-step="profile"]')
+      : document.querySelector('.chip[data-step="1"]');
+  active?.classList.add('chip-on');
+}
+
+// после успешного входа/регистрации, когда показываешь профиль
+function openProfileScreen(){
+  setAuthStep('profile');
+  loadProfileAndEvents().catch(console.error);
+}
+
 // --- Auth state management ---
 let authState = 'login';
 let loginBtn, regBtn;
@@ -1020,9 +1040,10 @@ function setAuthState(state){
   updateAuthDebug();
 }
 
-document.getElementById('tab-login')?.addEventListener('click',()=>showAuthPane('login'));
-document.getElementById('tab-register')?.addEventListener('click',()=>showAuthPane('register'));
+tabLogin?.addEventListener('click', () => { showAuthPane('login'); setAuthStep('login'); });
+tabRegister?.addEventListener('click', () => { showAuthPane('register'); setAuthStep('register'); });
 showAuthPane('login');
+setAuthStep('login');
 
 const forgotBtn = document.getElementById('showReset');
 const forgotBlock = document.getElementById('resetPassBlock');

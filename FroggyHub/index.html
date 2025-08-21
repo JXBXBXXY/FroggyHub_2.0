@@ -23,14 +23,17 @@
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="container" role="main">
-    <div class="card auth-card" id="authPanel" style="max-width:620px;margin:40px auto">
-      <div class="auth-hero">
-        <div class="avatar frog-ava">🐸</div>
-        <div class="hero-text">
-          <h1>Вход / Регистрация</h1>
-          <div class="chips">
-            <span class="chip">Шаг 1</span>
-            <span class="chip">Профиль</span>
+    <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
+      <div class="auth-head">
+        <div class="auth-avatar">
+          <img src="/assets/frog_idle.png" alt="Froggy" />
+        </div>
+
+        <div class="auth-title">
+          <h2>Вход / Регистрация</h2>
+          <div id="authSteps" class="auth-steps">
+            <span class="chip chip-on" data-step="1">Шаг 1</span>
+            <span class="chip" data-step="profile">Профиль</span>
           </div>
         </div>
       </div>
@@ -82,7 +85,7 @@
 
   <!-- ЭКРАН МЕНЮ -->
   <section id="screen-menu" class="screen" role="main" hidden>
-    <div id="hero" class="hero">
+    <div id="hero" class="hero hero-frog">
       <img class="frog" src="/assets/frog_idle.png" alt="Froggy" />
       <img class="stump" src="/assets/stump.png" alt="" aria-hidden="true" />
     </div>
