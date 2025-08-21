@@ -1,5 +1,28 @@
-const $ = (s, r=document) => r.querySelector(s);
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+
+const TOKEN_KEY = 'FH_JWT';
+const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} };
+const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
+const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} };
+
+// экраны
+const screens = {
+  auth:  $('#screen-auth'),
+  lobby: $('#screen-lobby'),
+  app:   $('#screen-app'),
+};
+
+function showScreen(name){
+  Object.entries(screens).forEach(([k, el])=>{
+    if (!el) return;
+    if (k === name) { el.hidden = false; el.removeAttribute('hidden'); }
+    else { el.hidden = true; el.setAttribute('hidden',''); }
+  });
+  // для удобства CSS
+  document.body.dataset.screen = name;
+}
 
 async function apiPost(fnPath, payload) {
   const res = await fetch(`/.netlify/functions${fnPath}`, {
@@ -15,9 +38,6 @@ async function apiPost(fnPath, payload) {
   return res.json();
 }
 
-function saveToken(t) { if (t) localStorage.setItem('FH_JWT', t); }
-function clearToken() { localStorage.removeItem('FH_JWT'); }
-const getToken = () => localStorage.getItem('FH_JWT');
 const LS_NICK = 'fh:nickname';
 
 document.querySelectorAll('input, textarea, select').forEach(el=>{
@@ -384,6 +404,8 @@ function trapFocus(node){
   return ()=>node.removeEventListener('keydown',handler);
 }
 function show(idToShow){
+  const map = {'#screen-auth':'auth', '#screen-lobby':'lobby', '#screen-app':'app'};
+  if (map[idToShow]) return showScreen(map[idToShow]);
   ['#screen-auth','#screen-lobby','#screen-app'].forEach(id=>{
     const el=$(id); if(!el) return; el.hidden = (id!==idToShow);
   });
@@ -2242,48 +2264,108 @@ document.querySelectorAll('#copyInviteBtn').forEach(copyBtn => {
 })();
 
 // ---------- Local auth bindings ----------
-async function handleLoginSubmit(e) {
-  e.preventDefault();
-  const f = e.currentTarget;
-  const btn = e.submitter || f.querySelector('[type=submit]');
-  btn?.setAttribute('disabled', 'true');
-  try {
-    const nickname = f.nickname.value.trim();
-    const password = f.password.value;
-    const data = await apiPost('/local-login', { nickname, password });
-    saveToken(data?.token);
-    window.location.assign('/');    // ← всегда уводим в меню
-  } catch (err) {
-    alert(err.message || 'Ошибка входа');
-  } finally {
-    btn?.removeAttribute('disabled');
+async function apiLogin(nickname, password){
+  const r = await fetch('/.netlify/functions/local-login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nickname, password })
+  });
+  return r.json();
+}
+
+async function apiSignup(nickname, password){
+  const r = await fetch('/.netlify/functions/local-signup', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nickname, password })
+  });
+  return r.json();
+}
+
+function wireAuthForms(){
+  // ЛОГИН
+  const loginForm = $('#loginForm') || $('#login-form') || $('[data-form="login"]');
+  const loginNick = $('#loginForm [name="nickname"]') || $('#login-nickname') || $('[data-role="login-nickname"]');
+  const loginPass = $('#loginForm [name="password"]') || $('#login-password') || $('[data-role="login-password"]');
+
+  if (loginForm && loginNick && loginPass){
+    loginForm.setAttribute('novalidate','');
+    loginForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      const nickname = (loginNick.value || '').trim();
+      const password = loginPass.value || '';
+      if (!nickname || !password) return;
+
+      try{
+        const data = await apiLogin(nickname, password);
+        if (data?.token){
+          saveToken(data.token);
+          showScreen('lobby');        // ← показываем меню/лобби
+          if (typeof loadLobby === 'function') loadLobby();
+        } else {
+          alert(data?.error || 'Ошибка входа');
+        }
+      }catch{
+        alert('Сеть недоступна или ошибка сервера');
+      }
+    }, { passive:false });
+  } else {
+    console.warn('login form not found');
+  }
+
+  // РЕГИСТРАЦИЯ (если есть)
+  const signupForm = $('#signupForm') || $('#signup-form') || $('[data-form="signup"]');
+  const signupNick = $('#signupForm [name="nickname"]') || $('#signup-nickname') || $('[data-role="signup-nickname"]');
+  const signupPass = $('#signupForm [name="password"]') || $('#signup-password') || $('[data-role="signup-password"]');
+
+  if (signupForm && signupNick && signupPass){
+    signupForm.setAttribute('novalidate','');
+    signupForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      const nickname = (signupNick.value || '').trim();
+      const password = signupPass.value || '';
+      if (!nickname || !password) return;
+
+      try{
+        const data = await apiSignup(nickname, password);
+        if (data?.ok || data?.success){
+          const lg = await apiLogin(nickname, password);
+          if (lg?.token){
+            saveToken(lg.token);
+            showScreen('lobby');
+            if (typeof loadLobby === 'function') loadLobby();
+            return;
+          }
+        }
+        alert(data?.error || 'Ошибка регистрации');
+      }catch{
+        alert('Сеть недоступна или ошибка сервера');
+      }
+    }, { passive:false });
   }
 }
 
-async function handleSignupSubmit(e) {
-  e.preventDefault();
-  const f = e.currentTarget;
-  const btn = e.submitter || f.querySelector('[type=submit]');
-  btn?.setAttribute('disabled', 'true');
-  try {
-    const nickname = f.nickname.value.trim();
-    const password = f.password.value;
-    await apiPost('/local-signup', { nickname, password });
-    const data = await apiPost('/local-login', { nickname, password });
-    saveToken(data?.token);
-    window.location.assign('/');    // ← сразу в меню
-  } catch (err) {
-    alert(err.message || 'Ошибка регистрации');
-  } finally {
-    btn?.removeAttribute('disabled');
-  }
-}
+document.addEventListener('DOMContentLoaded', ()=>{
+  wireAuthForms();
 
-function initAuthBindings() {
-  on($('#loginForm'), 'submit', handleLoginSubmit);
-  on($('#signupForm'), 'submit', handleSignupSubmit);
-}
-document.addEventListener('DOMContentLoaded', initAuthBindings, { once: true });
+  // если уже залогинен — сразу меню
+  if (getToken()) showScreen('lobby');
+  else            showScreen('auth');
+
+  // Кнопки/ссылки "Меню" и "Профиль" не должны перегружать страницу
+  const menuLink = $('#nav-menu, a[href="/menu"], a[href="#menu"]');
+  if (menuLink){
+    menuLink.addEventListener('click', (e)=>{ e.preventDefault(); showScreen('lobby'); });
+  }
+  const profileLink = $('#nav-profile, a[href="/profile"], a[href="#profile"]');
+  if (profileLink){
+    profileLink.addEventListener('click', (e)=>{ e.preventDefault(); showScreen('app'); });
+  }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   const isHome = location.pathname === '/' || location.pathname.endsWith('/index.html');
