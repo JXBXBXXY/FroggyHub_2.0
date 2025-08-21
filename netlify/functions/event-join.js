@@ -1,23 +1,18 @@
-import { getServiceClient } from './_supabase.js';
+const { db, json } = require('./_utils');
 
-const ok = (b,s=200)=>({ statusCode:s, headers:hdr(), body:JSON.stringify(b) });
-const err = (m,s=400)=>({ statusCode:s, headers:hdr(), body:JSON.stringify({ error:m }) });
-const hdr = ()=>({
-  'Content-Type':'application/json',
-  'Access-Control-Allow-Origin':'*',
-  'Access-Control-Allow-Methods':'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers':'Content-Type, Authorization',
-});
+exports.handler = async (event) => {
+  if (event.httpMethod !== 'POST') return json(405, { success:false, error:'Method Not Allowed' });
 
-export async function handler(event){
-  if (event.httpMethod==='OPTIONS') return ok({});
-  if (event.httpMethod!=='POST') return err('Method not allowed',405);
-  try{
-    const { code } = JSON.parse(event.body||'{}');
-    if (!code || String(code).length!==6) return err('Invalid code');
-    const sb = getServiceClient();
-    const { data:ev, error } = await sb.from('events').select('*').eq('code', String(code)).single();
-    if (error || !ev) return err('Код не найден',404);
-    return ok({ success:true, event: ev });
-  }catch(e){ return err(e.message||'Server error',500); }
-}
+  try {
+    const { code, nickname } = JSON.parse(event.body || '{}');
+    const { data: ev, error: e1 } = await db.from('events').select('id,code').eq('code', code).single();
+    if (e1 || !ev) return json(404, { success:false, error:'Код не найден' });
+
+    const { error: e2 } = await db.from('guests').insert({ event_id: ev.id, nickname });
+    if (e2) return json(500, { success:false, error: e2.message });
+
+    return json(200, { success:true });
+  } catch (e) {
+    return json(400, { success:false, error: e.message });
+  }
+};

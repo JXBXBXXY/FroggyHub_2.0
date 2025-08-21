@@ -1,55 +1,35 @@
-// ESM
-import jwt from 'jsonwebtoken';
-import { getServiceClient } from './_supabase.js';
+const { db, json } = require('./_utils');
+const jwt = require('jsonwebtoken');
 
-const ok = (body, status=200)=>({ statusCode: status, headers: hdr(), body: JSON.stringify(body) });
-const err = (message, status=400)=>({ statusCode: status, headers: hdr(), body: JSON.stringify({ error: message }) });
-const hdr = () => ({
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-});
+const genCode = () => String(Math.floor(100000 + Math.random()*900000));
 
-export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return ok({});
-  if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
+exports.handler = async (event) => {
+  if (event.httpMethod !== 'POST') return json(405, { success:false, error:'Method Not Allowed' });
+
   try {
     const auth = event.headers.authorization || '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) return err('Unauthorized', 401);
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = payload.sub;
+    const { sub } = jwt.verify(token, process.env.JWT_SECRET);
 
-    const { title, date, time, address, dress_code, bring, comment, wishlist=[] } = JSON.parse(event.body||'{}');
-    if (!title || !date || !time) return err('title, date, time required');
+    const body = JSON.parse(event.body || '{}');
 
-    const sb = getServiceClient();
+    const payload = {
+      code: genCode(),
+      host_user_id: sub,
+      title: body.title?.trim() || 'Событие',
+      date: body.date,
+      time: body.time || null,
+      address: body.address || null,
+      dress: body.dress || null,
+      bring: body.bring || null,
+      comment: body.comment || null
+    };
 
-    // уникальный 6-значный код
-    let code;
-    for (let i=0;i<5;i++) {
-      code = String(Math.floor(100000 + Math.random()*900000));
-      const { data:exists } = await sb.from('events').select('id').eq('code', code).maybeSingle();
-      if (!exists) break;
-      code = null;
-    }
-    if (!code) return err('Failed to generate code', 500);
+    const { data, error } = await db.from('events').insert(payload).select().single();
+    if (error) return json(500, { success:false, error: error.message });
 
-    const { data:ev, error } = await sb.from('events').insert({
-      code, host_user_id: userId, title, date, time, address, dress_code, bring, comment
-    }).select('*').single();
-    if (error) return err(error.message, 400);
-
-    // wishlist
-    if (Array.isArray(wishlist) && wishlist.length) {
-      const rows = wishlist
-        .filter(x=>x && x.title)
-        .map(x=>({ event_id: ev.id, title: x.title, url: x.url||null }));
-      if (rows.length) await sb.from('wishlist_items').insert(rows);
-    }
-    return ok({ success:true, event: ev });
+    return json(200, { success:true, event: data });
   } catch (e) {
-    return err(e.message || 'Server error', 500);
+    return json(400, { success:false, error: e.message });
   }
-}
+};
