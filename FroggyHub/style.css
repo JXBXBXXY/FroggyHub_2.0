@@ -698,3 +698,39 @@ button:not([disabled]){ cursor:pointer; }
 .event-title{ font-weight:700; }
 .event-meta{ opacity:.8; font-size:12px; }
 .event-actions{ display:flex; gap:8px; }
+
+/* Модальные окна */
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+
+.modal{
+  background:var(--card-dark);
+  border:1px solid var(--card-border);
+  border-radius:12px;
+  padding:20px;
+  box-shadow:0 10px 26px var(--shadow);
+  max-width:320px;
+}
+
+/* Сетки форм */
+.form-grid{ display:grid; gap:14px; }
+
+/* Wishlist */
+.wish-grid{ display:grid; gap:10px; }
+.wish-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.wish-item.taken{ opacity:.6; }
+.wish-item.taken button{ pointer-events:none; }

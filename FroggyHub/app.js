@@ -136,33 +136,125 @@ document.addEventListener('click', (e)=>{
 
 $('#create-event')?.addEventListener('click', (e)=>{
   e.preventDefault();
-  showScreen('app');
+  $('#dlg-type')?.removeAttribute('hidden');
 });
 
-$('#join-form')?.addEventListener('submit', async (e)=>{
+$('#join-form')?.addEventListener('submit', (e)=>{
   e.preventDefault();
-  $('#join-open')?.setAttribute('disabled','');
-  try{
-    const code = ($('#join-code')?.value || '').trim();
-    if (code.length !== 6) throw new Error('Введите 6-значный код');
-    const { event } = await apiFetch(`events-get?code=${encodeURIComponent(code)}`);
-    if (typeof openFinal === 'function') {
-      await openFinal(event.code);
-    } else if (typeof openEvent === 'function') {
-      await openEvent(event);
-    } else {
-      const fc=$('#final-code'); if(fc) fc.textContent = event.code || '—';
-      const ft=$('#final-title'); if(ft) ft.textContent = event.title || '—';
-      const fw=$('#final-when'); if(fw) fw.textContent = `${event.date||''} ${event.time||''}`.trim();
-      const fa=$('#final-address'); if(fa) fa.textContent = event.address || '—';
-      const fd=$('#final-dress'); if(fd) fd.textContent   = event.dress || '—';
-      const fb=$('#final-bring'); if(fb) fb.textContent   = event.bring || '—';
-      const fcm=$('#final-comment'); if(fcm) fcm.textContent = event.comment || '—';
-      showScreen('app');
-    }
-  } catch(err){ alert(err.message || 'Код не найден'); }
-  finally{ $('#join-open')?.removeAttribute('disabled'); }
+  const code = ($('#join-code')?.value || '').trim();
+  if (code.length !== 6) { alert('Введите 6-значный код'); return; }
+  openFinal({
+    code,
+    details:{ title:'Событие', date:'2024-01-01', time:'18:00', place:'Пруд' },
+    req:{ dress:'Произвольный', bring:'Хорошее настроение', comment:'До встречи!' },
+    picks:['Подарок']
+  });
 });
+
+// --- Создание события: state-machine ---
+const flowState = {
+  flow: {
+    type: 'business',
+    details: {},
+    req: {},
+    wishlist: [],
+    picks: new Set(),
+  }
+};
+
+function showCreate(step){
+  showScreen('create-' + step);
+}
+
+onDelegated('#dlg-type [data-type]', 'click', (e, el)=>{
+  flowState.flow.type = el.dataset.type;
+  const isBiz = flowState.flow.type === 'business';
+  $('#lbl-title').textContent = isBiz ? 'Название встречи' : 'Название праздника';
+  $('#lbl-date').textContent  = isBiz ? 'Дата встречи' : 'Дата праздника';
+  $('#lbl-time').textContent  = 'Время';
+  $('#lbl-place').textContent = isBiz ? 'Место' : 'Место проведения';
+  $('#dlg-type').hidden = true;
+  showCreate('details');
+});
+
+$('#details-next')?.addEventListener('click', ()=>{
+  flowState.flow.details = {
+    title: $('#det-title').value.trim(),
+    date: $('#det-date').value,
+    time: $('#det-time').value,
+    place: $('#det-place').value.trim(),
+  };
+  showCreate('requirements');
+});
+
+$('#details-back')?.addEventListener('click', ()=>{
+  showScreen('menu');
+});
+
+$('#req-next')?.addEventListener('click', ()=>{
+  flowState.flow.req = {
+    dress: $('#req-dress').value.trim(),
+    bring: $('#req-bring').value.trim(),
+    comment: $('#req-comment').value.trim(),
+  };
+  showCreate('wishlist');
+});
+
+$('#req-back')?.addEventListener('click', ()=>{
+  showCreate('details');
+});
+
+function addWish(){
+  const input = $('#wish-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const idx = flowState.flow.wishlist.push(text) - 1;
+  const div = document.createElement('div');
+  div.className = 'wish-item';
+  div.dataset.idx = idx;
+  div.innerHTML = `<span>${text}</span><button class="btn btn--sm" data-pick>Заберу</button>`;
+  $('#wish-list').appendChild(div);
+  input.value = '';
+}
+$('#wish-add')?.addEventListener('click', addWish);
+$('#wish-input')?.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addWish(); } });
+
+onDelegated('.wish-item [data-pick]', 'click', (e, btn)=>{
+  const item = btn.closest('.wish-item');
+  const idx = Number(item.dataset.idx);
+  if (flowState.flow.picks.has(idx)) {
+    flowState.flow.picks.delete(idx);
+    item.classList.remove('taken');
+    btn.textContent = 'Заберу';
+  } else {
+    flowState.flow.picks.add(idx);
+    item.classList.add('taken');
+    btn.textContent = 'занято';
+  }
+});
+
+$('#wish-back')?.addEventListener('click', ()=>{
+  showCreate('requirements');
+});
+
+$('#wish-next')?.addEventListener('click', ()=>{
+  const selected = flowState.flow.wishlist.filter((_,i)=> flowState.flow.picks.has(i));
+  openFinal({ code:'—', details:flowState.flow.details, req:flowState.flow.req, picks:selected });
+});
+
+function openFinal(data){
+  if (typeof data === 'string') data = { code:data };
+  data = data || {};
+  showScreen('app');
+  $('#event-code').textContent = data.code || '—';
+  const when = [data.details?.date, data.details?.time].filter(Boolean).join(' ');
+  $('#event-when').textContent = when || '—';
+  $('#event-address').textContent = data.details?.place || '—';
+  $('#event-dress').textContent = data.req?.dress || '—';
+  $('#event-bring').textContent = data.req?.bring || '—';
+  $('#event-comment').textContent = data.req?.comment || '—';
+  $('#event-picks').textContent = data.picks && data.picks.length ? data.picks.join(', ') : '—';
+}
 
 async function apiFetch(path, init={}){
   init.headers = Object.assign({'Content-Type':'application/json'}, authHeaders(), init.headers||{});
