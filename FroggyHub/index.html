@@ -8,9 +8,11 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="scene-intro">
-  <nav class="top-nav">
-    <a id="nav-menu" href="#">Меню</a>
-    <a id="nav-profile" href="#">Профиль</a>
+  <!-- Шапка -->
+  <nav class="topbar">
+    <button id="nav-menu" class="btn btn--ghost btn--sm" data-go="menu" type="button">Меню</button>
+    <button id="nav-profile" class="btn btn--ghost btn--sm" data-go="profile" type="button">Профиль</button>
+    <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Выйти</button>
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <div id="screen-auth" class="container" role="main">
@@ -39,8 +41,8 @@
           <label>Пароль
             <input id="login-password" name="password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
           </label>
-            <button class="btn btn--primary" id="login-btn" type="submit">Войти</button>
-            <button type="button" class="btn btn--ghost" id="showReset" data-forgot="false">Забыли пароль?</button>
+            <button id="login-btn" class="btn btn--primary btn--xl w-full" type="submit">Войти</button>
+            <button id="showReset" class="btn btn--ghost w-full" type="button" data-forgot="false">Забыли пароль?</button>
           <div id="resetPassBlock" class="grid is-hidden">
             <label>Новый пароль
               <input id="resetPass" type="password" minlength="4" autocomplete="new-password">
@@ -64,7 +66,7 @@
           <label>Повтор пароля
             <input id="signup-password2" name="password2" type="password" required minlength="4" autocomplete="new-password">
           </label>
-            <button id="signup-btn" class="btn btn--primary" type="submit">Зарегистрироваться</button>
+            <button id="signup-btn" class="btn btn--primary btn--xl w-full" type="submit">Зарегистрироваться</button>
           <div id="reg-status" aria-live="polite"></div>
         </form>
       </section>
@@ -81,18 +83,17 @@
           <div class="chips">
             <span class="chip">Шаг 2</span>
             <span class="pill" data-user-badge>гость</span>
-              <button class="btn btn--ghost btn--sm" id="logout-btn" data-action="logout" title="Выйти">Выйти</button>
           </div>
         </div>
       </div>
 
       <div class="grid">
-          <button class="btn btn--primary btn--lg" id="goCreate" data-requires-auth data-action="create-event">Создать событие</button>
+          <button id="create-event" class="btn btn--primary btn--xl w-full" data-requires-auth data-action="create-event" data-go="app" type="button">Создать событие</button>
         <div class="card inner">
           <h3>Присоединиться к ивенту</h3>
           <div class="row2">
-            <input id="join-code" placeholder="Введите 6-значный код" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6">
-            <button class="btn btn--ghost" id="join-btn" data-action="join-event" disabled>Присоединиться</button>
+            <input id="join-code" class="input" placeholder="Введите 6-значный код" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6">
+            <button id="join-event" class="btn btn--ghost" data-action="join-event" data-go="app" type="button" disabled>Присоединиться</button>
           </div>
         </div>
       </div>

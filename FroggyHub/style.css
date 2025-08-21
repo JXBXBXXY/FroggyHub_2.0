@@ -3,6 +3,11 @@
   --brand: #2E7D61;
   --brand-600: #256a52;
   --brand-700: #1d5643;
+  --brand-500:#1f6e57;
+  --brand-400:#298a6d;
+  --on-brand:#e9fff2;
+  --border:#2c5b4b;
+  --glass:rgba(255,255,255,.06);
   --surface: #123A2F;
   --surface-2: #0F2F26;
   --text: #EAF7F1;
@@ -54,21 +59,21 @@ body{
   label{display:grid;gap:6px}
 
 /* Универсальный инпут */
-.input {
-  border: 2px solid #e8e8e8;
-  padding: 15px;
-  border-radius: 10px;
-  background-color: #212121;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-  color: var(--text);
+.input{
+  border:2px solid #2e5b4c;
+  padding:15px;
+  border-radius:10px;
+  background:#151f1b;
+  font-size:14px;
+  font-weight:700;
+  text-align:center;
+  color:#e8e8e8;
 }
-.input:focus {
-  outline: 2px solid var(--ring);
-  background-color: #212121;
-  color: #e8e8e8;
-  box-shadow: 0 6px 18px var(--shadow);
+.input:focus{
+  outline-color:#fff;
+  background:#151f1b;
+  color:#e8e8e8;
+  box-shadow:5px 5px #0a0a0a;
 }
 
 input[type="text"],
@@ -99,50 +104,40 @@ input, textarea, select { font-size: 16px; }
 .shake{animation:shake .15s linear;}
 @media (prefers-reduced-motion: reduce){.shake{animation:none;}}
 
-/* Базовая кнопка */
-.btn {
-  -webkit-appearance: none;
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 12px;
-  border: 0;
-  font-weight: 700;
-  letter-spacing: .2px;
-  cursor: pointer;
-  transition: transform .06s ease, background-color .2s ease, box-shadow .2s ease;
-  box-shadow: 0 8px 22px var(--shadow);
-  user-select: none;
+/* Универсальная кнопка */
+.btn{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; padding:.7rem 1.1rem;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--glass);
+  color:#e6f7ee; font-weight:600; line-height:1;
+  text-decoration:none; cursor:pointer;
+  transition:transform .06s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
+  box-shadow:0 6px 18px rgba(0,0,0,.18);
 }
+.btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.22);}
+.btn:active{ transform:translateY(0); box-shadow:0 4px 14px rgba(0,0,0,.18);}
+.btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+.btn:focus-visible{ outline:2px solid var(--brand-400); outline-offset:2px; }
 
-.btn--primary{
-  background: var(--brand);
-  color: #fff;
-}
-.btn--primary:hover{ background: var(--brand-600); }
-.btn--primary:active{ background: var(--brand-700); transform: translateY(1px); }
-.btn--primary:focus-visible{ outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Вариации */
+.btn--primary{ background:linear-gradient(180deg,var(--brand-500),var(--brand-600)); border-color:var(--brand-500); color:var(--on-brand);}
+.btn--primary:hover{ background:linear-gradient(180deg,var(--brand-400),var(--brand-500));}
+.btn--secondary{ background:rgba(21,73,57,.45); border-color:var(--border);}
+.btn--ghost{ background:transparent; border-color:rgba(255,255,255,.18); }
+.btn--chip{ padding:.35rem .7rem; border-radius:999px; font-weight:700; }
+.btn--sm{ padding:.45rem .7rem; font-size:.9rem; }
+.btn--xl{ padding:1rem 1.25rem; font-size:1.05rem; }
+.btn.w-full{ width:100%; }
 
-.btn--ghost{
-  background: transparent;
-  color: var(--text);
-  border: 2px solid var(--brand-600);
-}
-.btn--ghost:hover{ background: rgba(46,125,97,.1); }
-.btn--ghost:active{ transform: translateY(1px); }
+/* Кнопка-ссылка тоже выглядит как кнопка */
+a.btn{ color:inherit; }
 
-.btn--danger{
-  background: #b93737;
-  color: #fff;
-}
-.btn--danger:hover{ background: #a12f2f; }
-
-.btn--sm{ min-height: 34px; padding: 0 12px; font-size: 14px; }
-.btn--lg{ min-height: 48px; padding: 0 18px; font-size: 16px; }
+/* Дополнительные вариации */
+.btn--danger{ background:#b93737; color:#fff; }
+.btn--danger:hover{ background:#a12f2f; }
 
 :focus-visible{
   outline:2px solid var(--ring);
