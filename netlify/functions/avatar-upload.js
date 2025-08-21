@@ -15,11 +15,20 @@ export const handler = async (event) => {
     const { image } = JSON.parse(event.body || '{}');
     const buf = decodeDataURL(image);
     const sb = getServiceClient();
-    const path = `avatars/${auth.user.sub}.jpg`;
+    const userId = auth.user.sub;
+
+    const { data: existing } = await sb.from('users').select('avatar_url').eq('id', userId).single();
+    if (existing?.avatar_url) {
+      const prefix = '/storage/v1/object/public/avatars/';
+      const oldPath = existing.avatar_url.includes(prefix) ? existing.avatar_url.split(prefix)[1] : null;
+      if (oldPath) await sb.storage.from('avatars').remove([oldPath]);
+    }
+
+    const path = `avatars/${userId}-${Date.now()}.jpg`;
     const { error:upErr } = await sb.storage.from('avatars').upload(path, buf, { upsert:true, contentType:'image/jpeg' });
     if (upErr) throw upErr;
     const { data:pub } = sb.storage.from('avatars').getPublicUrl(path);
-    await sb.from('users_local').update({ avatar_url: pub.publicUrl }).eq('id', auth.user.sub);
+    await sb.from('users').upsert({ id:userId, nickname: auth.user.nickname, avatar_url: pub.publicUrl }).eq('id', userId);
     return ok({ url: pub.publicUrl });
   }catch(e){
     return err(e.message || 'Failed to upload', 400);
