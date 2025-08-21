@@ -4,11 +4,11 @@ import { requireAuth, cors, ok, err } from './_auth.js';
 
 export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors() };
-  if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
+  if (event.httpMethod !== 'DELETE') return err('Method not allowed', 405);
 
   const ctx = requireAuth(event); // { user: { sub, nickname, ... } }
-  const { event_id } = JSON.parse(event.body || '{}');
-  if (!event_id) return err('event_id required', 400);
+  const event_id = event.queryStringParameters?.id;
+  if (!event_id) return err('id required', 400);
 
   const sb = getServiceClient();
 

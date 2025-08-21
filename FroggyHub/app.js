@@ -20,6 +20,7 @@ const screens = {
   auth:  $('#screen-auth'),
   lobby: $('#screen-lobby'),
   app:   $('#screen-app'),
+  profile: $('#screen-profile'),
 };
 
 function showScreen(name){
@@ -51,31 +52,99 @@ document.querySelectorAll('input, textarea, select').forEach(el=>{
   el.classList.add('input');
 });
 
-['create-event','join-event','login-btn','signup-btn','logout-btn'].forEach(id=>{
+['create-event','join-event','login-btn','signup-btn','btn-logout'].forEach(id=>{
   const el = document.getElementById(id);
   console.debug('[btn]', id, 'present=', !!el);
 });
 
+async function fetchMyEvents() {
+  const res = await fetch('/.netlify/functions/events-mine', {
+    headers: { Authorization: `Bearer ${localStorage.getItem('FH_JWT') || ''}` }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || 'Не удалось загрузить события');
+  return Array.isArray(data) ? data : (data.items || []);
+}
+
+function splitEventsByDate(items) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = [], past = [];
+  for (const ev of items) {
+    const d = new Date(ev.date + 'T' + (ev.time || '00:00'));
+    (d >= today ? upcoming : past).push(ev);
+  }
+  upcoming.sort((a,b)=> (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+  past.sort((a,b)=> (b.date + (b.time||'')).localeCompare(a.date + (a.time||'')));
+  return { upcoming, past };
+}
+
+function eventRow(ev) {
+  const title = ev.title || 'Без названия';
+  const when  = ev.date ? (ev.time ? `${ev.date} · ${ev.time}` : ev.date) : '—';
+  return `
+    <div class="event-item" data-id="${ev.id}" data-code="${ev.code || ''}">
+      <div>
+        <div><strong>${title}</strong></div>
+        <div class="event-item__meta">${when}${ev.code ? ` · код: ${ev.code}` : ''}</div>
+      </div>
+      <div class="event-item__actions">
+        <button class="btn btn--sm" data-action="open">Открыть</button>
+        ${ev.is_host ? `<button class="btn btn--sm btn--danger" data-action="delete">Удалить</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function renderProfile() {
+  const listUpcoming = $('#profile-upcoming');
+  const listPast = $('#profile-past');
+  if (!listUpcoming || !listPast) return;
+  listUpcoming.innerHTML = listPast.innerHTML = 'Загрузка...';
+  try {
+    const items = await fetchMyEvents();
+    const { upcoming, past } = splitEventsByDate(items);
+    listUpcoming.innerHTML = upcoming.length ? upcoming.map(eventRow).join('') : '<div class="muted">Нет ближайших</div>';
+    listPast.innerHTML = past.length ? past.map(eventRow).join('') : '<div class="muted">Нет прошедших</div>';
+  } catch (e) {
+    listUpcoming.innerHTML = listPast.innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+onDelegated('#screen-profile .event-item [data-action="open"]', 'click', async (e, btn) => {
+  const row = btn.closest('.event-item');
+  if (!row) return;
+  await renderEvent(row.dataset.id);
+  showScreen('app');
+});
+
+onDelegated('#screen-profile .event-item [data-action="delete"]', 'click', async (e, btn) => {
+  const row = btn.closest('.event-item');
+  if (!row) return;
+  if (!confirm('Удалить событие?')) return;
+  try {
+    btn.disabled = true;
+    const res = await fetch('/.netlify/functions/event-delete?id=' + encodeURIComponent(row.dataset.id), {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${localStorage.getItem('FH_JWT') || ''}` }
+    });
+    const data = await res.json().catch(()=> ({}));
+    if (!res.ok) throw new Error(data?.error || 'Не удалось удалить');
+    await renderProfile();
+    toast('Удалено');
+  } catch (err) {
+    toast(err.message || 'Ошибка удаления');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // Экранная навигация по data-go
-onDelegated('[data-go]', 'click', (e, el) => {
+onDelegated('[data-go]', 'click', async (e, el) => {
   if (el.tagName === 'A') e.preventDefault();
   const target = el.dataset.go;
-  if (target === 'app' || target === 'profile') {
-    console.debug('[nav] goto app from', el.id || el.className);
-    showScreen('app');
-    const first = document.querySelector('#screen-app input, #screen-app textarea, #screen-app button');
-    if (first) first.focus();
-    return;
-  }
-  if (target === 'menu') {
-    console.debug('[nav] goto menu');
-    showScreen('lobby');
-    return;
-  }
-  if (target === 'auth') {
-    console.debug('[nav] goto auth');
-    showScreen('auth');
-  }
+  if (!target) return;
+  showScreen(target);
+  if (target === 'profile') { renderProfile(); }
 });
 
 function toast(msg, type='info'){
@@ -1828,7 +1897,7 @@ async function signup(nickname, password){
   return { token };
 }
 
-['logout-btn','logoutBtn'].forEach(id=>{
+['btn-logout','logoutBtn'].forEach(id=>{
   const el = document.getElementById(id);
   if(el) el.addEventListener('click', withBusy(el, async ()=>{
     try{ await callFn('local-logout', {});}catch(e){ console.warn(e); }
@@ -1963,7 +2032,7 @@ async function uiSmoke(){
     ['join-event',   !!document.querySelector('[data-action="join-event"]')],
     ['login',        !!document.querySelector('#login-btn')],
     ['signup',       !!document.querySelector('#signup-btn')],
-    ['logout',       !!document.querySelector('#logout-btn')],
+    ['logout',       !!document.querySelector('#btn-logout')],
   ];
   need.forEach(([k, ok])=> report.push({button:k, present:ok}));
   console.table(report);
