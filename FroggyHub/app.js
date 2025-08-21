@@ -2,6 +2,14 @@ const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
 
+function onDelegated(selector, type, handler, options){
+  document.addEventListener(type, (e)=>{
+    const el = e.target.closest(selector);
+    if(!el) return;
+    handler(e, el);
+  }, options || false);
+}
+
 const TOKEN_KEY = 'FH_JWT';
 const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} };
 const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
@@ -16,12 +24,11 @@ const screens = {
 
 function showScreen(name){
   Object.entries(screens).forEach(([k, el])=>{
-    if (!el) return;
-    if (k === name) { el.hidden = false; el.removeAttribute('hidden'); }
-    else { el.hidden = true; el.setAttribute('hidden',''); }
+    if(!el) return;
+    el.hidden = (k !== name);
   });
-  // для удобства CSS
   document.body.dataset.screen = name;
+  console.debug('[screen]', name);
 }
 
 async function apiPost(fnPath, payload) {
@@ -42,6 +49,33 @@ const LS_NICK = 'fh:nickname';
 
 document.querySelectorAll('input, textarea, select').forEach(el=>{
   el.classList.add('input');
+});
+
+['create-event','join-event','login-btn','signup-btn','logout-btn'].forEach(id=>{
+  const el = document.getElementById(id);
+  console.debug('[btn]', id, 'present=', !!el);
+});
+
+// Экранная навигация по data-go
+onDelegated('[data-go]', 'click', (e, el) => {
+  if (el.tagName === 'A') e.preventDefault();
+  const target = el.dataset.go;
+  if (target === 'app' || target === 'profile') {
+    console.debug('[nav] goto app from', el.id || el.className);
+    showScreen('app');
+    const first = document.querySelector('#screen-app input, #screen-app textarea, #screen-app button');
+    if (first) first.focus();
+    return;
+  }
+  if (target === 'menu') {
+    console.debug('[nav] goto menu');
+    showScreen('lobby');
+    return;
+  }
+  if (target === 'auth') {
+    console.debug('[nav] goto auth');
+    showScreen('auth');
+  }
 });
 
 function toast(msg, type='info'){
@@ -1006,7 +1040,7 @@ $('#confirmDeleteBtn')?.addEventListener('click', async ()=>{
 });
 
 /* ---------- ЛОББИ: переходы ---------- */
-$('#goCreate')?.addEventListener('click', startCreateFlow);
+$('#create-event')?.addEventListener('click', startCreateFlow);
 $('#goJoinByCode')?.addEventListener('click', ()=>{
   show('#screen-app');
   setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('join-code');
@@ -2356,15 +2390,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if (getToken()) showScreen('lobby');
   else            showScreen('auth');
 
-  // Кнопки/ссылки "Меню" и "Профиль" не должны перегружать страницу
-  const menuLink = $('#nav-menu, a[href="/menu"], a[href="#menu"]');
-  if (menuLink){
-    menuLink.addEventListener('click', (e)=>{ e.preventDefault(); showScreen('lobby'); });
-  }
-  const profileLink = $('#nav-profile, a[href="/profile"], a[href="#profile"]');
-  if (profileLink){
-    profileLink.addEventListener('click', (e)=>{ e.preventDefault(); showScreen('app'); });
-  }
+  // Навешанные делегированные клики работают всегда, ничего больше не нужно
 });
 
 document.addEventListener('DOMContentLoaded', () => {
