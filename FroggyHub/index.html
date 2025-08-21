@@ -87,6 +87,11 @@
       <img class="decor stump" src="/assets/stump.png" alt="">
     </div>
 
+    <!-- Герой-лягушка (центр меню) -->
+    <div class="frog-hero" aria-hidden="true">
+      <img src="/assets/frog_idle.png" alt="" />
+    </div>
+
     <div class="menu-deck">
       <div class="panel">
         <div class="menu-grid">
@@ -401,17 +406,31 @@
   </script>
   <script defer type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
   <script src="/app.js" defer></script>
-  <!-- Модалка выбора типа встречи -->
-  <dialog id="type-modal" hidden>
-    <form method="dialog" class="type-modal panel">
-      <h3>Какой тип встречи вы планируете создать?</h3>
-      <div class="stack-sm">
-        <button type="button" class="btn" data-type="business">Деловая</button>
-        <button type="button" class="btn" data-type="party">Праздничная</button>
+  <!-- Cookie notice -->
+  <div id="cookie" class="cookie" hidden>
+    <div class="cookie__text">
+      Мы используем cookies, чтобы сайт работал стабильнее. Продолжая, вы принимаете использование cookies.
+    </div>
+    <div class="cookie__actions">
+      <button id="cookie-ok" class="btn btn-primary btn-sm">Принять</button>
+    </div>
+  </div>
+
+  <!-- Тип встречи (модалка) -->
+  <div id="dlg-type" class="modal" hidden>
+    <div class="modal__backdrop" data-close="dlg-type"></div>
+    <div class="modal__card">
+      <h3 class="modal__title">Какой тип встречи вы планируете создать?</h3>
+      <div class="modal__btns">
+        <button class="btn btn-secondary" data-type="business">Деловая</button>
+        <button class="btn btn-secondary" data-type="party">Праздничная</button>
       </div>
-      <button type="button" class="btn btn-ghost" data-close>Отмена</button>
-    </form>
-  </dialog>
+      <div class="modal__footer">
+        <button class="btn btn-ghost" data-close="dlg-type">Отмена</button>
+      </div>
+    </div>
+  </div>
+
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
   <dialog id="otpModal">
     <form method="dialog" class="grid">
