@@ -32,14 +32,10 @@ const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} }
 const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
 const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} };
 
-function showScreen(id) {
-  const ids = ['auth','lobby','app','profile'];
-  ids.forEach(s => {
-    const el = document.getElementById('screen-' + s);
-    if (el) el.hidden = (s !== id);
-  });
-  document.body.dataset.screen = id;
-  console.log('[screen] =>', id);
+function showScreen(name){
+  $$('[id^="screen-"]').forEach(s => s.hidden = s.id !== `screen-${name}`);
+  document.body.dataset.screen = name;
+  console.log('[screen] =>', name);
 }
 
 async function apiPost(fnPath, payload) {
@@ -62,7 +58,7 @@ document.querySelectorAll('input, textarea, select').forEach(el=>{
   el.classList.add('input');
 });
 
-['create-event','join-event','login-btn','signup-btn','btn-logout'].forEach(id=>{
+['create-event','join-open','login-btn','signup-btn','btn-logout'].forEach(id=>{
   const el = document.getElementById(id);
   console.debug('[btn]', id, 'present=', !!el);
 });
@@ -121,25 +117,135 @@ async function renderProfile() {
 }
 
 // Навигация по атрибуту data-go
-document.addEventListener('click', (e) => {
-  const el = e.target.closest('[data-go]');
-  if (!el) return;
+document.addEventListener('click', (e)=>{
+  const go = e.target.closest('[data-go]');
+  if (!go) return;
   e.preventDefault();
-  const go = el.dataset.go;
-  const mode = el.dataset.mode || null;
-  showScreen(go);
-  if (go === 'app') {
+  const dest = go.getAttribute('data-go');
+  if (dest === 'settings') return;
+  showScreen(dest);
+  if (dest === 'profile') loadProfileAndEvents().catch(console.error);
+  if (dest === 'app') {
+    const mode = go.getAttribute('data-mode') || null;
     setWizardMode?.(mode || 'create');
     requestAnimationFrame(() => document.querySelector('#screen-app input, #screen-app textarea')?.focus());
   }
-  if (go === 'profile') { renderProfile(); }
 });
 
-// Не даём форме "join" перезагружать страницу
-document.querySelector('#join-form')?.addEventListener('submit', (e) => {
+$('#create-event')?.addEventListener('click', (e)=>{
   e.preventDefault();
-  document.querySelector('#join-event')?.click();
+  showScreen('app');
 });
+
+$('#join-form')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  $('#join-open')?.setAttribute('disabled','');
+  try{
+    const code = ($('#join-code')?.value || '').trim();
+    if (code.length !== 6) throw new Error('Введите 6-значный код');
+    const { event } = await apiFetch(`events-get?code=${encodeURIComponent(code)}`);
+    if (typeof openFinal === 'function') {
+      await openFinal(event.code);
+    } else if (typeof openEvent === 'function') {
+      await openEvent(event);
+    } else {
+      const fc=$('#final-code'); if(fc) fc.textContent = event.code || '—';
+      const ft=$('#final-title'); if(ft) ft.textContent = event.title || '—';
+      const fw=$('#final-when'); if(fw) fw.textContent = `${event.date||''} ${event.time||''}`.trim();
+      const fa=$('#final-address'); if(fa) fa.textContent = event.address || '—';
+      const fd=$('#final-dress'); if(fd) fd.textContent   = event.dress || '—';
+      const fb=$('#final-bring'); if(fb) fb.textContent   = event.bring || '—';
+      const fcm=$('#final-comment'); if(fcm) fcm.textContent = event.comment || '—';
+      showScreen('app');
+    }
+  } catch(err){ alert(err.message || 'Код не найден'); }
+  finally{ $('#join-open')?.removeAttribute('disabled'); }
+});
+
+async function apiFetch(path, init={}){
+  init.headers = Object.assign({'Content-Type':'application/json'}, authHeaders(), init.headers||{});
+  const res = await fetch(`/.netlify/functions/${path}`, init);
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok || data?.success===false) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function loadProfileAndEvents(){
+  const prof = await apiFetch('profile');
+  $('#profile-nick').textContent = prof.nickname || '—';
+  if (prof.avatar_url) $('#avatar-img').src = prof.avatar_url;
+
+  const { events } = await apiFetch('events-mine');
+  const { upcoming, past } = splitEvents(events);
+  renderEventsColumn('#profile-upcoming', upcoming);
+  renderEventsColumn('#profile-past', past);
+}
+
+function splitEvents(list){
+  const now = new Date();
+  const parse = (e)=>{
+    const dt = new Date(`${e.date || ''}T${(e.time||'00:00')}:00`);
+    return isFinite(dt) ? dt : new Date(8640000000000000);
+  };
+  const upcoming = [], past = [];
+  for (const e of list){
+    (parse(e) >= now ? upcoming : past).push(e);
+  }
+  upcoming.sort((a,b)=> new Date(`${a.date}T${a.time||'00:00'}`) - new Date(`${b.date}T${b.time||'00:00'}`));
+  past.sort((a,b)=> new Date(`${b.date}T${b.time||'00:00'}`) - new Date(`${a.date}T${a.time||'00:00'}`));
+  return { upcoming, past };
+}
+
+function renderEventsColumn(sel, items){
+  const box = $(sel); if (!box) return;
+  box.innerHTML = items.map(e => `
+    <div class="event-item" data-open-event="${e.code || e.id}">
+      <div>
+        <div class="event-title">${e.title || '—'}</div>
+        <div class="event-meta">${e.date || '—'} ${e.time || ''} · ${e.address || '—'}</div>
+      </div>
+      <div class="event-actions">
+        <button class="btn btn-sm" data-open-event="${e.code || e.id}">Открыть</button>
+      </div>
+    </div>
+  `).join('') || '<div style="opacity:.7">Пока пусто</div>';
+}
+
+document.addEventListener('click', async (e)=>{
+  const trg = e.target.closest('[data-open-event]');
+  if (!trg) return;
+  const key = trg.getAttribute('data-open-event');
+  try{
+    const q = isNaN(+key) ? `events-get?code=${encodeURIComponent(key)}` : `events-get?id=${key}`;
+    const { event } = await apiFetch(q);
+    if (typeof openFinal === 'function')      await openFinal(event.code);
+    else if (typeof openEvent === 'function')  await openEvent(event);
+    else {
+      const ft=$('#final-title'); if(ft) ft.textContent = event.title || '—';
+      showScreen('app');
+    }
+  }catch(err){ alert(err.message || 'Не удалось открыть событие'); }
+});
+
+$('#avatar-upload')?.addEventListener('click', ()=> $('#avatar-file')?.click());
+$('#avatar-file')?.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0]; if (!file) return;
+  const b64 = await fileToBase64Resized(file, 512);
+  try{
+    const { url } = await apiFetch('avatar-upload', { method:'POST', body: JSON.stringify({ image: b64 }) });
+    $('#avatar-img').src = url;
+  }catch(err){ alert(err.message || 'Не удалось загрузить аватар'); }
+});
+
+async function fileToBase64Resized(file, max){
+  const img = await new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=URL.createObjectURL(file); });
+  const scale = Math.min(1, max/Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width*scale));
+  const h = Math.max(1, Math.round(img.height*scale));
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  c.getContext('2d').drawImage(img,0,0,w,h);
+  return c.toDataURL('image/jpeg', 0.9);
+}
 
 const state = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
 
@@ -591,9 +697,9 @@ function trapFocus(node){
   return ()=>node.removeEventListener('keydown',handler);
 }
 function show(idToShow){
-  const map = {'#screen-auth':'auth', '#screen-lobby':'lobby', '#screen-app':'app'};
+  const map = {'#screen-auth':'auth', '#screen-menu':'menu', '#screen-app':'app', '#screen-profile':'profile'};
   if (map[idToShow]) return showScreen(map[idToShow]);
-  ['#screen-auth','#screen-lobby','#screen-app'].forEach(id=>{
+  ['#screen-auth','#screen-menu','#screen-app','#screen-profile'].forEach(id=>{
     const el=$(id); if(!el) return; el.hidden = (id!==idToShow);
   });
 }
@@ -762,7 +868,7 @@ function setStatus(zone,msg){
 }
 
 function goToLobby(){
-  show('#screen-lobby');
+  show('#screen-menu');
 }
 
 async function handleRegister(){
@@ -883,7 +989,7 @@ resetSetBtn?.addEventListener('click', async ()=>{
       setSession(emailSup);
       window.currentUserEmail = emailSup;
       renderUserBadge({ nickname: getNickname(), email: emailSup });
-      show('#screen-lobby');
+      show('#screen-menu');
       return;
     }
   }
@@ -891,7 +997,7 @@ resetSetBtn?.addEventListener('click', async ()=>{
   if (email && users[email]) {
     window.currentUserEmail = email;
     renderUserBadge({ nickname: getNickname(), email });
-    show('#screen-lobby');
+    show('#screen-menu');
   } else {
     localStorage.removeItem(SESSION_KEY);
     show('#screen-auth');
@@ -1045,7 +1151,7 @@ ensureSupabase().then(async sb => {
     if(currentUser){
       window.currentUserEmail = currentUser.email || '';
       renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
-      show('#screen-lobby');
+      show('#screen-menu');
       const pending = sessionStorage.getItem('pendingCreate');
       if(pending){
         Object.assign(eventData, JSON.parse(pending));
@@ -1092,7 +1198,7 @@ ensureSupabase().then(async sb => {
       window.currentUserEmail = currentUser.email || '';
       renderUserBadge({ nickname: getNickname(), email: window.currentUserEmail });
       if(isHome){
-        show('#screen-lobby');
+        show('#screen-menu');
         const pendingProfile = sessionStorage.getItem('pendingProfileName');
         if(pendingProfile){
           try{ await sb.from('profiles').upsert({ id: currentUser.id, nickname: pendingProfile }); }catch(e){ console.warn('profile upsert', e); }
@@ -2451,7 +2557,7 @@ function wireAuthForms(){
         const data = await apiLogin(nickname, password);
         if (data?.token){
           saveToken(data.token);
-          showScreen('lobby');        // ← показываем меню/лобби
+          showScreen('menu');        // ← показываем меню/лобби
           if (typeof loadLobby === 'function') loadLobby();
         } else {
           alert(data?.error || 'Ошибка входа');
@@ -2485,7 +2591,7 @@ function wireAuthForms(){
           const lg = await apiLogin(nickname, password);
           if (lg?.token){
             saveToken(lg.token);
-            showScreen('lobby');
+            showScreen('menu');
             if (typeof loadLobby === 'function') loadLobby();
             return;
           }
@@ -2502,7 +2608,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   wireAuthForms();
 
   // если уже залогинен — сразу меню
-  if (getToken()) showScreen('lobby');
+  if (getToken()) showScreen('menu');
   else            showScreen('auth');
 
   // Навешанные делегированные клики работают всегда, ничего больше не нужно
@@ -2520,3 +2626,5 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof renderMainMenu === 'function') renderMainMenu(); // страница "Создать / Присоединиться"
   }
 });
+
+if (!document.body.dataset.screen) showScreen('menu');

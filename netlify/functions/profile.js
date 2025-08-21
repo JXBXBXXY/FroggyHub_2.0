@@ -7,10 +7,10 @@ export async function handler(event, context) {
     const sb = getServiceClient();
     const { data, error } = await sb
       .from('users_local')
-      .select('id, nickname, email, created_at')
+      .select('id, nickname, avatar_url')
       .eq('id', ctx.user.sub)
       .single();
     if (error || !data) return err('User not found', 404);
-    return ok({ success:true, profile: data });
+    return ok(data);
   })(event, context);
 }
