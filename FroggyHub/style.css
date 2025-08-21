@@ -734,3 +734,29 @@ button:not([disabled]){ cursor:pointer; }
 }
 .wish-item.taken{ opacity:.6; }
 .wish-item.taken button{ pointer-events:none; }
+
+/* --- Menu mascot sizing & layering --- */
+#frog-mascot,
+.mascot-top{
+  position: fixed;
+  top: 56px;             /* было 18px — чуть ниже, чтобы не «давила» на блок */
+  left: 24px;
+  width: clamp(120px, 18vw, 220px);  /* адаптивный размер вместо гигантского */
+  height: auto;
+  z-index: 1;            /* под контролами */
+  pointer-events: none;  /* не перехватывает клики */
+  object-fit: contain;
+}
+
+.menu-deck{
+  z-index: 3;            /* гарантированно поверх маскота */
+}
+
+/* на очень узких экранах сделать ещё компактнее */
+@media (max-width: 520px){
+  #frog-mascot,
+  .mascot-top{
+    top: 44px;
+    width: clamp(110px, 26vw, 160px);
+  }
+}
