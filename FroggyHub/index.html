@@ -176,19 +176,6 @@
 
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
   <section id="screen-app" class="container" hidden>
-    <section class="card">
-      <h2 id="final-title">Событие</h2>
-      <div>Код: <span id="event-code">—</span> <button id="copy-invite" class="btn btn--ghost btn--sm" type="button">Скопировать приглашение</button></div>
-      <div>Когда: <span id="event-when">—</span></div>
-      <div>Адрес: <span id="event-address">—</span></div>
-      <div>Дресс-код: <span id="event-dress">—</span></div>
-      <div>Что взять: <span id="event-bring">—</span></div>
-      <div>Комментарий: <span id="event-comment">—</span></div>
-      <div>Вы выбрали: <span id="event-picks">—</span></div>
-      <div class="mt-4">
-        <button id="back-to-menu" class="btn btn--secondary" data-go="menu" type="button">Вернуться в меню</button>
-      </div>
-    </section>
     <div class="wrap" id="root" hidden>
       <section class="pond" id="pond">
         <div class="ripples" aria-hidden="true"></div>
@@ -361,6 +348,75 @@
     </div>
   </section>
 
+  <section id="screen-final" class="screen" hidden>
+    <div class="final-wrap">
+      <div class="final-grid">
+        <!-- ЛЕВАЯ КОЛОНКА: детали и шаринг -->
+        <div class="final-left card">
+          <div class="final-head">
+            <h2 id="final-title">Событие</h2>
+            <div class="final-code">
+              <span>Код: <b id="final-code">—</b></span>
+              <button id="btn-copy-invite" class="btn btn-chip">Скопировать приглашение</button>
+            </div>
+          </div>
+
+          <div class="final-details">
+            <div class="row">
+              <span class="label">Когда:</span>
+              <span id="final-when" class="value">—</span>
+            </div>
+            <div class="row">
+              <span class="label">Адрес:</span>
+              <span id="final-address" class="value">—</span>
+            </div>
+            <div class="row">
+              <span class="label">Дресс-код:</span>
+              <span id="final-dress" class="value">—</span>
+            </div>
+            <div class="row">
+              <span class="label">Что взять:</span>
+              <span id="final-bring" class="value">—</span>
+            </div>
+            <div class="row">
+              <span class="label">Комментарий:</span>
+              <span id="final-comment" class="value">—</span>
+            </div>
+            <div class="row" id="final-picked-row" hidden>
+              <span class="label">Вы выбрали:</span>
+              <span id="final-picked" class="value">—</span>
+            </div>
+          </div>
+
+          <div class="final-actions">
+            <button class="btn" data-go="menu">Вернуться в меню</button>
+          </div>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА: превью приглашения + wishlist -->
+        <div class="final-right invite-card">
+          <div class="invite-title" id="invite-title">Событие</div>
+
+          <div class="invite-meta">
+            <span class="chip" id="chip-date">—</span>
+            <span class="chip" id="chip-time" hidden>—</span>
+            <span class="chip" id="chip-place" hidden>—</span>
+          </div>
+
+          <div class="invite-desc" id="invite-desc">Описание / детали.</div>
+
+          <div class="invite-subtitle">Wishlist</div>
+          <div id="invite-wishlist" class="chips"></div>
+
+          <div class="invite-legend">
+            <span class="dot free"></span> свободно
+            <span class="dot taken"></span> занято
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ЭКРАН: ПРОФИЛЬ -->
   <section id="screen-profile" class="screen" hidden>
     <div class="container">
@@ -412,15 +468,16 @@
   </dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <div id="modal-type" class="modal" hidden>
-    <div class="card">
-      <h3>Какой тип встречи вы планируете создать?</h3>
-      <div class="modal__btns">
-        <button id="btn-type-business" class="btn btn-secondary" data-type="business">Деловая</button>
-        <button id="btn-type-party" class="btn btn-secondary" data-type="party">Праздничная</button>
+  <div id="typeModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box">
+      <h3 class="modal-title">Какой тип встречи вы планируете создать?</h3>
+      <div class="modal-actions row">
+        <button class="btn btn-primary" data-type="business">Деловая</button>
+        <button class="btn btn-primary" data-type="party">Праздничная</button>
       </div>
-      <div class="modal__footer">
-        <button class="btn btn-ghost" data-close>Отмена</button>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close>Отмена</button>
       </div>
     </div>
   </div>

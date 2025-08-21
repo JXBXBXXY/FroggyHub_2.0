@@ -161,10 +161,10 @@ document.addEventListener('click', (e)=>{
 });
 
 $('#create-event')?.addEventListener('click', () => openTypeModal(true));
-function openTypeModal(open){ $('#modal-type').hidden = !open; }
+function openTypeModal(open){ $('#typeModal').hidden = !open; }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') openTypeModal(false); });
-$('#modal-type').addEventListener('click', e=>{
-  if(e.target.id==='modal-type' || e.target.closest('[data-close]')) openTypeModal(false);
+$('#typeModal').addEventListener('click', e=>{
+  if(e.target.classList.contains('modal-backdrop') || e.target.closest('[data-close]')) openTypeModal(false);
 });
 
 // --- Создание события: состояние и шаги ---
@@ -194,7 +194,7 @@ $('#form-join-name')?.addEventListener('submit', e=>{
   if(!guest.nickname) return;
   // подгружаем wishlist из созданного state.create, если код совпал (стаб)
   const wl = (state.create.code && guest.code===state.create.code) ? state.create.wishlist : [];
-  guest.event = { title: state.create.base.title, date: state.create.base.date, time: state.create.base.time, place: state.create.base.place,
+  guest.event = { title: state.create.base.title, date: state.create.base.date, time: state.create.base.time, address: state.create.base.place,
     dress: state.create.reqs.dress, bring: state.create.reqs.bring, comment: state.create.reqs.comment, wishlist: JSON.parse(JSON.stringify(wl)) };
   renderJoinWl(); show('join-wishlist');
 });
@@ -221,15 +221,9 @@ document.addEventListener('click', e=>{
 });
 
 $('#btn-join-final')?.addEventListener('click', ()=>{
-  // выводим ту же финальную карточку
-  $('#event-code').textContent   = guest.code;
-  $('#final-title').textContent  = guest.event.title || '—';
-  $('#event-when').textContent   = `${guest.event.date||''} ${guest.event.time||''}`;
-  $('#event-address').textContent= guest.event.place || '—';
-  $('#event-dress').textContent  = guest.event.dress || '—';
-  $('#event-bring').textContent  = guest.event.bring || '—';
-  $('#event-comment').textContent= guest.event.comment || '—';
-  show('app');
+  const ev = Object.assign({ code: guest.code }, guest.event);
+  populateFinal(ev);
+  show('final');
 });
 
 function setCreateType(t){
@@ -242,11 +236,13 @@ function setCreateType(t){
 function six(){ return String(Math.floor(100000 + Math.random()*900000)); }
 
 // модалка “тип встречи”
-$('#btn-type-business')?.addEventListener('click', ()=>{
-  setCreateType('business'); openTypeModal(false); show('create-conditions');
-});
-$('#btn-type-party')?.addEventListener('click', ()=>{
-  setCreateType('party'); openTypeModal(false); show('create-conditions');
+document.addEventListener('click', e=>{
+  const btnType = e.target.closest('#typeModal [data-type]');
+  if(!btnType) return;
+  const kind = btnType.getAttribute('data-type');
+  setCreateType(kind);
+  openTypeModal(false);
+  show('create-conditions');
 });
 
 // шаг 1 → шаг 2
@@ -299,34 +295,70 @@ document.addEventListener('click', e=>{
 // финал
 $('#btn-create-final')?.addEventListener('click', ()=>{
   state.create.code = six();
-  fillFinalFromState(state.create);
-  show('app');
+  const ev = {
+    code: state.create.code,
+    title: state.create.base.title,
+    date: state.create.base.date,
+    time: state.create.base.time,
+    address: state.create.base.place,
+    dress: state.create.reqs.dress,
+    bring: state.create.reqs.bring,
+    comment: state.create.reqs.comment,
+    wishlist: state.create.wishlist
+  };
+  populateFinal(ev);
+  show('final');
 });
 
-function fillFinalFromState(st){
-  $('#event-code').textContent   = st.code;
-  $('#final-title').textContent  = st.base.title || '—';
-  $('#event-when').textContent   = `${st.base.date} ${st.base.time||''}`;
-  $('#event-address').textContent= st.base.place || '—';
-  $('#event-dress').textContent  = st.reqs.dress || '—';
-  $('#event-bring').textContent  = st.reqs.bring || '—';
-  $('#event-comment').textContent= st.reqs.comment || '—';
+function populateFinal(ev){
+  state.event = ev; state.code = ev.code;
+  $('#final-title').textContent = ev.title || 'Событие';
+  $('#invite-title').textContent = ev.title || 'Событие';
+  $('#final-code').textContent = ev.code || '—';
+
+  const whenText = [ev.date, ev.time].filter(Boolean).join(' ');
+  $('#final-when').textContent = whenText || '—';
+  $('#final-address').textContent = ev.address || '—';
+  $('#final-dress').textContent = ev.dress || '—';
+  $('#final-bring').textContent = ev.bring || '—';
+  $('#final-comment').textContent = ev.comment || '—';
+
+  $('#chip-date').textContent = ev.date || '—';
+  const chipTime = $('#chip-time');
+  if(ev.time){ chipTime.textContent = ev.time; chipTime.hidden = false; } else { chipTime.hidden = true; }
+  const chipPlace = $('#chip-place');
+  if(ev.address){ chipPlace.textContent = ev.address; chipPlace.hidden = false; } else { chipPlace.hidden = true; }
+
+  $('#invite-desc').textContent = ev.comment || 'Описание / детали.';
+
+  const wlBox = $('#invite-wishlist');
+  wlBox.innerHTML = '';
+  (ev.wishlist || []).forEach(it=>{
+    const a = document.createElement('a');
+    a.className = 'chip' + (it.claimed_by ? ' taken' : '');
+    a.textContent = it.title || '—';
+    if(it.url){ a.href = it.url; a.target = '_blank'; a.rel = 'noopener'; }
+    wlBox.appendChild(a);
+  });
+
+  let picked = null;
+  const myNick = guest.nickname || null;
+  if(myNick && ev.wishlist){
+    const mine = ev.wishlist.find(w=> (w.claimed_by||'').toLowerCase() === myNick.toLowerCase());
+    if(mine){ picked = mine.title; }
+  }
+  const pickedRow = $('#final-picked-row');
+  if(picked){ $('#final-picked').textContent = picked; pickedRow.hidden = false; }
+  else { pickedRow.hidden = true; }
 }
 
-function openFinal(data){
-  if (typeof data === 'string') data = { code:data };
-  data = data || {};
-  show('app');
-  $('#final-title').textContent = data.details?.title || 'Событие';
-  $('#event-code').textContent = data.code || '—';
-  const when = [data.details?.date, data.details?.time].filter(Boolean).join(' ');
-  $('#event-when').textContent = when || '—';
-  $('#event-address').textContent = data.details?.place || '—';
-  $('#event-dress').textContent = data.req?.dress || '—';
-  $('#event-bring').textContent = data.req?.bring || '—';
-  $('#event-comment').textContent = data.req?.comment || '—';
-  $('#event-picks').textContent = data.picks && data.picks.length ? data.picks.join(', ') : '—';
+async function openFinal(code){
+  const { event } = await apiFetch('event-one-v2?code='+encodeURIComponent(code));
+  populateFinal(event);
+  show('final');
 }
+
+$('#btn-copy-invite')?.addEventListener('click', ()=>{ if(state.event) copyInvite(state.event); });
 
 async function apiFetch(path, init={}){
   init.headers = Object.assign({'Content-Type':'application/json'}, authHeaders(), init.headers||{});
