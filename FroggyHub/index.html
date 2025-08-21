@@ -129,43 +129,55 @@
     </div>
   </section>
 
-  <!-- ШАГ 2: ТРЕБОВАНИЯ -->
-  <section id="screen-create-requirements" class="screen" hidden>
-    <div class="container">
-      <form id="form-create-req" class="grid form-grid" autocomplete="off">
-        <label>Дресс-код
-          <input id="req-dress" />
-        </label>
-        <label>Что взять
-          <input id="req-bring" />
-        </label>
-        <label>Комментарий
-          <textarea id="req-comment" rows="3"></textarea>
-        </label>
-      </form>
-      <div class="row2 mt-4">
-        <button id="req-back" class="btn btn--secondary" type="button">Назад</button>
-        <button id="req-next" class="btn btn--primary" type="button">Далее</button>
-      </div>
-    </div>
-  </section>
+    <!-- ЭКРАН: Шаг 2 — Требования (скрыт по умолчанию) -->
+    <section id="screen-create-reqs" class="screen" hidden>
+      <div class="container">
+        <div class="panel">
+          <h2 id="reqs-title">Требования</h2>
 
-  <!-- ШАГ 3: WISHLIST -->
-  <section id="screen-wishlist" class="screen" hidden>
-    <div class="container">
-      <div class="grid form-grid">
-        <div id="wish-list" class="wish-grid"></div>
-        <div class="row2">
-          <input id="wish-input" class="input" placeholder="Добавить пункт" />
-          <button id="wish-add" class="btn btn--primary" type="button">Добавить</button>
+          <form id="form-reqs" autocomplete="off" class="stack-md">
+            <label id="lbl-dress">Дресс-код
+              <input id="r-dress" class="input" placeholder="Например: casual">
+            </label>
+
+            <label id="lbl-bring">Что взять
+              <input id="r-bring" class="input" placeholder="Например: ноутбук, блокнот">
+            </label>
+
+            <label id="lbl-comment">Комментарий для гостей
+              <input id="r-comment" class="input" placeholder="Короткое сообщение для приглашённых">
+            </label>
+
+            <div class="row-end gap-sm">
+              <button type="button" class="btn" id="btn-reqs-back">Назад</button>
+              <button class="btn btn-primary" id="btn-reqs-next">Далее</button>
+            </div>
+          </form>
         </div>
       </div>
-      <div class="row2 mt-4">
-        <button id="wish-back" class="btn btn--secondary" type="button">Назад</button>
-        <button id="wish-next" class="btn btn--primary" type="button">Далее</button>
+    </section>
+
+    <!-- ЭКРАН: Wishlist (общий) -->
+    <section id="screen-wishlist" class="screen" hidden>
+      <div class="container">
+        <div class="panel">
+          <h2>Wishlist</h2>
+
+          <form id="form-add-wish" class="grid-2">
+            <input id="wish-title" class="input" placeholder="Название (тема/подарок)">
+            <input id="wish-url" class="input" placeholder="Ссылка (опционально)">
+            <button class="btn">Добавить</button>
+          </form>
+
+          <div id="wish-list" class="wish-grid" style="margin-top:12px">Пока пусто</div>
+
+          <div class="row-end gap-sm" style="margin-top:16px">
+            <button type="button" class="btn" id="btn-wish-back">Назад</button>
+            <button class="btn btn-primary" id="btn-wish-next">Далее</button>
+          </div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
   <section id="screen-app" class="container" hidden>
