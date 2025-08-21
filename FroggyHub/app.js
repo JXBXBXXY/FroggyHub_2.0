@@ -1,3 +1,20 @@
+let __booted = false;
+window.addEventListener('DOMContentLoaded', () => {
+  if (__booted) return;
+  __booted = true;
+  init();
+});
+
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg, ms = 1800) {
+  if (!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms);
+}
+
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
@@ -82,14 +99,14 @@ function eventRow(ev) {
   const title = ev.title || 'Без названия';
   const when  = ev.date ? (ev.time ? `${ev.date} · ${ev.time}` : ev.date) : '—';
   return `
-    <div class="event-item" data-id="${ev.id}" data-code="${ev.code || ''}">
+    <div class="event-item" data-card-id="${ev.id}" data-code="${ev.code || ''}">
       <div>
         <div><strong>${title}</strong></div>
         <div class="event-item__meta">${when}${ev.code ? ` · код: ${ev.code}` : ''}</div>
       </div>
       <div class="event-item__actions">
-        <button class="btn btn--sm" data-action="open">Открыть</button>
-        ${ev.is_host ? `<button class="btn btn--sm btn--danger" data-action="delete">Удалить</button>` : ''}
+        <button class="btn btn--sm" data-open-id="${ev.id}">Открыть</button>
+        ${ev.is_host ? `<button class="btn btn--sm btn--danger" data-delete-id="${ev.id}">Удалить</button>` : ''}
       </div>
     </div>
   `;
@@ -110,34 +127,6 @@ async function renderProfile() {
   }
 }
 
-onDelegated('#screen-profile .event-item [data-action="open"]', 'click', async (e, btn) => {
-  const row = btn.closest('.event-item');
-  if (!row) return;
-  await renderEvent(row.dataset.id);
-  showScreen('app');
-});
-
-onDelegated('#screen-profile .event-item [data-action="delete"]', 'click', async (e, btn) => {
-  const row = btn.closest('.event-item');
-  if (!row) return;
-  if (!confirm('Удалить событие?')) return;
-  try {
-    btn.disabled = true;
-    const res = await fetch('/.netlify/functions/event-delete?id=' + encodeURIComponent(row.dataset.id), {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${localStorage.getItem('FH_JWT') || ''}` }
-    });
-    const data = await res.json().catch(()=> ({}));
-    if (!res.ok) throw new Error(data?.error || 'Не удалось удалить');
-    await renderProfile();
-    toast('Удалено');
-  } catch (err) {
-    toast(err.message || 'Ошибка удаления');
-  } finally {
-    btn.disabled = false;
-  }
-});
-
 // Экранная навигация по data-go
 onDelegated('[data-go]', 'click', async (e, el) => {
   if (el.tagName === 'A') e.preventDefault();
@@ -147,16 +136,47 @@ onDelegated('[data-go]', 'click', async (e, el) => {
   if (target === 'profile') { renderProfile(); }
 });
 
-function toast(msg, type='info'){
-  console[type==='error'?'error':'log']('[toast]', msg);
-  try { window.showToast?.(msg, type); } catch {}
-}
-
 const state = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
 
 function authHeaders() {
   const t = localStorage.getItem('FH_JWT');
   return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+function init() {
+  document.addEventListener('click', async (e) => {
+    const delBtn = e.target.closest('[data-delete-id]');
+    if (delBtn) {
+      e.preventDefault();
+      const id = delBtn.dataset.deleteId;
+      delBtn.disabled = true;
+      try {
+        const res = await fetch('/.netlify/functions/event-delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ id })
+        }).then(r => r.json());
+        if (res?.success) {
+          document.querySelectorAll(`[data-card-id="${id}"]`).forEach(n => n.remove());
+          toast('Удалено');
+        } else {
+          toast('Не удалось удалить');
+          delBtn.disabled = false;
+        }
+      } catch {
+        toast('Ошибка сети');
+        delBtn.disabled = false;
+      }
+      return;
+    }
+
+    const openBtn = e.target.closest('[data-open-id]');
+    if (openBtn) {
+      e.preventDefault();
+      const id = openBtn.dataset.openId;
+      if (typeof openEvent === 'function') openEvent(id);
+    }
+  });
 }
 
 // --- API: события ---
@@ -202,6 +222,11 @@ async function renderEvent(eventIdOrObj) {
   $('#event-dress')?.replaceChildren(document.createTextNode(ev.dress_code ?? '—'));
   $('#event-bring')?.replaceChildren(document.createTextNode(ev.to_bring ?? '—'));
   $('#event-comment')?.replaceChildren(document.createTextNode(ev.comment ?? '—'));
+}
+
+async function openEvent(id) {
+  await renderEvent(id);
+  showScreen('app');
 }
 
 function setBusyBtn(el, on) {
