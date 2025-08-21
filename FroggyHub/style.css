@@ -32,6 +32,8 @@
   --shore:#173826;
   --soil:#0d2218;
   --danger:#ff6b6b;
+  --frog-hero-max: 540px;
+  --frog-hero-min: 360px;
 }
 
 *{box-sizing:border-box}
@@ -193,13 +195,35 @@ a.btn{ color:inherit; }
   border-radius:10px;
 }
 
+/* Шапка авторизации */
 .hint{color:var(--muted);font-size:.92rem}
-  .auth-hero{display:flex;gap:16px;align-items:center;margin-bottom:10px}
-  .auth-hero, .header-pond { position: relative; overflow: hidden; }
-.avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:28px;background:var(--accent)}
-.hero-text h1{margin:0 0 6px}
-.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.chip{background:var(--accent);color:#0a1e14;padding:6px 10px;border-radius:999px;font-weight:700;font-size:.9rem}
+.auth-head{
+  display:flex; align-items:center; gap:12px; margin-bottom:12px;
+}
+.auth-avatar img{
+  width:56px; height:56px; border-radius:50%; display:block;
+  box-shadow:0 0 0 2px rgba(255,255,255,.08) inset;
+}
+.avatar{
+  width:64px; height:64px; border-radius:50%; display:block;
+  object-fit:cover;
+}
+.auth-title h2{ margin:0 0 6px 0; }
+.auth-steps{
+  display:flex; gap:8px; flex-wrap:wrap;
+  opacity:1; transform:none; visibility:visible;
+}
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:999px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:13px; line-height:1; user-select:none;
+}
+.chip-on{
+  background:rgba(61,189,141,.16);
+  border-color:rgba(61,189,141,.35);
+}
 
 .tabs{display:flex;margin-bottom:12px}
 .tab{flex:1;padding:10px;cursor:pointer;background:var(--card-dark);color:var(--text);border:1px solid var(--card-border);border-bottom:none;text-align:center;pointer-events:auto;opacity:.7}
@@ -209,7 +233,7 @@ a.btn{ color:inherit; }
 .is-hidden{display:none}
 #paneLogin,#paneSignup,#paneReset{max-width:420px;margin:0 auto;}
 section[hidden]{display:none !important;}
-#authPanel{position:relative;z-index:15;}
+.auth-panel{position:relative;z-index:2;}
 .auth-debug{font-size:.75rem;opacity:.7;margin-bottom:4px;}
 
 /* Пруд и сцены */
@@ -714,6 +738,17 @@ button:not([disabled]){ cursor:pointer; }
 .hero{position:relative;display:flex;justify-content:center;align-items:flex-end;margin:40px 0 0}
 .hero .stump{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:min(220px,35vw);z-index:1;pointer-events:none}
 .hero .frog{position:relative;z-index:2;width:min(520px,72vw);max-width:90vw;height:auto;pointer-events:none}
+/* Герой: лягушка на пне */
+.hero-frog{
+  width:clamp(var(--frog-hero-min), 38vw, var(--frog-hero-max));
+  margin-inline:auto;
+}
+.hero-frog .frog{
+  width:100%;max-width:none;height:auto;pointer-events:none;
+}
+.hero-frog .stump{
+  transform:translateX(-50%) scale(1.05);
+}
 .modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:saturate(1.2) blur(6px);z-index:50}
 .modal[hidden]{display:none}
 .modal .card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 20px;min-width:min(560px,92vw);color:#fff}
