@@ -83,6 +83,93 @@ function toast(msg, type='info'){
   try { window.showToast?.(msg, type); } catch {}
 }
 
+const state = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
+
+function authHeaders() {
+  const t = localStorage.getItem('FH_JWT');
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+// --- API: события ---
+const api = {
+  events: {
+    async create() {
+      // сервер создаёт код, даты и т.п. из текущего драфта/формы; при необходимости передай поля
+      const res = await fetch('/.netlify/functions/event-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({}), // если есть форма драфта — подставь сюда
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.id) throw new Error(data?.error || 'Не удалось создать событие');
+      return data; // { id, code, ... }
+    },
+    async byCode(code) {
+      const res = await fetch('/.netlify/functions/event-by-code?code=' + encodeURIComponent(code), {
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.id) throw new Error(data?.error || 'Код не найден');
+      return data;
+    },
+    async load(id) {
+      const res = await fetch('/.netlify/functions/event-get?id=' + encodeURIComponent(id), {
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.id) throw new Error(data?.error || 'Событие не найдено');
+      return data;
+    },
+  },
+};
+
+async function renderEvent(eventIdOrObj) {
+  const ev = typeof eventIdOrObj === 'object' ? eventIdOrObj : await api.events.load(eventIdOrObj);
+  state.currentEvent = ev;
+  // заполни поля экрана события
+  $('#event-code')?.replaceChildren(document.createTextNode(ev.code ?? '—'));
+  $('#event-when')?.replaceChildren(document.createTextNode(ev.date && ev.time ? `${ev.date} · ${ev.time}` : '—'));
+  $('#event-address')?.replaceChildren(document.createTextNode(ev.address ?? '—'));
+  $('#event-dress')?.replaceChildren(document.createTextNode(ev.dress_code ?? '—'));
+  $('#event-bring')?.replaceChildren(document.createTextNode(ev.to_bring ?? '—'));
+  $('#event-comment')?.replaceChildren(document.createTextNode(ev.comment ?? '—'));
+}
+
+function setBusyBtn(el, on) {
+  if (!el) return;
+  el.disabled = !!on;
+  el.classList.toggle('is-busy', !!on);
+}
+
+onDelegated('#create-event', 'click', async (e, btn) => {
+  try {
+    setBusyBtn(btn, true);
+    const ev = await api.events.create();
+    await renderEvent(ev);
+    showScreen('app');
+  } catch (err) {
+    toast(err?.message || 'Ошибка создания события');
+  } finally {
+    setBusyBtn(btn, false);
+  }
+});
+
+onDelegated('#join-event', 'click', async (e, btn) => {
+  const inp = $('#join-code');
+  const code = (inp?.value || '').trim();
+  if (!/^\d{6}$/.test(code)) { toast('Код должен состоять из 6 цифр'); inp?.focus(); return; }
+  try {
+    setBusyBtn(btn, true);
+    const ev = await api.events.byCode(code);
+    await renderEvent(ev);
+    showScreen('app');
+  } catch (err) {
+    toast(err?.message || 'Код не найден');
+  } finally {
+    setBusyBtn(btn, false);
+  }
+});
+
 function withBusy(btn, fn){
   return async (...a)=>{
     if(!btn) return fn(...a);
@@ -1040,7 +1127,8 @@ $('#confirmDeleteBtn')?.addEventListener('click', async ()=>{
 });
 
 /* ---------- ЛОББИ: переходы ---------- */
-$('#create-event')?.addEventListener('click', startCreateFlow);
+// переход к созданию события теперь обрабатывается через api.events.create
+// $('#create-event')?.addEventListener('click', startCreateFlow);
 $('#goJoinByCode')?.addEventListener('click', ()=>{
   show('#screen-app');
   setScene('pond'); renderPads(); frogJumpToPad(0,true); showSlide('join-code');
@@ -1722,47 +1810,8 @@ if(editForm){
 }
 
 /* ---------- Простые обработчики кнопок ---------- */
-const createBtn = document.querySelector('[data-action="create-event"]');
-if (createBtn){
-  createBtn.addEventListener('click', withBusy(createBtn, async ()=>{
-    const nickname = getNickname();
-    if(!nickname){ toast('Сначала войдите/зарегистрируйтесь (нужен ник)', 'error'); return; }
-
-    const event = {
-      title: $('#event-title')?.value?.trim() || 'Моё событие',
-      date:  $('#event-date')?.value || null,
-      time:  $('#event-time')?.value || null,
-      place: $('#event-place')?.value?.trim() || '',
-      dress: $('#event-dress')?.value?.trim() || '',
-      bring: $('#event-bring')?.value?.trim() || '',
-      note:  $('#event-note')?.value?.trim()  || ''
-    };
-
-    try{
-      const r = await callFn('create-event', { nickname, event });
-      const code = r?.code || r?.event?.join_code;
-      if(code){ try{ await navigator.clipboard.writeText(code);}catch{} }
-      toast(code ? `Событие создано, код: ${code}` : 'Событие создано');
-      // location.href = `/event.html?id=${encodeURIComponent(r?.event?.id||r?.id)}`;
-    }catch(e){ toast(e.message || 'Не удалось создать событие', 'error'); }
-  }));
-}
-
-const joinBtn2 = document.querySelector('[data-action="join-event"]');
-if (joinBtn2){
-  joinBtn2.addEventListener('click', withBusy(joinBtn2, async ()=>{
-    const nickname = getNickname();
-    if(!nickname){ toast('Сначала войдите с никнеймом', 'error'); return; }
-    const code = ($('#join-code')?.value||'').trim();
-    if(!/^\w{6}$/.test(code)){ toast('Введите корректный 6-значный код', 'error'); return; }
-
-    try{
-      const r = await callFn('join-by-code', { nickname, code });
-      toast('Вы присоединились к событию');
-      // location.href = `/event.html?id=${encodeURIComponent(r?.event?.id||r?.id)}`;
-    }catch(e){ toast(e.message || 'Не удалось присоединиться', 'error'); }
-  }));
-}
+// Теперь обработчики кнопок создания и присоединения события реализованы
+// через делегированные слушатели в начале файла.
 
 async function login(nickname, password){
   const { token } = await callFn('local-login', { nickname, password });

@@ -101,8 +101,20 @@
   </div>
 
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
-  <div id="screen-app" hidden>
-    <div class="wrap" id="root">
+  <div id="screen-app" class="container" hidden>
+    <section class="card">
+      <h2>Событие</h2>
+      <div>Код: <span id="event-code">—</span> <button id="copy-invite" class="btn btn--ghost btn--sm" type="button">Скопировать приглашение</button></div>
+      <div>Когда: <span id="event-when">—</span></div>
+      <div>Адрес: <span id="event-address">—</span></div>
+      <div>Дресс-код: <span id="event-dress">—</span></div>
+      <div>Что взять: <span id="event-bring">—</span></div>
+      <div>Комментарий: <span id="event-comment">—</span></div>
+      <div class="mt-4">
+        <button id="back-to-menu" class="btn btn--secondary" data-go="menu" type="button">Вернуться в меню</button>
+      </div>
+    </section>
+    <div class="wrap" id="root" hidden>
       <section class="pond" id="pond">
         <div class="ripples" aria-hidden="true"></div>
         <div class="pads" id="pads"></div>
