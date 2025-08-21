@@ -43,6 +43,7 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 .container{max-width:1100px;margin:32px auto;padding:0 20px}
+.screen[hidden] { display: none !important; }
 .card{
   background:var(--card-dark);
   border:1px solid var(--card-border);
@@ -96,21 +97,26 @@ input:focus, textarea:focus, select:focus {
 /* Всегда 16px+ на инпутах, чтобы мобильный браузер не зумил */
 input, textarea, select { font-size: 16px; }
 
-.btn, button, [role="button"] {
+.btn, .btn-ghost, .btn-primary, .btn-secondary {
   cursor: pointer;
 }
-
-.btn[disabled] { cursor: not-allowed; }
-.btn:disabled, button:disabled, [aria-disabled="true"] {
+.btn[disabled], .btn-ghost[disabled], .btn-primary[disabled], .btn-secondary[disabled] {
   cursor: not-allowed;
   opacity: .6;
 }
 
-/* Декор/фон не перехватывает клики: */
-.bg, .frog, .lily, .decoration { pointer-events: none; }
+/* Наверх слоя – контент; декорациям отключаем захват событий */
+.topbar, .screen { position: relative; z-index: 2; }
+[data-decor], .decor, .lily, .lilies, .bg-layer {
+  pointer-events: none !important;
+  z-index: 1;
+}
 
-/* Если большая кнопка лежит рядом с формой — на всякий случай: */
-#screen-lobby .btn { pointer-events: auto; }
+/* финальная карточка видна только на финальном экране */
+#screen-lobby .final-card,
+#screen-auth  .final-card,
+#screen-app   .final-card,
+#screen-profile .final-card { display: none !important; }
 
 .field-error{color:var(--danger);font-size:.88rem;margin-top:6px;}
 .form-error{color:var(--danger);font-size:.95rem;margin-top:8px;}
