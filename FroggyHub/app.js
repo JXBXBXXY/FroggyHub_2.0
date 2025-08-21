@@ -42,19 +42,6 @@ const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} 
 const TOK = 'FH_JWT';
 const getTok = () => localStorage.getItem(TOK);
 
-function openModal(dlg){
-  if (typeof dlg === 'string') dlg = document.getElementById(dlg);
-  if (!dlg) return;
-  dlg.hidden = false;
-  if (dlg.showModal) dlg.showModal();
-}
-function closeModal(dlg){
-  if (typeof dlg === 'string') dlg = document.getElementById(dlg);
-  if (!dlg) return;
-  if (dlg.close) try { dlg.close(); } catch {}
-  dlg.hidden = true;
-}
-
 function show(name){
   document.querySelectorAll('section[id^="screen-"]').forEach(s => {
     s.hidden = s.id !== `screen-${name}`;
@@ -66,8 +53,10 @@ function show(name){
 }
 
 (function boot(){
-  const hasToken = !!localStorage.getItem(TOKEN_KEY);
-  show(hasToken ? 'menu' : 'auth');
+  // ВСЕГДА сначала авторизация
+  show('auth');
+
+  // cookie banner
   const cookie = document.getElementById('cookie');
   if (cookie && !localStorage.getItem(COOKIE_KEY)) cookie.hidden = false;
 })();
@@ -175,34 +164,34 @@ document.addEventListener('click', (e)=>{
 
 const dlgType = document.getElementById('dlg-type');
 
-function openDlg(el){ el.hidden = false; requestAnimationFrame(()=> el.classList.add('show')); }
-function closeDlg(el){ el.classList.remove('show'); setTimeout(()=>{ el.hidden = true; }, 150); }
+function openDlg(el){ if(!el) return; el.hidden = false; requestAnimationFrame(()=> el.classList.add('show')); }
+function closeDlg(el){ if(!el) return; el.classList.remove('show'); setTimeout(()=>{ el.hidden = true; }, 160); }
 
 document.getElementById('create-event')?.addEventListener('click', (e)=>{
   e.preventDefault();
-  if (dlgType) openDlg(dlgType);
+  openDlg(dlgType);
 });
 
-// Закрытие по «Отмена», клик по подложке, Esc и выбор типа
+// Делегирование: закрыть по “Отмена”, клик по подложке, или выбрать тип
 document.addEventListener('click', (e)=>{
-  const closeBtn = e.target.closest('[data-close="dlg-type"]');
-  if (closeBtn && dlgType && !dlgType.hidden) closeDlg(dlgType);
+  if (!dlgType) return;
 
-  if (e.target.classList?.contains('modal__backdrop') && dlgType && !dlgType.hidden){
+  if (e.target.closest('[data-close="dlg-type"]') || e.target.classList?.contains('modal__backdrop')){
     closeDlg(dlgType);
   }
 
   const typeBtn = e.target.closest('[data-type]');
   if (typeBtn){
-    const t = typeBtn.dataset.type;           // 'business' | 'party'
+    const t = typeBtn.dataset.type;  // 'business' | 'party'
     window.__FH__ = window.__FH__ || {};
     window.__FH__.createType = t;
-    if (dlgType && !dlgType.hidden) closeDlg(dlgType);
+    closeDlg(dlgType);
     if (typeof configureRequirementsForm === 'function') configureRequirementsForm(t);
     show('create-conditions');
   }
 });
 
+// Закрытие по клавише Esc
 document.addEventListener('keydown', (e)=>{
   if (e.key === 'Escape' && dlgType && !dlgType.hidden) closeDlg(dlgType);
 });
@@ -235,7 +224,6 @@ function showCreate(step){
 }
 
 // старый код модалки "type-modal" удалён
-document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !typeModal.hidden) closeModal(typeModal); });
 
 function configureCreateForm(type){
   const lTitle = document.querySelector('#eventTitle')?.closest('label');

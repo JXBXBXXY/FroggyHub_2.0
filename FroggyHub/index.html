@@ -82,14 +82,13 @@
 
   <!-- ЭКРАН МЕНЮ -->
   <section id="screen-menu" class="screen" role="main" hidden>
-    <img class="mascot-top" src="/assets/frog_idle.png" alt="" aria-hidden="true">
     <div class="decor-layer" aria-hidden="true">
       <img class="decor stump" src="/assets/stump.png" alt="">
     </div>
 
     <!-- Герой-лягушка (центр меню) -->
-    <div class="frog-hero" aria-hidden="true">
-      <img src="/assets/frog_idle.png" alt="" />
+    <div id="frog-hero" class="frog-hero" aria-hidden="true">
+      <img src="/assets/frog_idle.png" alt="">
     </div>
 
     <div class="menu-deck">
@@ -212,7 +211,7 @@
 
         <!-- Пень и лягушка -->
         <img id="stumpImg" class="stump" src="assets/stump.png" alt="Пень" />
-        <div id="frog"><img id="frogImg" src="assets/frog_idle.png" alt="Frog" /></div>
+        <div id="frog" class="frog-sticker"><img id="frogImg" src="assets/frog_idle.png" alt="Frog" /></div>
 
         <!-- ФИНАЛЬНАЯ РАСКЛАДКА: ДВЕ КОЛОНКИ -->
         <div id="finalLayout" class="final-layout" hidden>
@@ -406,31 +405,6 @@
   </script>
   <script defer type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
   <script src="/app.js" defer></script>
-  <!-- Cookie notice -->
-  <div id="cookie" class="cookie" hidden>
-    <div class="cookie__text">
-      Мы используем cookies, чтобы сайт работал стабильнее. Продолжая, вы принимаете использование cookies.
-    </div>
-    <div class="cookie__actions">
-      <button id="cookie-ok" class="btn btn-primary btn-sm">Принять</button>
-    </div>
-  </div>
-
-  <!-- Тип встречи (модалка) -->
-  <div id="dlg-type" class="modal" hidden>
-    <div class="modal__backdrop" data-close="dlg-type"></div>
-    <div class="modal__card">
-      <h3 class="modal__title">Какой тип встречи вы планируете создать?</h3>
-      <div class="modal__btns">
-        <button class="btn btn-secondary" data-type="business">Деловая</button>
-        <button class="btn btn-secondary" data-type="party">Праздничная</button>
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn-ghost" data-close="dlg-type">Отмена</button>
-      </div>
-    </div>
-  </div>
-
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
   <dialog id="otpModal">
     <form method="dialog" class="grid">
@@ -445,19 +419,31 @@
       <p id="otpStatus" class="hint" aria-live="polite"></p>
     </form>
   </dialog>
-      <div id="cookieCard" class="card" style="display:none">
-        <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
-          <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
-        </svg>
-        <div class="cookieHeading">Cookies</div>
-        <div class="cookieDescription">
-          Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
-        </div>
-        <div class="buttonContainer">
-          <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-          <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
-        </div>
+  <!-- Cookie notice -->
+  <div id="cookie" class="cookie" hidden>
+    <div class="cookie__text">
+      Мы используем cookies, чтобы сайт работал стабильнее. Продолжая, вы принимаете использование cookies.
+    </div>
+    <div class="cookie__actions">
+      <button id="cookie-ok" class="btn btn-primary btn-sm">Принять</button>
+    </div>
+  </div>
+
+  <!-- Тип встречи (модалка выбора) -->
+  <div id="dlg-type" class="modal" hidden>
+    <div class="modal__backdrop" data-close="dlg-type"></div>
+    <div class="modal__card">
+      <h3 class="modal__title">Какой тип встречи вы планируете создать?</h3>
+      <div class="modal__btns">
+        <button class="btn btn-secondary" data-type="business">Деловая</button>
+        <button class="btn btn-secondary" data-type="party">Праздничная</button>
       </div>
-      <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-    </body>
-    </html>
+      <div class="modal__footer">
+        <button class="btn btn-ghost" data-close="dlg-type">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
