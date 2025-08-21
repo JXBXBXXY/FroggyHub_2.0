@@ -43,7 +43,6 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 .container{max-width:1100px;margin:32px auto;padding:0 20px}
-.screen[hidden] { display: none !important; }
 .card{
   background:var(--card-dark);
   border:1px solid var(--card-border);
@@ -97,43 +96,21 @@ input:focus, textarea:focus, select:focus {
 /* Всегда 16px+ на инпутах, чтобы мобильный браузер не зумил */
 input, textarea, select { font-size: 16px; }
 
-
-/* Наверх слоя – контент; декорациям отключаем захват событий */
-.topbar, .screen { position: relative; z-index: 2; }
-[data-decor], .decor, .lily, .lilies, .bg-layer {
-  pointer-events: none !important;
-  z-index: 1;
+.btn, button, [role="button"] {
+  cursor: pointer;
 }
 
-/* курсоры и кликабельность */
-button, .btn, .btn-nav, .btn-primary, .btn-secondary { cursor: pointer; }
-[disabled] { cursor: not-allowed !important; }
-.decor, .bg, .lilypads { pointer-events: none; }
-
-/* экраны */
-.screen[hidden] { display: none !important; }
-
-/* top bar */
-.topbar {
-  position: fixed; top: 16px; left: 16px; display: flex; gap: 12px; z-index: 10;
+.btn[disabled] { cursor: not-allowed; }
+.btn:disabled, button:disabled, [aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .6;
 }
-#btn-logout { display: none; }
-[data-screen="profile"] #btn-logout { display: inline-flex; }
 
-/* профиль */
-.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.event-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 12px; }
-.event-card {
-  border-radius: 12px; background: rgba(0,0,0,.3); padding: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.25);
-}
-.event-card h4 { margin: 0 0 6px 0; }
-.event-card .muted { opacity: .7; font-size: .9em; }
-.event-card .row { display:flex; gap:8px; }
-.event-card .btn-sm { padding: 6px 10px; font-size: .85em; }
+/* Декор/фон не перехватывает клики: */
+.bg, .frog, .lily, .decoration { pointer-events: none; }
 
-/* финальная карточка показывается только на #screen-final */
-#screen-final .final-card { display: block; }
-.final-card { display: none; }
+/* Если большая кнопка лежит рядом с формой — на всякий случай: */
+#screen-lobby .btn { pointer-events: auto; }
 
 .field-error{color:var(--danger);font-size:.88rem;margin-top:6px;}
 .form-error{color:var(--danger);font-size:.95rem;margin-top:8px;}
@@ -189,6 +166,26 @@ a.btn{ color:inherit; }
   pointer-events:auto;
 }
 
+.profile-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+.profile-list {
+  display:grid;
+  gap:10px;
+}
+.event-item {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:10px;
+  background:rgba(0,0,0,.2);
+  backdrop-filter:blur(4px);
+}
+.event-item__meta { opacity:.9; font-size:.9rem; }
+.event-item__actions { display:flex; gap:8px; }
 
 :focus-visible{
   outline:2px solid var(--ring);
@@ -197,8 +194,7 @@ a.btn{ color:inherit; }
 }
 
 .hint{color:var(--muted);font-size:.92rem}
-.hero{display:flex;gap:16px;align-items:center;margin-bottom:10px}
-
+ .hero{display:flex;gap:16px;align-items:center;margin-bottom:10px}
  .hero, .header-pond { position: relative; overflow: hidden; }
 .avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:28px;background:var(--accent)}
 .hero-text h1{margin:0 0 6px}
@@ -566,16 +562,13 @@ body.scene-intro .speech{display:block}
 }
 
 .final-layout {
-  display: none;
+  display: grid;
   grid-template-columns: 1fr 1.3fr;
   gap: 32px;
   max-width: 1200px;
   margin: 32px auto;
   padding: 0 16px;
 }
-body.scene-final .final-layout { display: flex; }
-body.scene-intro .final-layout,
-body.scene-pond  .final-layout { display: none !important; }
 
 .final-left {
   display: grid;
@@ -647,115 +640,3 @@ body.scene-pond  .final-layout { display: none !important; }
 .wl-free { background:#d7fbe8; color:#0b3d2a; }
 .wl-taken { background:#ffe3e3; color:#7a1c1c; }
 
-/* ====== Каркас страницы ====== */
-:root{
-  --topbar-h: 56px;
-  --page-pad: 16px;
-  --content-w: 980px;
-  --gap: 14px;
-}
-
-/* Тело как двумерный каркас: шапка + контент */
-body.scene-intro{
-  min-height: 100vh;
-  display: grid;
-  grid-template-rows: var(--topbar-h) 1fr;
-}
-
-/* Верхняя панель (твои кнопки "Меню / Профиль / Выйти") */
-.topbar{
-  position: sticky;
-  top: 0;
-  height: var(--topbar-h);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 var(--page-pad);
-  z-index: 5;
-}
-
-/* Центровщик контента экрана */
-.container{
-  width: min(100%, var(--content-w));
-  margin: 32px auto 48px;
-  padding: 0 var(--page-pad);
-}
-
-/* Универсальная карточка-«окно» */
-.panel{
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
-  padding: 20px;
-}
-
-/* Служебное: невидимые экраны не занимают место */
-[hidden]{ display: none !important; }
-
-/* Декор не перехватывает клики и не сдвигает сетку */
-.decoration, .bg-layer, .lilies, .frog, .stump{
-  pointer-events: none !important;
-}
-
-/* ====== Меню (первый экран после входа) ====== */
-.lobby-grid{
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--gap);
-}
-
-/* На широкой — кнопка «Создать событие» растягивается,
-   справа — строка присоединения */
-@media (min-width: 720px){
-  .lobby-grid{
-    grid-template-columns: 1fr auto;
-    align-items: center;
-  }
-}
-
-/* Ряд с кодом + кнопкой присоединения */
-.join-row{
-  display: flex;
-  align-items: center;
-  gap: var(--gap);
-  margin: 0;
-}
-
-/* Инпут с кодом — фикс. ширина, но ужимается на мобильных */
-#join-code.input{
-  width: 260px;
-  max-width: 48vw;
-  text-align: center;
-}
-
-/* Кнопки всегда выглядят кликабельно (кроме disabled) */
-button, .btn{
-  cursor: pointer;
-}
-button[disabled], .btn[disabled]{
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-/* ====== Общие отступы внутри карточек ====== */
-.panel > * + *{ margin-top: var(--gap); }
-
-/* На остальных экранах карточки также центрируются той же шириной */
-#screen-app .panel,
-#screen-final .panel,
-#screen-profile .panel,
-#screen-auth .panel{
-  /* можно кастомизировать при желании */
-}
-
-.fh-wrap{max-width:980px;margin:32px auto;padding:0 16px}
-.fh-panel{background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 28px rgba(0,0,0,.3);border-radius:20px;padding:20px}
-.fh-row{display:flex;gap:12px;justify-content:flex-end;margin-top:16px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media (max-width:720px){.grid-2{grid-template-columns:1fr}}
-.wish-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
-.wish-item{background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px;display:flex;justify-content:space-between;align-items:center}
-.wish-item a{opacity:.85}
-.btn{cursor:pointer}
-.decor,.bg-decor{pointer-events:none}
