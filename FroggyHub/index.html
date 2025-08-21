@@ -22,7 +22,7 @@
     </div>
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
-  <div id="screen-auth" class="container" role="main">
+  <section id="screen-auth" class="container" role="main">
     <div class="card" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="hero">
         <div class="avatar frog-ava">🐸</div>
@@ -78,10 +78,10 @@
         </form>
       </section>
     </div>
-  </div>
+  </section>
 
   <!-- ЭКРАН МЕНЮ -->
-  <section id="screen-menu" class="screen" role="main">
+  <section id="screen-menu" class="screen" role="main" hidden>
     <img class="mascot-top" src="/assets/frog_idle.png" alt="" aria-hidden="true">
     <div class="decor-layer" aria-hidden="true">
       <img class="decor stump" src="/assets/stump.png" alt="">
@@ -104,16 +104,6 @@
     </div>
   </section>
 
-  <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ТИПА -->
-  <div id="dlg-type" class="modal-backdrop" hidden>
-    <div class="modal">
-      <h3>Какой тип встречи вы планируете создать?</h3>
-      <div class="grid">
-        <button class="btn" data-type="business">Деловая</button>
-        <button class="btn" data-type="party">Праздничная</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ШАГ 1: ДЕТАЛИ -->
   <section id="screen-create-details" class="screen" hidden>
@@ -178,7 +168,7 @@
   </section>
 
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
-  <div id="screen-app" class="container" hidden>
+  <section id="screen-app" class="container" hidden>
     <section class="card">
       <h2>Событие</h2>
       <div>Код: <span id="event-code">—</span> <button id="copy-invite" class="btn btn--ghost btn--sm" type="button">Скопировать приглашение</button></div>
@@ -362,7 +352,7 @@
         </section>
       </section>
     </div>
-  </div>
+  </section>
 
   <!-- ЭКРАН: ПРОФИЛЬ -->
   <section id="screen-profile" class="screen" hidden>
@@ -399,6 +389,17 @@
   </script>
   <script defer type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"></script>
   <script src="/app.js" defer></script>
+  <!-- Модалка выбора типа встречи -->
+  <dialog id="type-modal" hidden>
+    <form method="dialog" class="type-modal panel">
+      <h3>Какой тип встречи вы планируете создать?</h3>
+      <div class="stack-sm">
+        <button type="button" class="btn" data-type="business">Деловая</button>
+        <button type="button" class="btn" data-type="party">Праздничная</button>
+      </div>
+      <button type="button" class="btn btn-ghost" data-close>Отмена</button>
+    </form>
+  </dialog>
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
   <dialog id="otpModal">
     <form method="dialog" class="grid">

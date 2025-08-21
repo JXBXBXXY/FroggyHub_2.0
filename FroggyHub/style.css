@@ -760,3 +760,15 @@ button:not([disabled]){ cursor:pointer; }
     width: clamp(110px, 26vw, 160px);
   }
 }
+
+dialog[type-modal], #type-modal { border: none; background: transparent; }
+#type-modal::backdrop { background: rgba(0,0,0,.45); }
+#type-modal .panel {
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 28px rgba(0,0,0,.4);
+  border-radius: 16px;
+  padding: 20px;
+  width: min(480px, 92vw);
+  margin: 0 auto;
+}
