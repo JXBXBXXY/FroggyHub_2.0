@@ -57,14 +57,12 @@ function show(name){
   show('auth');
 
   // cookie banner
-  const cookie = document.getElementById('cookie');
-  if (cookie && !localStorage.getItem(COOKIE_KEY)) cookie.hidden = false;
+  if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
 })();
 
-document.getElementById('cookie-ok')?.addEventListener('click', ()=>{
-  localStorage.setItem(COOKIE_KEY, '1');
-  const cookie = document.getElementById('cookie');
-  if (cookie) cookie.hidden = true;
+$('#cookie-accept')?.addEventListener('click', ()=>{
+  localStorage.setItem(COOKIE_KEY,'1');
+  $('#cookie-banner').hidden = true;
 });
 
 async function apiPost(fnPath, payload) {
@@ -162,38 +160,20 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-const dlgType = document.getElementById('dlg-type');
-
-function openDlg(el){ if(!el) return; el.hidden = false; requestAnimationFrame(()=> el.classList.add('show')); }
-function closeDlg(el){ if(!el) return; el.classList.remove('show'); setTimeout(()=>{ el.hidden = true; }, 160); }
-
-document.getElementById('create-event')?.addEventListener('click', (e)=>{
-  e.preventDefault();
-  openDlg(dlgType);
-});
-
-// Делегирование: закрыть по “Отмена”, клик по подложке, или выбрать тип
-document.addEventListener('click', (e)=>{
-  if (!dlgType) return;
-
-  if (e.target.closest('[data-close="dlg-type"]') || e.target.classList?.contains('modal__backdrop')){
-    closeDlg(dlgType);
-  }
-
-  const typeBtn = e.target.closest('[data-type]');
-  if (typeBtn){
-    const t = typeBtn.dataset.type;  // 'business' | 'party'
-    window.__FH__ = window.__FH__ || {};
-    window.__FH__.createType = t;
-    closeDlg(dlgType);
+$('#create-event')?.addEventListener('click', () => openTypeModal(true));
+function openTypeModal(open){ $('#modal-type').hidden = !open; }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') openTypeModal(false); });
+$('#modal-type').addEventListener('click', e=>{
+  const btn = e.target.closest('[data-type]');
+  if(btn){
+    const t = btn.dataset.type;
+    ST.createType = t;
     if (typeof configureRequirementsForm === 'function') configureRequirementsForm(t);
-    show('create-conditions');
+    openTypeModal(false);
+    show('create-details');
+    return;
   }
-});
-
-// Закрытие по клавише Esc
-document.addEventListener('keydown', (e)=>{
-  if (e.key === 'Escape' && dlgType && !dlgType.hidden) closeDlg(dlgType);
+  if(e.target.id==='modal-type' || e.target.closest('[data-close]')) openTypeModal(false);
 });
 
 $('#join-form')?.addEventListener('submit', (e)=>{
