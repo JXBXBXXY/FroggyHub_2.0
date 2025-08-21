@@ -6,134 +6,111 @@
   <title>FroggyHub — события и вишлисты</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="scene-intro" data-screen="menu">
+<body class="scene-intro">
   <!-- top bar -->
   <nav class="topbar">
-    <button id="btn-go-menu" class="btn btn-nav" data-go="menu">Меню</button>
-    <button id="btn-go-profile" class="btn btn-nav" data-go="profile">Профиль</button>
+    <button class="btn btn-nav" data-go="menu">Меню</button>
+    <button class="btn btn-nav" data-go="profile">Профиль</button>
     <button id="btn-logout" class="btn btn-nav">Выйти</button>
   </nav>
 
-  <!-- 1) Меню — выбор действия после авторизации -->
-  <section id="screen-menu" class="screen">
-    <div class="container">
-      <div class="panel">
-        <div class="lobby-grid">
-          <button id="create-event" class="btn btn-primary" data-go="app">Создать событие</button>
-          <form id="join-form" class="join-row" autocomplete="off">
-            <input id="join-code" class="input" placeholder="Введите 6-значный код" inputmode="numeric" maxlength="6" />
-            <button id="join-btn" class="btn">Присоединиться</button>
-          </form>
-        </div>
+  <!-- ЭКРАН: АВТОРИЗАЦИЯ -->
+  <section id="screen-auth" class="container" hidden>
+    <div class="panel">
+      <div class="tabs">
+        <button class="tab active" id="tabLogin">Войти</button>
+        <button class="tab" id="tabRegister">Регистрация</button>
       </div>
+      <form id="authFormLogin" class="grid">
+        <input id="loginEmail" class="input" type="email" placeholder="you@email.com" required>
+        <input id="loginPass"  class="input" type="password" placeholder="••••••••" required>
+        <button class="btn btn-primary" id="btn-login">Войти</button>
+      </form>
+      <form id="authFormRegister" class="grid" hidden>
+        <input id="regName"  class="input" placeholder="Никнейм" required>
+        <input id="regEmail" class="input" type="email" required>
+        <input id="regPass"  class="input" type="password" minlength="4" required>
+        <input id="regPass2" class="input" type="password" minlength="4" required>
+        <button class="btn btn-primary" id="btn-signup">Зарегистрироваться</button>
+      </form>
     </div>
   </section>
 
-  <!-- 2) Мастер создания/подключения (контент уже есть в проекте) -->
-  <section id="screen-app" class="screen" hidden>
-    <div class="container">
-      <div class="panel">
-        <!-- существующая разметка мастера; никакой финальной карточки здесь -->
-      </div>
-    </div>
-  </section>
-
-  <!-- ЭКРАН: условия при создании -->
-  <section id="screen-create-conditions" class="screen" hidden>
-    <div class="fh-wrap">
-      <div class="fh-panel">
-        <h2>Событие — условия</h2>
-        <form id="form-create">
-          <div class="grid-2">
-            <label>Название
-              <input id="f-title" class="input" placeholder="День рождения..." required>
-            </label>
-            <label>Дата
-              <input id="f-date" class="input" type="date" required>
-            </label>
-            <label>Время
-              <input id="f-time" class="input" type="time" required>
-            </label>
-            <label>Адрес
-              <input id="f-address" class="input" placeholder="Адрес...">
-            </label>
-          </div>
-          <label>Дресс-код <input id="f-dress" class="input" placeholder="—"></label>
-          <label>Что взять <input id="f-bring" class="input" placeholder="—"></label>
-          <label>Комментарий <input id="f-comment" class="input" placeholder="—"></label>
-          <div class="fh-row">
-            <button type="button" class="btn" data-go="menu">Назад</button>
-            <button id="btn-to-wishlist" class="btn btn-primary">Далее</button>
-          </div>
+  <!-- ЭКРАН: МЕНЮ -->
+  <section id="screen-menu" class="container" hidden>
+    <div class="panel">
+      <div class="row2">
+        <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
+        <form id="join-form" class="row2" autocomplete="off">
+          <input id="join-code" class="input" placeholder="Введите 6-значный код" inputmode="numeric" maxlength="6">
+          <button id="join-btn" class="btn" data-go="app" data-mode="join">Присоединиться</button>
         </form>
       </div>
     </div>
   </section>
 
-  <!-- ЭКРАН: имя гостя (после join-кода) -->
-  <section id="screen-join-name" class="screen" hidden>
-    <div class="fh-wrap">
-      <div class="fh-panel">
-        <h2>Ваше имя</h2>
-        <form id="form-join-name">
-          <input id="join-name" class="input" placeholder="Никнейм" required>
-          <div class="fh-row">
-            <button type="button" class="btn" data-go="menu">Назад</button>
-            <button class="btn btn-primary">Далее</button>
+  <!-- ЭКРАН: ПРУД + НИЖНЯЯ ПАНЕЛЬ-СЛАЙДЫ -->
+  <section id="screen-app" hidden>
+    <div class="wrap" id="root">
+      <section class="pond">
+        <div class="ripples" aria-hidden="true"></div>
+        <div class="pads"></div>
+        <!-- большие часы -->
+        <div id="bigClock" class="big-clock" hidden>
+          <div class="hm" id="bigClockHM">00:00</div>
+          <div class="days" id="bigClockDays">0 дней</div>
+        </div>
+        <!-- пень и лягушка -->
+        <img id="stumpImg" class="stump" src="assets/stump.png" alt="">
+        <div id="frog"><img id="frogImg" src="assets/frog_idle.png" alt=""></div>
+        <!-- финальная раскладка (показывать только на сцене final) -->
+        <div id="finalLayout" class="final-layout" hidden></div>
+        <!-- подсказки только для интро -->
+        <div class="speech" id="speech">
+          <div id="speechText"><strong>Фрогги:</strong> Готовы начать?</div>
+          <div class="actions">
+            <button class="pill" data-next="create">Создать</button>
+            <button class="pill secondary" data-next="join">Присоединиться</button>
           </div>
-        </form>
+        </div>
+      </section>
+
+      <!-- нижняя панель со слайдами -->
+      <section class="panel" id="slides">
+        <section id="slide-create-1" hidden>…</section>
+        <section id="slide-create-wishlist" hidden>…</section>
+        <section id="slide-create-details" hidden>…</section>
+        <section id="slide-admin" hidden>…</section>
+        <section id="slide-join-code" hidden>…</section>
+        <section id="slide-join-1" hidden>…</section>
+        <section id="slide-join-wishlist" hidden>…</section>
+      </section>
+    </div>
+  </section>
+
+  <!-- ЭКРАН: ФИНАЛЬНАЯ КАРТОЧКА -->
+  <section id="screen-final" class="container" hidden>
+    <div class="panel">
+      <div id="final-card" class="final-card"></div>
+      <div class="actions">
+        <button class="btn" data-go="menu">Вернуться в меню</button>
       </div>
     </div>
   </section>
 
-  <!-- ЭКРАН: wishlist (общий для create и join) -->
-  <section id="screen-wishlist" class="screen" hidden>
-    <div class="fh-wrap">
-      <div class="fh-panel">
-        <h2>Wishlist</h2>
-        <form id="form-add-wish" class="grid-2">
-          <input id="wish-title" class="input" placeholder="Название подарка">
-          <input id="wish-url" class="input" placeholder="Ссылка">
-          <button class="btn">Добавить</button>
-        </form>
-        <div id="wish-list" class="wish-grid"></div>
-        <div class="fh-row">
-          <button type="button" class="btn" data-go="menu">Назад</button>
-          <button id="btn-to-final" class="btn btn-primary">Далее</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 3) Финальная информация (только этот экран показывает итоговую карточку) -->
-  <section id="screen-final" class="screen" hidden>
-    <div class="container">
-      <div class="panel">
-        <div id="final-card" class="final-card">
-          <!-- здесь отрисовывается итог события -->
-        </div>
-        <div class="actions">
-          <button class="btn" data-go="menu">Вернуться в меню</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 4) Профиль — список моих событий -->
-  <section id="screen-profile" class="screen" hidden>
-    <div class="container">
-      <div class="panel">
-        <h2>Профиль</h2>
-        <div class="profile-grid">
-          <section>
-            <h3>Скоро</h3>
-            <div id="profile-upcoming" class="event-grid"></div>
-          </section>
-          <section>
-            <h3>Прошедшие</h3>
-            <div id="profile-past" class="event-grid"></div>
-          </section>
-        </div>
+  <!-- ЭКРАН: ПРОФИЛЬ -->
+  <section id="screen-profile" class="container" hidden>
+    <div class="panel">
+      <h2>Профиль</h2>
+      <div class="profile-grid">
+        <section>
+          <h3>Скоро</h3>
+          <div id="profile-upcoming" class="event-grid"></div>
+        </section>
+        <section>
+          <h3>Прошедшие</h3>
+          <div id="profile-past" class="event-grid"></div>
+        </section>
       </div>
     </div>
   </section>
@@ -142,3 +119,4 @@
   <script defer src="app.js"></script>
 </body>
 </html>
+
