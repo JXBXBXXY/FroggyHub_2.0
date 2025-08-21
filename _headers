@@ -3,3 +3,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+/.netlify/functions/*
+  Access-Control-Allow-Headers: Authorization, Content-Type
+

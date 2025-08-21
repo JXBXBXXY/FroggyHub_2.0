@@ -173,14 +173,16 @@ async function apiFetch(path, init={}){
 }
 
 async function loadProfileAndEvents(){
-  const prof = await apiFetch('profile');
+  const prof = await apiFetch('profile-get');
   $('#profile-nick').textContent = prof.nickname || '—';
-  if (prof.avatar_url) $('#avatar-img').src = prof.avatar_url;
-
-  const { events } = await apiFetch('events-mine');
-  const { upcoming, past } = splitEvents(events);
-  renderEventsColumn('#profile-upcoming', upcoming);
-  renderEventsColumn('#profile-past', past);
+  if (prof.avatar_url) {
+    $('#avatar-img').src = prof.avatar_url;
+    $('#avatar-upload').textContent = 'Изменить аватар';
+  } else {
+    $('#avatar-upload').textContent = 'Загрузить аватар';
+  }
+  renderEventsColumn('#profile-upcoming', []);
+  renderEventsColumn('#profile-past', []);
 }
 
 function splitEvents(list){
@@ -236,6 +238,7 @@ $('#avatar-file')?.addEventListener('change', async (e)=>{
   try{
     const { url } = await apiFetch('avatar-upload', { method:'POST', body: JSON.stringify({ image: b64 }) });
     $('#avatar-img').src = url;
+    $('#avatar-upload').textContent = 'Изменить аватар';
   }catch(err){ alert(err.message || 'Не удалось загрузить аватар'); }
 });
 
@@ -2015,7 +2018,7 @@ async function signup(nickname, password){
 
 async function loadProfile(){
   try{
-    const res = await fetch('/.netlify/functions/profile', {
+    const res = await fetch('/.netlify/functions/profile-get', {
       headers:{ Authorization: 'Bearer ' + getToken() }
     });
     if(res.status===401 || res.status===403){
@@ -2023,8 +2026,7 @@ async function loadProfile(){
       window.location.href = '/';
       return;
     }
-    const data = await res.json().catch(()=> ({}));
-    const profile = data?.profile||{};
+    const profile = await res.json().catch(()=> ({}));
     if(profile.nickname){ setNickname(profile.nickname); }
     const n = $('#profile-nickname');
     if(n) n.textContent = profile.nickname || '';
@@ -2079,7 +2081,7 @@ async function initHubPage(){
   if(!/\/hub\.html$/.test(location.pathname)) return;
   if(!getToken()){ window.location.href='/'; return; }
   try{
-    const res = await fetch('/.netlify/functions/profile', {
+    const res = await fetch('/.netlify/functions/profile-get', {
       headers:{ Authorization:'Bearer '+getToken() }
     });
     if(res.status===401 || res.status===403){
@@ -2087,14 +2089,13 @@ async function initHubPage(){
       window.location.href='/';
       return;
     }
-    const data = await res.json().catch(()=> ({}));
-    const p = data?.profile || {};
+    const profile = await res.json().catch(()=> ({}));
     const nickEl = $('#mp-nick');
-    if(nickEl) nickEl.textContent = p.nickname || '';
-    if(p.created_at){
+    if(nickEl) nickEl.textContent = profile.nickname || '';
+    if(profile.created_at){
       try{
         const crEl = $('#mp-created');
-        if(crEl) crEl.textContent = new Date(p.created_at).toLocaleDateString('ru-RU');
+        if(crEl) crEl.textContent = new Date(profile.created_at).toLocaleDateString('ru-RU');
       }catch{}
     }
   }catch(e){ console.warn('hub profile load failed', e); }
