@@ -5,11 +5,8 @@ const ok=(b)=>new Response(JSON.stringify(b),{status:200,headers:{'Content-Type'
 const bad=(s,e)=>ok({success:false,error:e,status:s});
 
 export async function onRequestPost({ request }) {
-  try{
-    const { code, nickname } = await request.json();
-    const { data:ev, error:e1 } = await db.from('events').select('id,code').eq('code', code).single();
-    if (e1 || !ev) return bad(404,'Код не найден');
-    await db.from('guests').insert({ event_id: ev.id, nickname });
-    return ok({ success:true });
-  }catch(e){ return bad(400, e.message); }
+  const { id, nickname } = await request.json();
+  const { error } = await db.from('wishlist_items').update({ claimed_by: nickname }).eq('id', id);
+  if (error) return bad(500, error.message);
+  return ok({ success:true });
 }
