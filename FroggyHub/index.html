@@ -97,9 +97,29 @@
           <form id="join-form" class="join-row" autocomplete="off">
             <input id="join-code" class="input" inputmode="numeric" maxlength="6"
                    placeholder="Введите 6-значный код">
-            <button id="join-open" class="btn">Присоединиться</button>
+            <button id="join-btn" type="button" class="btn">Присоединиться</button>
           </form>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-join-name" class="screen" hidden>
+    <div class="panel">
+      <h2>Как к вам обращаться?</h2>
+      <form id="form-join-name" class="row">
+        <input id="jnick" class="input" placeholder="Никнейм" required>
+        <button class="btn btn-primary">Далее</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="screen-join-wishlist" class="screen" hidden>
+    <div class="panel">
+      <h2>Выберите из списка</h2>
+      <div id="join-wish-box" class="wish-grid"></div>
+      <div class="row end">
+        <button id="btn-join-final" class="btn btn-primary">Далее</button>
       </div>
     </div>
   </section>

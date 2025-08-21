@@ -167,18 +167,6 @@ $('#modal-type').addEventListener('click', e=>{
   if(e.target.id==='modal-type' || e.target.closest('[data-close]')) openTypeModal(false);
 });
 
-$('#join-form')?.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const code = ($('#join-code')?.value || '').trim();
-  if (code.length !== 6) { alert('Введите 6-значный код'); return; }
-  openFinal({
-    code,
-    details:{ title:'Событие', date:'2024-01-01', time:'18:00', place:'Пруд' },
-    req:{ dress:'Произвольный', bring:'Хорошее настроение', comment:'До встречи!' },
-    picks:['Подарок']
-  });
-});
-
 // --- Создание события: состояние и шаги ---
 const state = {
   create: {
@@ -189,6 +177,60 @@ const state = {
     code: null,
   }
 };
+
+const guest = { code:null, nickname:null, event:null };
+
+$('#join-btn')?.addEventListener('click', ()=>{
+  const code = ($('#join-code')?.value||'').trim();
+  if(code.length!==6){ toast?.('Введите корректный код'); return; }
+  // пока делаем “валидным” любой код, чтобы пройти UX
+  guest.code = code;
+  show('join-name');
+});
+
+$('#form-join-name')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  guest.nickname = $('#jnick').value.trim();
+  if(!guest.nickname) return;
+  // подгружаем wishlist из созданного state.create, если код совпал (стаб)
+  const wl = (state.create.code && guest.code===state.create.code) ? state.create.wishlist : [];
+  guest.event = { title: state.create.base.title, date: state.create.base.date, time: state.create.base.time, place: state.create.base.place,
+    dress: state.create.reqs.dress, bring: state.create.reqs.bring, comment: state.create.reqs.comment, wishlist: JSON.parse(JSON.stringify(wl)) };
+  renderJoinWl(); show('join-wishlist');
+});
+
+function renderJoinWl(){
+  const box = $('#join-wish-box'); if(!box) return;
+  const wl = guest.event?.wishlist||[];
+  box.innerHTML = wl.map(it=>`
+    <div class="wish-item">
+      <div>${it.title}${it.url? ` · <a href="${it.url}" target="_blank">ссылка</a>`:''}</div>
+      <div>
+        ${it.claimed_by? `<span style="opacity:.6">занято ${it.claimed_by}</span>`
+                        : `<button class="btn btn-sm" data-claim="${it.id}">Заберу</button>`}
+      </div>
+    </div>
+  `).join('') || '<div style="opacity:.7">Список пуст</div>';
+}
+
+document.addEventListener('click', e=>{
+  const c = e.target.closest('[data-claim]'); if(!c) return;
+  const id = +c.dataset.claim;
+  const item = guest.event.wishlist.find(x=>x.id===id);
+  if(item && !item.claimed_by){ item.claimed_by = guest.nickname; renderJoinWl(); }
+});
+
+$('#btn-join-final')?.addEventListener('click', ()=>{
+  // выводим ту же финальную карточку
+  $('#event-code').textContent   = guest.code;
+  $('#final-title').textContent  = guest.event.title || '—';
+  $('#event-when').textContent   = `${guest.event.date||''} ${guest.event.time||''}`;
+  $('#event-address').textContent= guest.event.place || '—';
+  $('#event-dress').textContent  = guest.event.dress || '—';
+  $('#event-bring').textContent  = guest.event.bring || '—';
+  $('#event-comment').textContent= guest.event.comment || '—';
+  show('app');
+});
 
 function setCreateType(t){
   state.create.type = t;
