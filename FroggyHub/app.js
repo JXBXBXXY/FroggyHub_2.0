@@ -33,7 +33,8 @@ function onDelegated(selector, type, handler, options){
   }, options || false);
 }
 
-const TOKEN_KEY = 'FH_JWT';
+const TOKEN_KEY  = 'FH_JWT';
+const COOKIE_KEY = 'FH_COOKIE_OK';
 const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} };
 const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
 const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} };
@@ -63,6 +64,19 @@ function show(name){
   if (navMenu) navMenu.hidden = (name === 'menu' || name === 'auth');
   console.log('[screen] =>', name);
 }
+
+(function boot(){
+  const hasToken = !!localStorage.getItem(TOKEN_KEY);
+  show(hasToken ? 'menu' : 'auth');
+  const cookie = document.getElementById('cookie');
+  if (cookie && !localStorage.getItem(COOKIE_KEY)) cookie.hidden = false;
+})();
+
+document.getElementById('cookie-ok')?.addEventListener('click', ()=>{
+  localStorage.setItem(COOKIE_KEY, '1');
+  const cookie = document.getElementById('cookie');
+  if (cookie) cookie.hidden = true;
+});
 
 async function apiPost(fnPath, payload) {
   const res = await fetch(`/.netlify/functions${fnPath}`, {
@@ -159,12 +173,38 @@ document.addEventListener('click', (e)=>{
   }
 });
 
+const dlgType = document.getElementById('dlg-type');
+
+function openDlg(el){ el.hidden = false; requestAnimationFrame(()=> el.classList.add('show')); }
+function closeDlg(el){ el.classList.remove('show'); setTimeout(()=>{ el.hidden = true; }, 150); }
+
+document.getElementById('create-event')?.addEventListener('click', (e)=>{
+  e.preventDefault();
+  if (dlgType) openDlg(dlgType);
+});
+
+// Закрытие по «Отмена», клик по подложке, Esc и выбор типа
 document.addEventListener('click', (e)=>{
-  const btnCreate = e.target.closest('#create-event, [data-go="app"][data-mode="create"]');
-  if (btnCreate){
-    e.preventDefault();
-    openModal('type-modal');
+  const closeBtn = e.target.closest('[data-close="dlg-type"]');
+  if (closeBtn && dlgType && !dlgType.hidden) closeDlg(dlgType);
+
+  if (e.target.classList?.contains('modal__backdrop') && dlgType && !dlgType.hidden){
+    closeDlg(dlgType);
   }
+
+  const typeBtn = e.target.closest('[data-type]');
+  if (typeBtn){
+    const t = typeBtn.dataset.type;           // 'business' | 'party'
+    window.__FH__ = window.__FH__ || {};
+    window.__FH__.createType = t;
+    if (dlgType && !dlgType.hidden) closeDlg(dlgType);
+    if (typeof configureRequirementsForm === 'function') configureRequirementsForm(t);
+    show('create-conditions');
+  }
+});
+
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape' && dlgType && !dlgType.hidden) closeDlg(dlgType);
 });
 
 $('#join-form')?.addEventListener('submit', (e)=>{
@@ -194,30 +234,7 @@ function showCreate(step){
   show('create-' + step);
 }
 
-const typeModal = document.getElementById('type-modal');
-
-  document.addEventListener('click', (e)=>{
-    const pick = e.target.closest('#type-modal [data-type]');
-    if (pick){
-      const type = pick.dataset.type;
-      ST.createType = type;
-      flowState.flow.type = type;
-      configureCreateForm(type);
-      closeModal(typeModal);
-      setWizardMode?.('create');
-      show('create-details');
-    }
-
-  if (e.target.closest('#type-modal [data-close]')){
-    closeModal(typeModal);
-  }
-});
-
-typeModal?.addEventListener('click', (e)=>{
-  const form = e.target.closest('form');
-  if (!form) closeModal(typeModal);
-});
-typeModal?.addEventListener('cancel', (e)=>{ e.preventDefault(); closeModal(typeModal); });
+// старый код модалки "type-modal" удалён
 document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && !typeModal.hidden) closeModal(typeModal); });
 
 function configureCreateForm(type){
@@ -2808,11 +2825,6 @@ function wireAuthForms(){
 
 document.addEventListener('DOMContentLoaded', ()=>{
   wireAuthForms();
-
-  // если уже залогинен — сразу меню
-  if (getTok()) show('menu');
-  else show('auth');
-
   // Навешанные делегированные клики работают всегда, ничего больше не нужно
 });
 
