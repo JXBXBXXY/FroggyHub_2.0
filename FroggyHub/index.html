@@ -38,6 +38,73 @@
     </div>
   </section>
 
+  <!-- ЭКРАН: условия при создании -->
+  <section id="screen-create-conditions" class="screen" hidden>
+    <div class="fh-wrap">
+      <div class="fh-panel">
+        <h2>Событие — условия</h2>
+        <form id="form-create">
+          <div class="grid-2">
+            <label>Название
+              <input id="f-title" class="input" placeholder="День рождения..." required>
+            </label>
+            <label>Дата
+              <input id="f-date" class="input" type="date" required>
+            </label>
+            <label>Время
+              <input id="f-time" class="input" type="time" required>
+            </label>
+            <label>Адрес
+              <input id="f-address" class="input" placeholder="Адрес...">
+            </label>
+          </div>
+          <label>Дресс-код <input id="f-dress" class="input" placeholder="—"></label>
+          <label>Что взять <input id="f-bring" class="input" placeholder="—"></label>
+          <label>Комментарий <input id="f-comment" class="input" placeholder="—"></label>
+          <div class="fh-row">
+            <button type="button" class="btn" data-go="menu">Назад</button>
+            <button id="btn-to-wishlist" class="btn btn-primary">Далее</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ЭКРАН: имя гостя (после join-кода) -->
+  <section id="screen-join-name" class="screen" hidden>
+    <div class="fh-wrap">
+      <div class="fh-panel">
+        <h2>Ваше имя</h2>
+        <form id="form-join-name">
+          <input id="join-name" class="input" placeholder="Никнейм" required>
+          <div class="fh-row">
+            <button type="button" class="btn" data-go="menu">Назад</button>
+            <button class="btn btn-primary">Далее</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ЭКРАН: wishlist (общий для create и join) -->
+  <section id="screen-wishlist" class="screen" hidden>
+    <div class="fh-wrap">
+      <div class="fh-panel">
+        <h2>Wishlist</h2>
+        <form id="form-add-wish" class="grid-2">
+          <input id="wish-title" class="input" placeholder="Название подарка">
+          <input id="wish-url" class="input" placeholder="Ссылка">
+          <button class="btn">Добавить</button>
+        </form>
+        <div id="wish-list" class="wish-grid"></div>
+        <div class="fh-row">
+          <button type="button" class="btn" data-go="menu">Назад</button>
+          <button id="btn-to-final" class="btn btn-primary">Далее</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- 3) Финальная информация (только этот экран показывает итоговую карточку) -->
   <section id="screen-final" class="screen" hidden>
     <div class="container">
