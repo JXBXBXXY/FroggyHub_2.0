@@ -694,16 +694,15 @@ button:not([disabled]){ cursor:pointer; }
 /* Сетки форм */
 .form-grid{ display:grid; gap:14px; }
 
+/* Общие панели и формы */
+.screen .panel{max-width:980px;margin:22px auto;padding:18px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.stack{display:grid;gap:12px}
+.row{display:flex;gap:12px;align-items:center}
+.row.end{justify-content:flex-end}
+
 /* Wishlist */
-.wish-grid{ display:grid; gap:10px; }
-.wish-item{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:8px 10px;
-  border:1px solid var(--border);
-  border-radius:8px;
-}
+.wish-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:12px}
+.wish-item{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px}
 .wish-item.taken{ opacity:.6; }
 .wish-item.taken button{ pointer-events:none; }
 

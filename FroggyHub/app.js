@@ -164,15 +164,6 @@ $('#create-event')?.addEventListener('click', () => openTypeModal(true));
 function openTypeModal(open){ $('#modal-type').hidden = !open; }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') openTypeModal(false); });
 $('#modal-type').addEventListener('click', e=>{
-  const btn = e.target.closest('[data-type]');
-  if(btn){
-    const t = btn.dataset.type;
-    ST.createType = t;
-    if (typeof configureRequirementsForm === 'function') configureRequirementsForm(t);
-    openTypeModal(false);
-    show('create-details');
-    return;
-  }
   if(e.target.id==='modal-type' || e.target.closest('[data-close]')) openTypeModal(false);
 });
 
@@ -188,156 +179,103 @@ $('#join-form')?.addEventListener('submit', (e)=>{
   });
 });
 
-// --- Создание события: state-machine ---
-const flowState = {
-  flow: {
-    type: 'business',
-    details: {},
-    req: {},
+// --- Создание события: состояние и шаги ---
+const state = {
+  create: {
+    type: null,
+    base: {},
+    reqs: {},
     wishlist: [],
-    picks: new Set(),
+    code: null,
   }
 };
 
-function showCreate(step){
-  show('create-' + step);
+function setCreateType(t){
+  state.create.type = t;
+  $('#create-title').textContent = t==='business' ? 'Параметры деловой встречи' : 'Параметры праздника';
+  $('#label-place').firstChild.textContent = t==='business' ? 'Место проведения' : 'Локация';
+  $('#c-title').placeholder = t==='business' ? 'Название встречи' : 'Название праздника';
 }
 
-// старый код модалки "type-modal" удалён
+function six(){ return String(Math.floor(100000 + Math.random()*900000)); }
 
-function configureCreateForm(type){
-  const lTitle = document.querySelector('#eventTitle')?.closest('label');
-  const title = document.getElementById('eventTitle');
-  const date  = document.getElementById('eventDate');
-  const time  = document.getElementById('eventTime');
-  const addr  = document.getElementById('eventAddress');
-
-  if (!lTitle) return;
-
-  if (type === 'business'){
-    lTitle.firstChild.nodeValue = 'Название встречи ';
-    title?.setAttribute('placeholder','Например: Планёрка отдела');
-    date?.setAttribute('placeholder','Дата встречи');
-    time?.setAttribute('placeholder','Время встречи');
-    addr?.setAttribute('placeholder','Место встречи');
-  } else {
-    lTitle.firstChild.nodeValue = 'Название праздника ';
-    title?.setAttribute('placeholder','Например: День рождения');
-    date?.setAttribute('placeholder','Дата праздника');
-    time?.setAttribute('placeholder','Время праздника');
-    addr?.setAttribute('placeholder','Место проведения');
-  }
-}
-
-function configureRequirementsForm(type){
-  const elTitle = document.getElementById('reqs-title');
-  const lblDress = document.getElementById('lbl-dress');
-  const lblBring = document.getElementById('lbl-bring');
-  const lblComment = document.getElementById('lbl-comment');
-  const rDress = document.getElementById('r-dress');
-  const rBring = document.getElementById('r-bring');
-  const rComm  = document.getElementById('r-comment');
-
-  if (type === 'business'){
-    elTitle.textContent = 'Требования (деловая встреча)';
-    lblDress.firstChild.nodeValue = 'Дресс-код';
-    rDress.placeholder = 'Например: business casual';
-    lblBring.firstChild.nodeValue = 'Материалы/Что взять';
-    rBring.placeholder = 'Ноутбук, презентация, блокнот…';
-    lblComment.firstChild.nodeValue = 'Комментарий организатора';
-    rComm.placeholder = 'Например: приходите за 10 минут';
-  } else {
-    elTitle.textContent = 'Требования (праздничная встреча)';
-    lblDress.firstChild.nodeValue = 'Дресс-код/Тема';
-    rDress.placeholder = 'Например: зелёный, 90-е, маскарад';
-    lblBring.firstChild.nodeValue = 'Что принести';
-    rBring.placeholder = 'Торт, напитки, гирлянды…';
-    lblComment.firstChild.nodeValue = 'Комментарий';
-    rComm.placeholder = 'Например: будет фотозона 🎉';
-  }
-}
-
-
-  document.getElementById('details-next')?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    const title = document.getElementById('det-title')?.value?.trim() || '';
-    const date  = document.getElementById('det-date')?.value || '';
-    const time  = document.getElementById('det-time')?.value || '';
-    const addr  = document.getElementById('det-place')?.value?.trim() || '';
-    ST.createDraft = { title, date, time, address: addr };
-    flowState.flow.details = { title, date, time, place: addr };
-    configureRequirementsForm(ST.createType || 'business');
-    show('create-reqs');
-  });
-
-  document.getElementById('details-back')?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    show('menu');
-  });
-
-  document.getElementById('form-reqs')?.addEventListener('submit', (e)=>{
-    e.preventDefault();
-  });
-
-  document.getElementById('btn-reqs-next')?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    const dress = document.getElementById('r-dress')?.value?.trim() || '';
-    const bring = document.getElementById('r-bring')?.value?.trim() || '';
-    const comment = document.getElementById('r-comment')?.value?.trim() || '';
-    ST.createReqs = { dress, bring, comment };
-    flowState.flow.req = { dress, bring, comment };
-    show('wishlist');
-  });
-
-  document.getElementById('btn-reqs-back')?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    show('create-details');
-  });
-
-function addWish(){
-  const input = $('#wish-input');
-  const text = input.value.trim();
-  if (!text) return;
-  const idx = flowState.flow.wishlist.push(text) - 1;
-  const div = document.createElement('div');
-  div.className = 'wish-item';
-  div.dataset.idx = idx;
-  div.innerHTML = `<span>${text}</span><button class="btn btn--sm" data-pick>Заберу</button>`;
-  $('#wish-list').appendChild(div);
-  input.value = '';
-}
-$('#wish-add')?.addEventListener('click', addWish);
-$('#wish-input')?.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addWish(); } });
-
-onDelegated('.wish-item [data-pick]', 'click', (e, btn)=>{
-  const item = btn.closest('.wish-item');
-  const idx = Number(item.dataset.idx);
-  if (flowState.flow.picks.has(idx)) {
-    flowState.flow.picks.delete(idx);
-    item.classList.remove('taken');
-    btn.textContent = 'Заберу';
-  } else {
-    flowState.flow.picks.add(idx);
-    item.classList.add('taken');
-    btn.textContent = 'занято';
-  }
+// модалка “тип встречи”
+$('#btn-type-business')?.addEventListener('click', ()=>{
+  setCreateType('business'); openTypeModal(false); show('create-conditions');
+});
+$('#btn-type-party')?.addEventListener('click', ()=>{
+  setCreateType('party'); openTypeModal(false); show('create-conditions');
 });
 
-  document.getElementById('btn-wish-back')?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    show('create-reqs');
-  });
+// шаг 1 → шаг 2
+$('#form-create-1')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  state.create.base = {
+    title: $('#c-title').value.trim(),
+    date:  $('#c-date').value,
+    time:  $('#c-time').value,
+    place: $('#c-place').value.trim(),
+  };
+  if(!state.create.base.title || !state.create.base.date) { toast?.('Заполните название и дату'); return; }
+  show('create-reqs');
+});
 
-  document.getElementById('btn-wish-next')?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    const selected = flowState.flow.wishlist.filter((_,i)=> flowState.flow.picks.has(i));
-    openFinal({ code:'—', details: ST.createDraft, req: ST.createReqs, picks: selected });
-  });
+// шаг 2 → wishlist
+$('#form-create-2')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  state.create.reqs = {
+    dress:   $('#r-dress').value.trim(),
+    bring:   $('#r-bring').value.trim(),
+    comment: $('#r-comment').value.trim(),
+  };
+  renderWishlistCreate(); show('wishlist');
+});
+
+// wishlist: рендер/добавление
+function renderWishlistCreate(){
+  const box = $('#wishlist-box'); if(!box) return;
+  box.innerHTML = state.create.wishlist.map(it=>`
+    <div class="wish-item">
+      <div>${it.title}${it.url? ` · <a href="${it.url}" target="_blank">ссылка</a>`:''}</div>
+      <div><button class="btn btn-sm" data-del="${it.id}">Удалить</button></div>
+    </div>
+  `).join('') || '<div style="opacity:.7">Пока пусто</div>';
+}
+let _wid = 1;
+$('#form-wish-add')?.addEventListener('submit', e=>{
+  e.preventDefault();
+  const t=$('#w-title').value.trim(); const u=$('#w-url').value.trim();
+  if(!t) return;
+  state.create.wishlist.push({id:_wid++, title:t, url:u||'', claimed_by:null});
+  $('#w-title').value=''; $('#w-url').value=''; renderWishlistCreate();
+});
+document.addEventListener('click', e=>{
+  const del = e.target.closest('[data-del]');
+  if(del){ const id=+del.dataset.del; state.create.wishlist = state.create.wishlist.filter(x=>x.id!==id); renderWishlistCreate(); }
+});
+
+// финал
+$('#btn-create-final')?.addEventListener('click', ()=>{
+  state.create.code = six();
+  fillFinalFromState(state.create);
+  show('app');
+});
+
+function fillFinalFromState(st){
+  $('#event-code').textContent   = st.code;
+  $('#final-title').textContent  = st.base.title || '—';
+  $('#event-when').textContent   = `${st.base.date} ${st.base.time||''}`;
+  $('#event-address').textContent= st.base.place || '—';
+  $('#event-dress').textContent  = st.reqs.dress || '—';
+  $('#event-bring').textContent  = st.reqs.bring || '—';
+  $('#event-comment').textContent= st.reqs.comment || '—';
+}
 
 function openFinal(data){
   if (typeof data === 'string') data = { code:data };
   data = data || {};
   show('app');
+  $('#final-title').textContent = data.details?.title || 'Событие';
   $('#event-code').textContent = data.code || '—';
   const when = [data.details?.date, data.details?.time].filter(Boolean).join(' ');
   $('#event-when').textContent = when || '—';
@@ -405,38 +343,38 @@ document.addEventListener('click', async (e)=>{
   const key = trg.getAttribute('data-open-event');
   try{
     const q = isNaN(+key) ? `events-get?code=${encodeURIComponent(key)}` : `events-get?id=${key}`;
-    const { event } = await apiFetch(q);
-    if (typeof openFinal === 'function')      await openFinal(event.code);
-    else if (typeof openEvent === 'function')  await openEvent(event);
-    else {
-      const ft=$('#final-title'); if(ft) ft.textContent = event.title || '—';
-      show('app');
-    }
-  }catch(err){ alert(err.message || 'Не удалось открыть событие'); }
-});
+  const { event } = await apiFetch(q);
+  if (typeof openFinal === 'function')      await openFinal(event.code);
+  else if (typeof openEvent === 'function')  await openEvent(event);
+  else {
+        const ft=$('#final-title'); if(ft) ft.textContent = event.title || '—';
+        show('app');
+      }
+    }catch(err){ alert(err.message || 'Не удалось открыть событие'); }
+  });
 
-$('#avatar-upload')?.addEventListener('click', ()=> $('#avatar-file')?.click());
-$('#avatar-file')?.addEventListener('change', async (e)=>{
-  const file = e.target.files?.[0]; if (!file) return;
-  const b64 = await fileToBase64Resized(file, 512);
-  try{
-    const { url } = await apiFetch('avatar-upload', { method:'POST', body: JSON.stringify({ image: b64 }) });
-    $('#avatar-img').src = url;
-    $('#avatar-upload').textContent = 'Изменить аватар';
-  }catch(err){ alert(err.message || 'Не удалось загрузить аватар'); }
-});
+  $('#avatar-upload')?.addEventListener('click', ()=> $('#avatar-file')?.click());
+  $('#avatar-file')?.addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0]; if (!file) return;
+    const b64 = await fileToBase64Resized(file, 512);
+    try{
+      const { url } = await apiFetch('avatar-upload', { method:'POST', body: JSON.stringify({ image: b64 }) });
+      $('#avatar-img').src = url;
+      $('#avatar-upload').textContent = 'Изменить аватар';
+    }catch(err){ alert(err.message || 'Не удалось загрузить аватар'); }
+  });
 
-async function fileToBase64Resized(file, max){
-  const img = await new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=URL.createObjectURL(file); });
-  const scale = Math.min(1, max/Math.max(img.width, img.height));
-  const w = Math.max(1, Math.round(img.width*scale));
-  const h = Math.max(1, Math.round(img.height*scale));
-  const c = document.createElement('canvas'); c.width=w; c.height=h;
-  c.getContext('2d').drawImage(img,0,0,w,h);
-  return c.toDataURL('image/jpeg', 0.9);
-}
+  async function fileToBase64Resized(file, max){
+    const img = await new Promise(r => { const i=new Image(); i.onload=()=>r(i); i.src=URL.createObjectURL(file); });
+    const scale = Math.min(1, max/Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width*scale));
+    const h = Math.max(1, Math.round(img.height*scale));
+    const c = document.createElement('canvas'); c.width=w; c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    return c.toDataURL('image/jpeg', 0.9);
+  }
 
-const state = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
+  const appState = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
 
 function authHeaders() {
   const t = localStorage.getItem('FH_JWT');
@@ -514,7 +452,7 @@ const api = {
 
 async function renderEvent(eventIdOrObj) {
   const ev = typeof eventIdOrObj === 'object' ? eventIdOrObj : await api.events.load(eventIdOrObj);
-  state.currentEvent = ev;
+  appState.currentEvent = ev;
   // заполни поля экрана события
   $('#event-code')?.replaceChildren(document.createTextNode(ev.code ?? '—'));
   $('#event-when')?.replaceChildren(document.createTextNode(ev.date && ev.time ? `${ev.date} · ${ev.time}` : '—'));
