@@ -35,6 +35,8 @@ const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} 
 function showScreen(name){
   $$('[id^="screen-"]').forEach(s => s.hidden = s.id !== `screen-${name}`);
   document.body.dataset.screen = name;
+  const navMenu = document.getElementById('nav-menu');
+  if (navMenu) navMenu.hidden = (name === 'menu');
   console.log('[screen] =>', name);
 }
 

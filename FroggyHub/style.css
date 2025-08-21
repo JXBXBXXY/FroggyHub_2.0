@@ -662,21 +662,19 @@ body.scene-intro .speech{display:block}
 }
 
 /* Menu */
-.menu-grid{ display:grid; gap:12px; grid-template-columns:1fr; }
-.join-row{ display:grid; gap:10px; grid-template-columns:1fr auto; }
-@media (min-width:760px){
-  .menu-grid{ grid-template-columns:1fr 1fr 1fr; align-items:center; }
+.menu-deck{position:fixed; left:50%; transform:translateX(-50%); bottom:8vh; width:min(880px,92vw);}
+.menu-grid{display:grid; grid-template-columns:1fr auto; gap:12px;}
+.join-row{display:grid; gap:12px; grid-template-columns:1fr auto;}
+@media (max-width:600px){
+  .menu-grid{grid-template-columns:1fr;}
 }
 
 /* Decor should not intercept clicks */
 .decor-layer{ position:relative; pointer-events:none; }
 .decor{ position:absolute; pointer-events:none; user-select:none; opacity:.95; }
-.decor.frog{ left:18px; top:160px; width:120px; }
 .decor.stump{ left:0; bottom:-20px; width:180px; opacity:.85; }
+.mascot-top{position:fixed; top:16px; left:24px; pointer-events:none;}
 
-/* Show Menu button on non-menu screens */
-body[data-screen="menu"] #nav-menu{ display:none !important; }
-body:not([data-screen="menu"]) #nav-menu{ display:inline-flex !important; }
 button:not([disabled]){ cursor:pointer; }
 
 /* Profile */
