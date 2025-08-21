@@ -772,3 +772,7 @@ dialog[type-modal], #type-modal { border: none; background: transparent; }
   width: min(480px, 92vw);
   margin: 0 auto;
 }
+
+.stack-md > * + * { margin-top: 12px; }
+.row-end { display: flex; justify-content: flex-end; }
+.gap-sm { gap: 10px; }

@@ -19,6 +19,12 @@ const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
 
+window.__FH__ = window.__FH__ || {};
+const ST = window.__FH__;
+ST.createType = ST.createType || null;     // 'business' | 'party'
+ST.createDraft = ST.createDraft || {};     // шаг 1: условия
+ST.createReqs  = ST.createReqs  || {};     // шаг 2: требования
+
 function onDelegated(selector, type, handler, options){
   document.addEventListener(type, (e)=>{
     const el = e.target.closest(selector);
@@ -190,18 +196,17 @@ function showCreate(step){
 
 const typeModal = document.getElementById('type-modal');
 
-document.addEventListener('click', (e)=>{
-  const pick = e.target.closest('#type-modal [data-type]');
-  if (pick){
-    const type = pick.dataset.type;
-    window.__FH__ = window.__FH__ || {};
-    window.__FH__.createType = type;
-    flowState.flow.type = type;
-    configureCreateForm(type);
-    closeModal(typeModal);
-    setWizardMode?.('create');
-    show('app');
-  }
+  document.addEventListener('click', (e)=>{
+    const pick = e.target.closest('#type-modal [data-type]');
+    if (pick){
+      const type = pick.dataset.type;
+      ST.createType = type;
+      flowState.flow.type = type;
+      configureCreateForm(type);
+      closeModal(typeModal);
+      setWizardMode?.('create');
+      show('create-details');
+    }
 
   if (e.target.closest('#type-modal [data-close]')){
     closeModal(typeModal);
@@ -239,33 +244,70 @@ function configureCreateForm(type){
   }
 }
 
+function configureRequirementsForm(type){
+  const elTitle = document.getElementById('reqs-title');
+  const lblDress = document.getElementById('lbl-dress');
+  const lblBring = document.getElementById('lbl-bring');
+  const lblComment = document.getElementById('lbl-comment');
+  const rDress = document.getElementById('r-dress');
+  const rBring = document.getElementById('r-bring');
+  const rComm  = document.getElementById('r-comment');
 
-$('#details-next')?.addEventListener('click', ()=>{
-  flowState.flow.details = {
-    title: $('#det-title').value.trim(),
-    date: $('#det-date').value,
-    time: $('#det-time').value,
-    place: $('#det-place').value.trim(),
-  };
-  showCreate('requirements');
-});
+  if (type === 'business'){
+    elTitle.textContent = 'Требования (деловая встреча)';
+    lblDress.firstChild.nodeValue = 'Дресс-код';
+    rDress.placeholder = 'Например: business casual';
+    lblBring.firstChild.nodeValue = 'Материалы/Что взять';
+    rBring.placeholder = 'Ноутбук, презентация, блокнот…';
+    lblComment.firstChild.nodeValue = 'Комментарий организатора';
+    rComm.placeholder = 'Например: приходите за 10 минут';
+  } else {
+    elTitle.textContent = 'Требования (праздничная встреча)';
+    lblDress.firstChild.nodeValue = 'Дресс-код/Тема';
+    rDress.placeholder = 'Например: зелёный, 90-е, маскарад';
+    lblBring.firstChild.nodeValue = 'Что принести';
+    rBring.placeholder = 'Торт, напитки, гирлянды…';
+    lblComment.firstChild.nodeValue = 'Комментарий';
+    rComm.placeholder = 'Например: будет фотозона 🎉';
+  }
+}
 
-$('#details-back')?.addEventListener('click', ()=>{
-  show('menu');
-});
 
-$('#req-next')?.addEventListener('click', ()=>{
-  flowState.flow.req = {
-    dress: $('#req-dress').value.trim(),
-    bring: $('#req-bring').value.trim(),
-    comment: $('#req-comment').value.trim(),
-  };
-  showCreate('wishlist');
-});
+  document.getElementById('details-next')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const title = document.getElementById('det-title')?.value?.trim() || '';
+    const date  = document.getElementById('det-date')?.value || '';
+    const time  = document.getElementById('det-time')?.value || '';
+    const addr  = document.getElementById('det-place')?.value?.trim() || '';
+    ST.createDraft = { title, date, time, address: addr };
+    flowState.flow.details = { title, date, time, place: addr };
+    configureRequirementsForm(ST.createType || 'business');
+    show('create-reqs');
+  });
 
-$('#req-back')?.addEventListener('click', ()=>{
-  showCreate('details');
-});
+  document.getElementById('details-back')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    show('menu');
+  });
+
+  document.getElementById('form-reqs')?.addEventListener('submit', (e)=>{
+    e.preventDefault();
+  });
+
+  document.getElementById('btn-reqs-next')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const dress = document.getElementById('r-dress')?.value?.trim() || '';
+    const bring = document.getElementById('r-bring')?.value?.trim() || '';
+    const comment = document.getElementById('r-comment')?.value?.trim() || '';
+    ST.createReqs = { dress, bring, comment };
+    flowState.flow.req = { dress, bring, comment };
+    show('wishlist');
+  });
+
+  document.getElementById('btn-reqs-back')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    show('create-details');
+  });
 
 function addWish(){
   const input = $('#wish-input');
@@ -296,14 +338,16 @@ onDelegated('.wish-item [data-pick]', 'click', (e, btn)=>{
   }
 });
 
-$('#wish-back')?.addEventListener('click', ()=>{
-  showCreate('requirements');
-});
+  document.getElementById('btn-wish-back')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    show('create-reqs');
+  });
 
-$('#wish-next')?.addEventListener('click', ()=>{
-  const selected = flowState.flow.wishlist.filter((_,i)=> flowState.flow.picks.has(i));
-  openFinal({ code:'—', details:flowState.flow.details, req:flowState.flow.req, picks:selected });
-});
+  document.getElementById('btn-wish-next')?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    const selected = flowState.flow.wishlist.filter((_,i)=> flowState.flow.picks.has(i));
+    openFinal({ code:'—', details: ST.createDraft, req: ST.createReqs, picks: selected });
+  });
 
 function openFinal(data){
   if (typeof data === 'string') data = { code:data };
