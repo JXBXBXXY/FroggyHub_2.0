@@ -32,21 +32,14 @@ const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} }
 const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
 const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} };
 
-// экраны
-const screens = {
-  auth:  $('#screen-auth'),
-  lobby: $('#screen-lobby'),
-  app:   $('#screen-app'),
-  profile: $('#screen-profile'),
-};
-
-function showScreen(name){
-  Object.entries(screens).forEach(([k, el])=>{
-    if(!el) return;
-    el.hidden = (k !== name);
+function showScreen(id) {
+  const ids = ['auth','lobby','app','profile'];
+  ids.forEach(s => {
+    const el = document.getElementById('screen-' + s);
+    if (el) el.hidden = (s !== id);
   });
-  document.body.dataset.screen = name;
-  console.debug('[screen]', name);
+  document.body.dataset.screen = id;
+  console.log('[screen] =>', id);
 }
 
 async function apiPost(fnPath, payload) {
@@ -127,13 +120,25 @@ async function renderProfile() {
   }
 }
 
-// Экранная навигация по data-go
-onDelegated('[data-go]', 'click', async (e, el) => {
-  if (el.tagName === 'A') e.preventDefault();
-  const target = el.dataset.go;
-  if (!target) return;
-  showScreen(target);
-  if (target === 'profile') { renderProfile(); }
+// Навигация по атрибуту data-go
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-go]');
+  if (!el) return;
+  e.preventDefault();
+  const go = el.dataset.go;
+  const mode = el.dataset.mode || null;
+  showScreen(go);
+  if (go === 'app') {
+    setWizardMode?.(mode || 'create');
+    requestAnimationFrame(() => document.querySelector('#screen-app input, #screen-app textarea')?.focus());
+  }
+  if (go === 'profile') { renderProfile(); }
+});
+
+// Не даём форме "join" перезагружать страницу
+document.querySelector('#join-form')?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  document.querySelector('#join-event')?.click();
 });
 
 const state = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
@@ -229,40 +234,7 @@ async function openEvent(id) {
   showScreen('app');
 }
 
-function setBusyBtn(el, on) {
-  if (!el) return;
-  el.disabled = !!on;
-  el.classList.toggle('is-busy', !!on);
-}
-
-onDelegated('#create-event', 'click', async (e, btn) => {
-  try {
-    setBusyBtn(btn, true);
-    const ev = await api.events.create();
-    await renderEvent(ev);
-    showScreen('app');
-  } catch (err) {
-    toast(err?.message || 'Ошибка создания события');
-  } finally {
-    setBusyBtn(btn, false);
-  }
-});
-
-onDelegated('#join-event', 'click', async (e, btn) => {
-  const inp = $('#join-code');
-  const code = (inp?.value || '').trim();
-  if (!/^\d{6}$/.test(code)) { toast('Код должен состоять из 6 цифр'); inp?.focus(); return; }
-  try {
-    setBusyBtn(btn, true);
-    const ev = await api.events.byCode(code);
-    await renderEvent(ev);
-    showScreen('app');
-  } catch (err) {
-    toast(err?.message || 'Код не найден');
-  } finally {
-    setBusyBtn(btn, false);
-  }
-});
+// Обработчики create/join удалены: навигация осуществляется через общий делегат
 
 function withBusy(btn, fn){
   return async (...a)=>{
