@@ -100,10 +100,17 @@ input, textarea, select { font-size: 16px; }
   cursor: pointer;
 }
 
+.btn[disabled] { cursor: not-allowed; }
 .btn:disabled, button:disabled, [aria-disabled="true"] {
   cursor: not-allowed;
   opacity: .6;
 }
+
+/* Декор/фон не перехватывает клики: */
+.bg, .frog, .lily, .decoration { pointer-events: none; }
+
+/* Если большая кнопка лежит рядом с формой — на всякий случай: */
+#screen-lobby .btn { pointer-events: auto; }
 
 .field-error{color:var(--danger);font-size:.88rem;margin-top:6px;}
 .form-error{color:var(--danger);font-size:.95rem;margin-top:8px;}

@@ -90,13 +90,13 @@
       </div>
 
       <div class="grid">
-          <button id="create-event" class="btn btn--primary btn--xl w-full" data-requires-auth data-action="create-event" data-go="app" type="button">Создать событие</button>
+          <button id="create-event" class="btn btn--primary btn--xl w-full" data-go="app" data-mode="create" type="button">Создать событие</button>
         <div class="card inner">
           <h3>Присоединиться к ивенту</h3>
-          <div class="row2">
+          <form id="join-form" class="row2 join">
             <input id="join-code" class="input" placeholder="Введите 6-значный код" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6">
-            <button id="join-event" class="btn btn--ghost" data-action="join-event" data-go="app" type="button" disabled>Присоединиться</button>
-          </div>
+            <button id="join-event" class="btn btn--ghost" data-go="app" data-mode="join" type="button" disabled>Присоединиться</button>
+            </form>
         </div>
       </div>
     </div>
