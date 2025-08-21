@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "serve:functions": "netlify functions:serve",
     "test": "npm run test:syntax",
-    "test:syntax": "node --check FroggyHub/app.js && node --check FroggyHub/event-analytics.js && node --check FroggyHub/login.js && node --check netlify/functions/_auth.js && node --check netlify/functions/db-ping.js && node --check netlify/functions/local-login.js && node --check netlify/functions/local-signup.js && node --check netlify/functions/profile.js && node --check netlify/functions/events-create.js && node --check netlify/functions/events-get.js && node --check netlify/functions/events-join.js && node --check netlify/functions/events-rsvp.js && node --check netlify/functions/events-list.js"
+    "test:syntax": "node --check FroggyHub/app.js && node --check FroggyHub/event-analytics.js && node --check FroggyHub/login.js && node --check netlify/functions/_auth.js && node --check netlify/functions/db-ping.js && node --check netlify/functions/local-login.js && node --check netlify/functions/local-signup.js && node --check netlify/functions/profile.js && node --check netlify/functions/events-create.js && node --check netlify/functions/events-get.js && node --check netlify/functions/events-join.js && node --check netlify/functions/events-rsvp.js && node --check netlify/functions/events-list.js && node --check netlify/functions/events-mine.js && node --check netlify/functions/avatar-upload.js"
   },
   "engines": {
     "node": ">=18"

@@ -7,8 +7,8 @@ export async function handler(event) {
   if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
 
   try {
-    const { code, name } = JSON.parse(event.body || '{}');
-    if (!code || !name) return err('Code and name required', 400);
+    const { code, nickname } = JSON.parse(event.body || '{}');
+    if (!code || !nickname) return err('Code and nickname required', 400);
 
     const sb = getServiceClient();
     const { data: evt, error } = await sb.from('events').select('id').eq('code', code.toUpperCase()).single();
@@ -16,7 +16,7 @@ export async function handler(event) {
 
     const { data: g, error: e2 } = await sb
       .from('guests')
-      .insert({ event_id: evt.id, name, rsvp: 'maybe' })
+      .insert({ event_id: evt.id, nickname, rsvp: 'maybe' })
       .select('id')
       .single();
     if (e2) throw e2;
