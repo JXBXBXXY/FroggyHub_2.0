@@ -104,6 +104,79 @@
     </div>
   </section>
 
+  <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ТИПА -->
+  <div id="dlg-type" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h3>Какой тип встречи вы планируете создать?</h3>
+      <div class="grid">
+        <button class="btn" data-type="business">Деловая</button>
+        <button class="btn" data-type="party">Праздничная</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ШАГ 1: ДЕТАЛИ -->
+  <section id="screen-create-details" class="screen" hidden>
+    <div class="container">
+      <form id="form-create-details" class="grid form-grid" autocomplete="off">
+        <label><span id="lbl-title">Название</span>
+          <input id="det-title" required />
+        </label>
+        <label><span id="lbl-date">Дата</span>
+          <input id="det-date" type="date" required />
+        </label>
+        <label><span id="lbl-time">Время</span>
+          <input id="det-time" type="time" />
+        </label>
+        <label><span id="lbl-place">Место</span>
+          <input id="det-place" />
+        </label>
+      </form>
+      <div class="row2 mt-4">
+        <button id="details-back" class="btn btn--secondary" type="button">Назад</button>
+        <button id="details-next" class="btn btn--primary" type="button">Далее</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ШАГ 2: ТРЕБОВАНИЯ -->
+  <section id="screen-create-requirements" class="screen" hidden>
+    <div class="container">
+      <form id="form-create-req" class="grid form-grid" autocomplete="off">
+        <label>Дресс-код
+          <input id="req-dress" />
+        </label>
+        <label>Что взять
+          <input id="req-bring" />
+        </label>
+        <label>Комментарий
+          <textarea id="req-comment" rows="3"></textarea>
+        </label>
+      </form>
+      <div class="row2 mt-4">
+        <button id="req-back" class="btn btn--secondary" type="button">Назад</button>
+        <button id="req-next" class="btn btn--primary" type="button">Далее</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ШАГ 3: WISHLIST -->
+  <section id="screen-wishlist" class="screen" hidden>
+    <div class="container">
+      <div class="grid form-grid">
+        <div id="wish-list" class="wish-grid"></div>
+        <div class="row2">
+          <input id="wish-input" class="input" placeholder="Добавить пункт" />
+          <button id="wish-add" class="btn btn--primary" type="button">Добавить</button>
+        </div>
+      </div>
+      <div class="row2 mt-4">
+        <button id="wish-back" class="btn btn--secondary" type="button">Назад</button>
+        <button id="wish-next" class="btn btn--primary" type="button">Далее</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
   <div id="screen-app" class="container" hidden>
     <section class="card">
@@ -114,6 +187,7 @@
       <div>Дресс-код: <span id="event-dress">—</span></div>
       <div>Что взять: <span id="event-bring">—</span></div>
       <div>Комментарий: <span id="event-comment">—</span></div>
+      <div>Вы выбрали: <span id="event-picks">—</span></div>
       <div class="mt-4">
         <button id="back-to-menu" class="btn btn--secondary" data-go="menu" type="button">Вернуться в меню</button>
       </div>
