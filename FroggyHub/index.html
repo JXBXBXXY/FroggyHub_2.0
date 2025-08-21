@@ -105,84 +105,59 @@
   </section>
 
 
-  <!-- ШАГ 1: ДЕТАЛИ -->
-  <section id="screen-create-details" class="screen" hidden>
-    <div class="container">
-      <form id="form-create-details" class="grid form-grid" autocomplete="off">
-        <label><span id="lbl-title">Название</span>
-          <input id="det-title" required />
-        </label>
-        <label><span id="lbl-date">Дата</span>
-          <input id="det-date" type="date" required />
-        </label>
-        <label><span id="lbl-time">Время</span>
-          <input id="det-time" type="time" />
-        </label>
-        <label><span id="lbl-place">Место</span>
-          <input id="det-place" />
-        </label>
-      </form>
-      <div class="row2 mt-4">
-        <button id="details-back" class="btn btn--secondary" type="button">Назад</button>
-        <button id="details-next" class="btn btn--primary" type="button">Далее</button>
+  <!-- ЭКРАНЫ СОЗДАНИЯ СОБЫТИЯ -->
+
+<section id="screen-create-conditions" class="screen" hidden>
+  <div class="panel">
+    <h2 id="create-title">Параметры встречи</h2>
+    <form id="form-create-1" class="stack">
+      <label>Название <input id="c-title" class="input" placeholder=""></label>
+      <label>Дата <input id="c-date" type="date" class="input"></label>
+      <label>Время <input id="c-time" type="time" class="input"></label>
+      <label id="label-place">Место проведения <input id="c-place" class="input" placeholder=""></label>
+      <div class="row end">
+        <button type="button" class="btn" data-go="menu">Назад</button>
+        <button class="btn btn-primary">Далее</button>
       </div>
+    </form>
+  </div>
+</section>
+
+<section id="screen-create-reqs" class="screen" hidden>
+  <div class="panel">
+    <h2>Требования для гостей</h2>
+    <form id="form-create-2" class="stack">
+      <label>Dress-code <input id="r-dress" class="input" placeholder="Напр.: smart casual"></label>
+      <label>Что взять <input id="r-bring" class="input" placeholder="К примеру: ноутбук/презентация"></label>
+      <label>Комментарий <input id="r-comment" class="input" placeholder="Доп. сведения для гостей"></label>
+      <div class="row end">
+        <button type="button" class="btn" data-go="create-conditions">Назад</button>
+        <button class="btn btn-primary">Далее</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section id="screen-wishlist" class="screen" hidden>
+  <div class="panel">
+    <h2>Wishlist</h2>
+    <form id="form-wish-add" class="row">
+      <input id="w-title" class="input" placeholder="Название/тема">
+      <input id="w-url" class="input" placeholder="Ссылка (необязательно)">
+      <button class="btn">Добавить</button>
+    </form>
+    <div id="wishlist-box" class="wish-grid"></div>
+    <div class="row end">
+      <button type="button" class="btn" data-go="create-reqs">Назад</button>
+      <button id="btn-create-final" class="btn btn-primary">Далее</button>
     </div>
-  </section>
-
-    <!-- ЭКРАН: Шаг 2 — Требования (скрыт по умолчанию) -->
-    <section id="screen-create-reqs" class="screen" hidden>
-      <div class="container">
-        <div class="panel">
-          <h2 id="reqs-title">Требования</h2>
-
-          <form id="form-reqs" autocomplete="off" class="stack-md">
-            <label id="lbl-dress">Дресс-код
-              <input id="r-dress" class="input" placeholder="Например: casual">
-            </label>
-
-            <label id="lbl-bring">Что взять
-              <input id="r-bring" class="input" placeholder="Например: ноутбук, блокнот">
-            </label>
-
-            <label id="lbl-comment">Комментарий для гостей
-              <input id="r-comment" class="input" placeholder="Короткое сообщение для приглашённых">
-            </label>
-
-            <div class="row-end gap-sm">
-              <button type="button" class="btn" id="btn-reqs-back">Назад</button>
-              <button class="btn btn-primary" id="btn-reqs-next">Далее</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </section>
-
-    <!-- ЭКРАН: Wishlist (общий) -->
-    <section id="screen-wishlist" class="screen" hidden>
-      <div class="container">
-        <div class="panel">
-          <h2>Wishlist</h2>
-
-          <form id="form-add-wish" class="grid-2">
-            <input id="wish-title" class="input" placeholder="Название (тема/подарок)">
-            <input id="wish-url" class="input" placeholder="Ссылка (опционально)">
-            <button class="btn">Добавить</button>
-          </form>
-
-          <div id="wish-list" class="wish-grid" style="margin-top:12px">Пока пусто</div>
-
-          <div class="row-end gap-sm" style="margin-top:16px">
-            <button type="button" class="btn" id="btn-wish-back">Назад</button>
-            <button class="btn btn-primary" id="btn-wish-next">Далее</button>
-          </div>
-        </div>
-      </div>
-    </section>
+  </div>
+</section>
 
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
   <section id="screen-app" class="container" hidden>
     <section class="card">
-      <h2>Событие</h2>
+      <h2 id="final-title">Событие</h2>
       <div>Код: <span id="event-code">—</span> <button id="copy-invite" class="btn btn--ghost btn--sm" type="button">Скопировать приглашение</button></div>
       <div>Когда: <span id="event-when">—</span></div>
       <div>Адрес: <span id="event-address">—</span></div>
@@ -421,8 +396,8 @@
     <div class="card">
       <h3>Какой тип встречи вы планируете создать?</h3>
       <div class="modal__btns">
-        <button class="btn btn-secondary" data-type="business">Деловая</button>
-        <button class="btn btn-secondary" data-type="party">Праздничная</button>
+        <button id="btn-type-business" class="btn btn-secondary" data-type="business">Деловая</button>
+        <button id="btn-type-party" class="btn btn-secondary" data-type="party">Праздничная</button>
       </div>
       <div class="modal__footer">
         <button class="btn btn-ghost" data-close>Отмена</button>
