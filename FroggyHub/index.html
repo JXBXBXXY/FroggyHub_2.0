@@ -23,7 +23,7 @@
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="container" role="main">
-    <div class="card" id="authPanel" style="max-width:620px;margin:40px auto">
+    <div class="card auth-card" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-hero">
         <div class="avatar frog-ava">🐸</div>
         <div class="hero-text">
@@ -48,7 +48,7 @@
           <label>Пароль
             <input id="login-password" name="password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
           </label>
-            <button id="login-btn" class="btn btn--primary btn--xl w-full" type="submit">Войти</button>
+            <button id="login-btn" class="btn btn-primary btn-xl w-100" type="submit">Войти</button>
             <button id="showReset" class="btn btn--ghost w-full" type="button" data-forgot="false">Забыли пароль?</button>
           <div id="resetPassBlock" class="grid is-hidden">
             <label>Новый пароль
@@ -73,7 +73,7 @@
           <label>Повтор пароля
             <input id="signup-password2" name="password2" type="password" required minlength="4" autocomplete="new-password">
           </label>
-            <button id="signup-btn" class="btn btn--primary btn--xl w-full" type="submit">Зарегистрироваться</button>
+            <button id="signup-btn" class="btn btn-primary btn-xl w-100" type="submit">Зарегистрироваться</button>
           <div id="reg-status" aria-live="polite"></div>
         </form>
       </section>
@@ -350,70 +350,68 @@
 
   <section id="screen-final" class="screen" hidden>
     <div class="final-wrap">
-      <div class="final-grid">
-        <!-- ЛЕВАЯ КОЛОНКА: детали и шаринг -->
-        <div class="final-left card">
-          <div class="final-head">
-            <h2 id="final-title">Событие</h2>
-            <div class="final-code">
-              <span>Код: <b id="final-code">—</b></span>
-              <button id="btn-copy-invite" class="btn btn-chip">Скопировать приглашение</button>
-            </div>
-          </div>
-
-          <div class="final-details">
-            <div class="row">
-              <span class="label">Когда:</span>
-              <span id="final-when" class="value">—</span>
-            </div>
-            <div class="row">
-              <span class="label">Адрес:</span>
-              <span id="final-address" class="value">—</span>
-            </div>
-            <div class="row">
-              <span class="label">Дресс-код:</span>
-              <span id="final-dress" class="value">—</span>
-            </div>
-            <div class="row">
-              <span class="label">Что взять:</span>
-              <span id="final-bring" class="value">—</span>
-            </div>
-            <div class="row">
-              <span class="label">Комментарий:</span>
-              <span id="final-comment" class="value">—</span>
-            </div>
-            <div class="row" id="final-picked-row" hidden>
-              <span class="label">Вы выбрали:</span>
-              <span id="final-picked" class="value">—</span>
-            </div>
-          </div>
-
-          <div class="final-actions">
-            <button class="btn" data-go="menu">Вернуться в меню</button>
+      <!-- ЛЕВАЯ КОЛОНКА: детали и шаринг -->
+      <article id="final-left" class="final-card">
+        <div class="final-head">
+          <h2 id="final-title">Событие</h2>
+          <div class="final-code">
+            <span>Код: <b id="final-code">—</b></span>
+            <button id="btn-copy-invite" class="btn btn-chip">Скопировать приглашение</button>
           </div>
         </div>
 
-        <!-- ПРАВАЯ КОЛОНКА: превью приглашения + wishlist -->
-        <div class="final-right invite-card">
-          <div class="invite-title" id="invite-title">Событие</div>
-
-          <div class="invite-meta">
-            <span class="chip" id="chip-date">—</span>
-            <span class="chip" id="chip-time" hidden>—</span>
-            <span class="chip" id="chip-place" hidden>—</span>
+        <div class="final-details">
+          <div class="row">
+            <span class="label">Когда:</span>
+            <span id="final-when" class="value">—</span>
           </div>
-
-          <div class="invite-desc" id="invite-desc">Описание / детали.</div>
-
-          <div class="invite-subtitle">Wishlist</div>
-          <div id="invite-wishlist" class="chips"></div>
-
-          <div class="invite-legend">
-            <span class="dot free"></span> свободно
-            <span class="dot taken"></span> занято
+          <div class="row">
+            <span class="label">Адрес:</span>
+            <span id="final-address" class="value">—</span>
+          </div>
+          <div class="row">
+            <span class="label">Дресс-код:</span>
+            <span id="final-dress" class="value">—</span>
+          </div>
+          <div class="row">
+            <span class="label">Что взять:</span>
+            <span id="final-bring" class="value">—</span>
+          </div>
+          <div class="row">
+            <span class="label">Комментарий:</span>
+            <span id="final-comment" class="value">—</span>
+          </div>
+          <div class="row" id="final-picked-row" hidden>
+            <span class="label">Вы выбрали:</span>
+            <span id="final-picked" class="value">—</span>
           </div>
         </div>
-      </div>
+
+        <div class="final-actions">
+          <button class="btn" data-go="menu">Вернуться в меню</button>
+        </div>
+      </article>
+
+      <!-- ПРАВАЯ КОЛОНКА: превью приглашения + wishlist -->
+      <aside id="final-right" class="final-card" hidden>
+        <div class="invite-title" id="invite-title">Событие</div>
+
+        <div class="invite-meta">
+          <span class="chip" id="chip-date">—</span>
+          <span class="chip" id="chip-time" hidden>—</span>
+          <span class="chip" id="chip-place" hidden>—</span>
+        </div>
+
+        <div class="invite-desc" id="invite-desc">Описание / детали.</div>
+
+        <div class="invite-subtitle">Wishlist</div>
+        <div id="invite-wishlist" class="chips"></div>
+
+        <div class="invite-legend">
+          <span class="dot free"></span> свободно
+          <span class="dot taken"></span> занято
+        </div>
+      </aside>
     </div>
   </section>
 
