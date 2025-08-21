@@ -46,10 +46,20 @@
   </section>
 
   <!-- ЭКРАН 4: ФИНАЛ С ИТОГОВОЙ ИНФОЙ -->
-  <section id="screen-final" class="screen container" hidden>
-    <div class="final-card">
-      <!-- итоговая информация события -->
+  <section id="screen-final" class="screen container" hidden aria-labelledby="final-title">
+    <h1 id="final-title" class="sr-focus" tabindex="-1">Итоги события</h1>
+    <!-- финальная инфа -->
+    <div class="final-head">
+      Код: <span id="final-code">—</span>
+      <button id="btn-copy-invite" type="button" class="btn btn-secondary">Скопировать приглашение</button>
     </div>
+    <ul class="final-list">
+      <li>Когда: <span id="final-when">—</span></li>
+      <li>Адрес: <span id="final-address">—</span></li>
+      <li>Дресс-код: <span id="final-dress">—</span></li>
+      <li>Что взять: <span id="final-bring">—</span></li>
+      <li>Комментарий: <span id="final-comment">—</span></li>
+    </ul>
     <button class="btn btn-ghost" data-go="lobby">Вернуться в меню</button>
   </section>
 
