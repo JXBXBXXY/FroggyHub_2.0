@@ -1,215 +1,107 @@
-// ИНИТ от повторного запуска
-if (window.__FROGGY_BOOTED__) { console.debug('[boot] already'); }
-window.__FROGGY_BOOTED__ = true;
+(function () { if (window.__FROGGY_BOOTED__) return; window.__FROGGY_BOOTED__ = true;
+  const $ = (s, r=document)=> r.querySelector(s);
+  const $$ = (s, r=document)=> [...r.querySelectorAll(s)];
 
-// ===== Мелкие утилиты =====
-const $  = (sel, root=document) => root.querySelector(sel);
-const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+  // token utils
+  const TOK = 'FH_JWT';
+  const getTok = () => localStorage.getItem(TOK);
+  const setTok = (t) => localStorage.setItem(TOK, t);
+  const clrTok = () => localStorage.removeItem(TOK);
 
-// --- API helpers ---
-const API = {
-  async createEvent(payload){
-    const res = await fetch('/.netlify/functions/event-create', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', ...authHeader() },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error||'Ошибка создания');
-    return data.event;
-  },
-  async joinByCode(code){
-    const res = await fetch('/.netlify/functions/event-join', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ code })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error||'Код не найден');
-    return data.event;
-  },
-  async loadEventByCode(code){
-    const res = await fetch(`/.netlify/functions/event-one?code=${encodeURIComponent(code)}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error||'Не найдено');
-    return data.event;
-  }
-};
-
-function authHeader(){
-  const t = getToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
-
-const toast = (msg)=>alert(msg);
-
-// токен
-const TOKEN_KEY = 'FH_JWT';
-const getToken = () => localStorage.getItem(TOKEN_KEY);
-const setToken = t => localStorage.setItem(TOKEN_KEY, t);
-const clearToken = () => localStorage.removeItem(TOKEN_KEY);
-
-// ===== Показ экранов =====
-const SCREENS = ['auth','lobby','app','final','profile'];
-function showScreen(id){
-  SCREENS.forEach(name=>{
-    const node = document.getElementById(`screen-${name}`);
-    if (!node) return;
-    node.hidden = (name !== id);
-  });
-  document.body.dataset.screen = id;
-  // «Выйти» только на профиле
-  const logoutBtn = $('#btn-logout');
-  if (logoutBtn) logoutBtn.hidden = (id !== 'profile');
-  console.debug('[screen] ->', id);
-}
-
-// ===== Состояние события и навигация =====
-const State = { currentEvent:null, mode:'create' };
-
-document.addEventListener('click', async (e)=>{
-  const btn = e.target.closest('[data-go]');
-  if (!btn) return;
-  e.preventDefault();
-  e.stopPropagation();
-  const go = btn.dataset.go;
-  const mode = btn.dataset.mode;
-  if (mode){ document.body.dataset.mode = mode; State.mode = mode; }
-  if (SCREENS.includes(go)) {
-    showScreen(go);
-  }
-});
-
-// ===== Авто-маршрут после логина =====
-async function doLogin(nickname, password){
-  const res = await fetch('/.netlify/functions/local-login', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ nickname, password }),
-  });
-  const data = await res.json();
-  if (data?.token) {
-    setToken(data.token);
-    showScreen('lobby');
-    return true;
-  }
-  throw new Error(data?.error || 'Ошибка входа');
-}
-
-// Подвяжем существующую форму логина, если она на странице
-const loginForm = document.getElementById('login-form') || $('#form-login');
-if (loginForm) {
-  loginForm.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const nick = $('#login-nickname', loginForm) || $('[name="nickname"]', loginForm);
-    const pass = $('#login-password', loginForm) || $('[name="password"]', loginForm);
-    if (!nick?.value || !pass?.value) return;
-    try {
-      await doLogin(nick.value.trim(), pass.value);
-    } catch (err) {
-      alert(err.message || 'Ошибка входа');
-    }
-  }, { once:false });
-}
-
-// ===== Лобби: создать / присоединиться =====
-$('#btn-create')?.addEventListener('click', (e)=>{ e.preventDefault(); showScreen('app'); });
-
-const joinForm = $('#join-form');
-if (joinForm) joinForm.addEventListener('submit', e=>e.preventDefault());
-
-// запуск «создать событие»
-const saveBtn = $('#btn-save-event') || $('[data-action="save-event"]') || $('[data-role="next"]');
-if (saveBtn) saveBtn.addEventListener('click', onSaveEvent);
-
-async function onSaveEvent(){
-  try{
-    const title = ($('#event-title')?.value || $('#title')?.value || 'Моё событие').trim();
-    const date  = ($('#event-date')?.value || $('#date')?.value || '').trim();
-    const time  = ($('#event-time')?.value || $('#time')?.value || '').trim();
-    const address = ($('#event-address')?.value || $('#address')?.value || '').trim();
-    const dress_code = ($('#event-dress')?.value || $('#dress')?.value || '').trim();
-    const bring = ($('#event-bring')?.value || $('#bring')?.value || '').trim();
-    const comment = ($('#event-comment')?.value || $('#comment')?.value || '').trim();
-    const wishlist = collectWishlist();
-
-    const ev = await API.createEvent({ title, date, time, address, dress_code, bring, comment, wishlist });
-    State.currentEvent = ev;
-    renderFinal(ev);
-    toast('Событие создано');
-    showScreen('final');
-  }catch(e){ alert(e.message||'Ошибка'); }
-}
-
-// присоединиться по коду
-const joinBtn = $('#btn-join');
-if (joinBtn) joinBtn.addEventListener('click', onJoinByCode);
-async function onJoinByCode(){
-  try{
-    const code = ($('#join-code')?.value||'').trim();
-    if (!/^\d{6}$/.test(code)) throw new Error('Введите 6-значный код');
-    const ev = await API.joinByCode(code);
-    State.currentEvent = ev;
-    renderFinal(ev);
-    toast('Подключено');
-    showScreen('final');
-  }catch(e){ alert(e.message||'Код не найден'); }
-}
-
-function collectWishlist(){
-  return $$('.wish-row').map(row=>{
-    const title = $('input[name="wish-title"]', row)?.value?.trim();
-    const url   = $('input[name="wish-url"]', row)?.value?.trim();
-    return title ? { title, url } : null;
-  }).filter(Boolean);
-}
-
-// итоговый экран
-function renderFinal(ev){
-  const codeEl = $('#final-code'); if (codeEl) codeEl.textContent = ev.code || '—';
-  setText('#final-when', formatWhen(ev));
-  setText('#final-address', ev.address || '—');
-  setText('#final-dress', ev.dress_code || '—');
-  setText('#final-bring', ev.bring || '—');
-  setText('#final-comment', ev.comment || '—');
-  startCountdown(ev.date, ev.time);
-  const copy = $('#btn-copy-invite');
-  if (copy) copy.onclick = ()=>copyInvite(ev);
-}
-function setText(sel,val){ const n=$(sel); if(n) n.textContent=val; }
-function formatWhen(ev){ if(!ev?.date||!ev?.time) return '—'; return `${ev.date} • ${ev.time}`; }
-
-function copyInvite(ev){
-  const text=`Привет! Приглашаю тебя на "${ev.title}" 👋\nКогда: ${formatWhen(ev)}\nАдрес: ${ev.address||'—'}\nДресс-код: ${ev.dress_code||'—'}\nЧто взять: ${ev.bring||'—'}\nКод для входа: ${ev.code}\nЗайди на FroggyHub и введи код.`;
-  navigator.clipboard.writeText(text).then(()=>toast('Приглашение скопировано'));
-}
-
-// таймер
-let timerId;
-function startCountdown(date, time){
-  if (!date || !time) return;
-  const target = new Date(`${date}T${time}:00`);
-  const outTime = $('#countdown-time');
-  const outMeta = $('#countdown-meta');
-  clearInterval(timerId);
-  const tick=()=>{
-    const diff = target - new Date();
-    if (diff<=0){ if(outTime) outTime.textContent='00:00'; if(outMeta) outMeta.textContent=''; clearInterval(timerId); return; }
-    const d = Math.floor(diff/86400000);
-    const h = Math.floor((diff%86400000)/3600000);
-    const m = Math.floor((diff%3600000)/60000);
-    if(outTime) outTime.textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-    if(outMeta) outMeta.textContent = d>0 ? `${d} дн.` : '';
+  // fetch helpers
+  const api = async (path, init={})=>{
+    init.headers = Object.assign({'Content-Type':'application/json'}, init.headers||{});
+    const t = getTok(); if (t) init.headers.Authorization = `Bearer ${t}`;
+    const res = await fetch(`/.netlify/functions${path}`, init);
+    const data = await res.json().catch(()=> ({}));
+    if (!res.ok) throw Object.assign(new Error(data?.error||'Ошибка'), {status:res.status, data});
+    return data;
   };
-  tick(); timerId=setInterval(tick,30000);
-}
 
-// ===== Выход (только на экране профиля виден) =====
-$('#btn-logout')?.addEventListener('click', (e)=>{
-  e.preventDefault();
-  clearToken();
-  showScreen('auth');
-});
+  // NAV
+  const screens = ['menu','app','final','profile'];
+  function showScreen(id){
+    if (!screens.includes(id)) return;
+    document.body.dataset.screen = id;
+    screens.forEach(k => { const el = $(`#screen-${k}`); if (el) el.hidden = (k!==id); });
+    if (id === 'profile') refreshProfile().catch(()=>{});
+  }
 
-// ===== Стартовое состояние =====
-showScreen(getToken() ? 'lobby' : 'auth');
+  // delegated clicks
+  document.addEventListener('click',(e)=>{
+    const go = e.target.closest('[data-go]');
+    if (go){ e.preventDefault(); showScreen(go.dataset.go); return; }
+    const del = e.target.closest('[data-del]');
+    if (del){ e.preventDefault(); onDeleteEvent(del.dataset.del); }
+    const open = e.target.closest('[data-open]');
+    if (open){ e.preventDefault(); openEvent(open.dataset.open); }
+  });
+
+  // prevent join form reload
+  $('#join-form')?.addEventListener('submit', (e)=>{ e.preventDefault(); });
+
+  // AUTH (существующие login/signup вызывали setTok; оставляем)
+  async function doLogin(nick, pass){
+    const res = await fetch('/.netlify/functions/local-login',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nickname:nick, password:pass})
+    });
+    const data = await res.json();
+    if (data?.token) setTok(data.token); else throw new Error(data?.error||'Ошибка входа');
+  }
+
+  // HEADER
+  $('#btn-logout')?.addEventListener('click', ()=>{
+    clrTok();
+    showScreen('menu');
+  });
+
+  // ---------- PROFILE ----------
+  const byDate = (evs)=>{
+    const now = new Date();
+    const toDate = (e)=> new Date(`${e.date}T${(e.time||'00:00')}:00`);
+    const upcoming=[], past=[];
+    evs.forEach(e=> (toDate(e) >= now ? upcoming : past).push(e));
+    upcoming.sort((a,b)=> (a.date+b.time).localeCompare(b.date+a.time));
+    past.sort((a,b)=> (b.date+a.time).localeCompare(a.date+b.time));
+    return {upcoming, past};
+  };
+
+  const renderList = (arr, mount)=>{
+    mount.innerHTML = '';
+    if (!arr.length){ mount.innerHTML = '<div class="muted">Пока пусто</div>'; return; }
+    arr.forEach(e=>{
+      const card = document.createElement('article');
+      card.className = 'event-card';
+      card.innerHTML = `
+        <h4>${e.title||'Без названия'}</h4>
+        <div class="muted">${e.date} ${e.time||''}</div>
+        <div class="muted">Код: ${e.code||'—'}</div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn btn-sm" data-open="${e.id}">Открыть</button>
+          <button class="btn btn-sm" data-del="${e.id}">Удалить</button>
+        </div>`;
+      mount.appendChild(card);
+    });
+  };
+
+  async function refreshProfile(){
+    const data = await api('/events-mine');
+    const {upcoming, past} = byDate(data?.events||[]);
+    renderList(upcoming, $('#profile-upcoming'));
+    renderList(past, $('#profile-past'));
+  }
+
+  async function onDeleteEvent(id){
+    await api(`/event-delete?id=${encodeURIComponent(id)}`, {method:'DELETE'});
+    await refreshProfile();
+  }
+
+  function openEvent(id){
+    // пока просто переключим на финальный экран; реальные данные подгружаются твоей логикой
+    showScreen('final');
+  }
+
+  // BOOT
+  showScreen(getTok() ? 'menu' : 'menu');
+})();

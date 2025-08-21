@@ -6,69 +6,58 @@
   <title>FroggyHub — события и вишлисты</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="scene-intro" data-screen="auth">
-  <!-- ХЕДЕР -->
-  <header class="topbar">
-    <button id="nav-menu"    type="button" class="btn btn-ghost"  data-go="lobby">Меню</button>
-    <button id="nav-profile" type="button" class="btn btn-ghost"  data-go="profile">Профиль</button>
-    <!-- Выйти показываем только на экране профиля -->
-    <button id="btn-logout"  type="button" class="btn btn-ghost danger" hidden>Выйти</button>
-  </header>
+<body class="scene-intro" data-screen="menu">
+  <!-- top bar -->
+  <nav class="topbar">
+    <button id="btn-go-menu" class="btn btn-nav" data-go="menu">Меню</button>
+    <button id="btn-go-profile" class="btn btn-nav" data-go="profile">Профиль</button>
+    <button id="btn-logout" class="btn btn-nav">Выйти</button>
+  </nav>
 
-  <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
-  <section id="screen-auth" class="screen container" role="main">
-    <form id="login-form" class="grid" novalidate>
-      <label>Никнейм
-        <input id="login-nickname" name="nickname" type="text" placeholder="Никнейм" required autocomplete="username">
-      </label>
-      <label>Пароль
-        <input id="login-password" name="password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
-      </label>
-      <button id="login-btn" class="btn btn-primary" type="submit">Войти</button>
-    </form>
-  </section>
-
-  <!-- ЭКРАН 2: ГЛАВНОЕ МЕНЮ -->
-  <section id="screen-lobby" class="screen container" hidden>
-    <div id="cta" class="cta">
-      <button id="btn-create" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
-      <form id="join-form" class="join-form">
-        <input id="join-code" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Введите 6-значный код"/>
-        <button id="btn-join" class="btn btn-secondary" data-go="app" data-mode="join">Присоединиться</button>
+  <!-- 1) Меню — выбор действия после авторизации -->
+  <section id="screen-menu" class="screen">
+    <div class="container stack-md">
+      <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
+      <form id="join-form" class="row gap-sm" autocomplete="off">
+        <input id="join-code" class="input" inputmode="numeric" maxlength="6" placeholder="Введите 6-значный код" />
+        <button id="join-event" class="btn btn-secondary" data-go="app" data-mode="join">Присоединиться</button>
       </form>
     </div>
   </section>
 
-  <!-- ЭКРАН 3: ПРИЛОЖЕНИЕ / СТЕПЫ СОЗДАНИЯ/ПРИСОЕДИНЕНИЯ -->
+  <!-- 2) Мастер создания/подключения (контент уже есть в проекте) -->
   <section id="screen-app" class="screen" hidden>
-    <!-- существующие поля «описание», «дресс-код», «что взять», wishlist и т.п. -->
-    <!-- НИКАКОГО финального резюме тут не рендерим -->
+    <!-- существующая разметка мастера; никакой финальной карточки здесь -->
   </section>
 
-  <!-- ЭКРАН 4: ФИНАЛ С ИТОГОВОЙ ИНФОЙ -->
-  <section id="screen-final" class="screen container" hidden aria-labelledby="final-title">
-    <h1 id="final-title" class="sr-focus" tabindex="-1">Итоги события</h1>
-    <!-- финальная инфа -->
-    <div class="final-head">
-      Код: <span id="final-code">—</span>
-      <button id="btn-copy-invite" type="button" class="btn btn-secondary">Скопировать приглашение</button>
+  <!-- 3) Финальная информация (только этот экран показывает итоговую карточку) -->
+  <section id="screen-final" class="screen" hidden>
+    <div id="final-card" class="final-card container">
+      <!-- здесь отрисовывается итог события -->
     </div>
-    <ul class="final-list">
-      <li>Когда: <span id="final-when">—</span></li>
-      <li>Адрес: <span id="final-address">—</span></li>
-      <li>Дресс-код: <span id="final-dress">—</span></li>
-      <li>Что взять: <span id="final-bring">—</span></li>
-      <li>Комментарий: <span id="final-comment">—</span></li>
-    </ul>
-    <button class="btn btn-ghost" data-go="lobby">Вернуться в меню</button>
+    <div class="actions">
+      <button class="btn" data-go="menu">Вернуться в меню</button>
+    </div>
   </section>
 
-  <!-- ЭКРАН 5: ПРОФИЛЬ -->
-  <section id="screen-profile" class="screen container" hidden>
-    <!-- список моих событий: Будущие / Прошедшие (карточки) -->
-    <!-- тут ДОЛЖНА быть кнопка «Выйти» -->
+  <!-- 4) Профиль — список моих событий -->
+  <section id="screen-profile" class="screen" hidden>
+    <div class="container">
+      <h2>Профиль</h2>
+      <div class="profile-grid">
+        <section>
+          <h3>Скоро</h3>
+          <div id="profile-upcoming" class="event-grid"></div>
+        </section>
+        <section>
+          <h3>Прошедшие</h3>
+          <div id="profile-past" class="event-grid"></div>
+        </section>
+      </div>
+    </div>
   </section>
 
-  <script defer src="app.js" type="module"></script>
+  <script defer type="module" src="/npm/@supabase/supabase-js@2/esm"></script>
+  <script defer src="app.js"></script>
 </body>
 </html>

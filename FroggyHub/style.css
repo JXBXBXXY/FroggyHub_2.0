@@ -97,13 +97,6 @@ input:focus, textarea:focus, select:focus {
 /* Всегда 16px+ на инпутах, чтобы мобильный браузер не зумил */
 input, textarea, select { font-size: 16px; }
 
-.btn, .btn-ghost, .btn-primary, .btn-secondary {
-  cursor: pointer;
-}
-.btn[disabled], .btn-ghost[disabled], .btn-primary[disabled], .btn-secondary[disabled] {
-  cursor: not-allowed;
-  opacity: .6;
-}
 
 /* Наверх слоя – контент; декорациям отключаем захват событий */
 .topbar, .screen { position: relative; z-index: 2; }
@@ -112,11 +105,35 @@ input, textarea, select { font-size: 16px; }
   z-index: 1;
 }
 
-/* финальная карточка видна только на финальном экране */
-#screen-lobby .final-card,
-#screen-auth  .final-card,
-#screen-app   .final-card,
-#screen-profile .final-card { display: none !important; }
+/* курсоры и кликабельность */
+button, .btn, .btn-nav, .btn-primary, .btn-secondary { cursor: pointer; }
+[disabled] { cursor: not-allowed !important; }
+.decor, .bg, .lilypads { pointer-events: none; }
+
+/* экраны */
+.screen[hidden] { display: none !important; }
+
+/* top bar */
+.topbar {
+  position: fixed; top: 16px; left: 16px; display: flex; gap: 12px; z-index: 10;
+}
+#btn-logout { display: none; }
+[data-screen="profile"] #btn-logout { display: inline-flex; }
+
+/* профиль */
+.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.event-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 12px; }
+.event-card {
+  border-radius: 12px; background: rgba(0,0,0,.3); padding: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.25);
+}
+.event-card h4 { margin: 0 0 6px 0; }
+.event-card .muted { opacity: .7; font-size: .9em; }
+.event-card .row { display:flex; gap:8px; }
+.event-card .btn-sm { padding: 6px 10px; font-size: .85em; }
+
+/* финальная карточка показывается только на #screen-final */
+#screen-final .final-card { display: block; }
+.final-card { display: none; }
 
 .field-error{color:var(--danger);font-size:.88rem;margin-top:6px;}
 .form-error{color:var(--danger);font-size:.95rem;margin-top:8px;}
@@ -172,26 +189,6 @@ a.btn{ color:inherit; }
   pointer-events:auto;
 }
 
-.profile-grid {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
-.profile-list {
-  display:grid;
-  gap:10px;
-}
-.event-item {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 12px;
-  border-radius:10px;
-  background:rgba(0,0,0,.2);
-  backdrop-filter:blur(4px);
-}
-.event-item__meta { opacity:.9; font-size:.9rem; }
-.event-item__actions { display:flex; gap:8px; }
 
 :focus-visible{
   outline:2px solid var(--ring);
