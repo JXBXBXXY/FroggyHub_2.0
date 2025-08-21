@@ -755,3 +755,32 @@ button:not([disabled]){ cursor:pointer; }
 .invite-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.4)}
 .invite-legend .dot.free{background:#19c34a}
 .invite-legend .dot.taken{background:#c3a019}
+.w-100{width:100%}
+
+/* === Auth polish === */
+.auth-card{max-width:640px;margin:6vh auto;padding:20px 22px;border-radius:18px;
+  background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.auth-card h1,.auth-card h2{letter-spacing:.2px}
+.auth-card .tabs{margin:10px 0 14px}
+.auth-card .input, .auth-card input[type="text"], .auth-card input[type="password"]{
+  height:52px;font-size:16px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(10,10,10,.55);padding:0 16px;color:#fff}
+.auth-card .input::placeholder{color:rgba(255,255,255,.55)}
+.btn-xl{height:52px;font-weight:600;border-radius:14px}
+.btn-primary{background:linear-gradient(180deg,#2e7a62,#1f5c49);border:1px solid rgba(255,255,255,.12)}
+.btn-primary:hover{filter:brightness(1.06)}
+@media (max-width:720px){
+  .auth-card{margin:3vh 12px;padding:16px}
+}
+
+/* === Final single-column === */
+.final-wrap{max-width:860px;margin:32px auto;padding:0 16px;display:block}
+.final-card{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
+  border-radius:20px;padding:22px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+#final-left{transform:scale(1.03);transform-origin:center}
+#final-right[hidden]{display:none !important}
+@media (max-width:720px){
+  .final-wrap{margin:16px auto}
+  .final-card{padding:16px}
+}

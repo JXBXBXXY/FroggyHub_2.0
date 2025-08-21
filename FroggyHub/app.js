@@ -50,6 +50,12 @@ function show(name){
   const navMenu = document.getElementById('nav-menu');
   if (navMenu) navMenu.hidden = (name === 'menu' || name === 'auth');
   console.log('[screen] =>', name);
+  if (name === 'final') {
+    const right = document.getElementById('final-right');
+    if (right) right.hidden = true;
+    const wrap = document.querySelector('.final-wrap');
+    if (wrap) document.body.dataset.final = 'single';
+  }
 }
 
 (function boot(){
