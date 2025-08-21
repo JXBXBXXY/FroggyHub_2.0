@@ -392,7 +392,7 @@ const api = {
   events: {
     async create() {
       // сервер создаёт код, даты и т.п. из текущего драфта/формы; при необходимости передай поля
-      const res = await fetch('/.netlify/functions/event-create', {
+      const res = await fetch('/.netlify/functions/event-create-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({}), // если есть форма драфта — подставь сюда
@@ -402,20 +402,20 @@ const api = {
       return data; // { id, code, ... }
     },
     async byCode(code) {
-      const res = await fetch('/.netlify/functions/event-by-code?code=' + encodeURIComponent(code), {
+      const res = await fetch('/.netlify/functions/event-one-v2?code=' + encodeURIComponent(code), {
         headers: authHeaders(),
       });
       const data = await res.json();
-      if (!res.ok || !data?.id) throw new Error(data?.error || 'Код не найден');
-      return data;
+      if (!res.ok || !data?.event?.id) throw new Error(data?.error || 'Код не найден');
+      return data.event;
     },
     async load(id) {
-      const res = await fetch('/.netlify/functions/event-get?id=' + encodeURIComponent(id), {
+      const res = await fetch('/.netlify/functions/event-one-v2?id=' + encodeURIComponent(id), {
         headers: authHeaders(),
       });
       const data = await res.json();
-      if (!res.ok || !data?.id) throw new Error(data?.error || 'Событие не найдено');
-      return data;
+      if (!res.ok || !data?.event?.id) throw new Error(data?.error || 'Событие не найдено');
+      return data.event;
     },
   },
 };
@@ -1652,7 +1652,17 @@ function openEditor(id){
   editor.showModal?editor.showModal():editor.setAttribute('open','');
   cellTitle.focus();
 }
-$('#saveCell')?.addEventListener('click',()=>{ const c=eventData.wishlist.find(x=>x.id===currentCellId); c.title=cellTitle.value.trim(); c.url=cellUrl.value.trim(); save(); renderGrid(); });
+$('#saveCell')?.addEventListener('click', async ()=>{
+  const c=eventData.wishlist.find(x=>x.id===currentCellId);
+  c.title=cellTitle.value.trim(); c.url=cellUrl.value.trim();
+  save(); renderGrid();
+  if(eventData.id){
+    try{
+      const res = await apiWishlistAdd({ event_id:eventData.id, id:c.id, title:c.title, url:c.url });
+      if(res?.item?.id) c.id = res.item.id;
+    }catch(err){ toast(explainFnError(err)); }
+  }
+});
 $('#clearWL')?.addEventListener('click',()=>{ eventData.wishlist.forEach(c=>{c.title='';c.url='';c.claimedBy='';}); save(); renderGrid(); });
 $('#addItem')?.addEventListener('click',()=>{ const nextId=eventData.wishlist.length?Math.max(...eventData.wishlist.map(i=>i.id))+1:1; eventData.wishlist.push({id:nextId,title:'',url:'',claimedBy:''}); save(); renderGrid(); });
 $('#toDetails')?.addEventListener('click',()=>withTransition(()=>{ showSlide('create-details'); }));
@@ -1734,15 +1744,15 @@ async function joinByCode(code){
   joinBtn?.setAttribute('disabled','');
   if(joinBtn) joinBtn.textContent='Присоединяем…';
   try{
-    const sb = await ensureSupabase();
-    const { data:{ user } } = await sb.auth.getUser();
-    if(!user){ toast('Войдите'); announce.textContent='Войдите'; return; }
-    const data = await callFnEx('join-by-code',{ method:'POST', body:{ code }});
-    await loadEvent(data.event_id || data.eventId);
+    const evt = await callFnEx('event-one-v2?code='+encodeURIComponent(code), { method:'GET' });
+    const nick = localStorage.getItem(LS_NICK) || '';
+    if(nick){
+      try{ await callFnEx('event-join-v2',{ method:'POST', body:{ code, nickname:nick } }); }catch(_){ }
+    }
+    await loadEvent(evt.event.id);
     setScene('final');
   }catch(err){
     if(err.status===404||err.status===400) announce.textContent='Неверный или истёкший код.';
-    else if(err.status===409) announce.textContent='Вы уже участник этого события.';
     else announce.textContent=explainFnError(err);
     toast(announce.textContent);
   }finally{
@@ -1804,17 +1814,13 @@ async function renderGuests(eventId){
 
 async function loadEvent(eventId){
   try{
-    const data = await callFnEx('event-by-code',{ method:'POST', body:{ event_id:eventId }});
+    const data = await callFnEx('event-one-v2?id='+encodeURIComponent(eventId), { method:'GET' });
     if(data.event){
       Object.assign(eventData, data.event);
-      if(data.event.event_at){
-        const d=new Date(data.event.event_at);
-        eventData.date = d.toISOString().slice(0,10);
-        eventData.time = d.toISOString().slice(11,16);
-      }
+      eventData.date = data.event.date;
+      eventData.time = data.event.time;
     }
-    eventData.wishlist = (data.wishlist || []).map(it=>({ id:it.id, title:it.title, url:it.url, claimedBy:it.claimed_by || it.taken_by || it.reserved_by || '' }));
-    eventData.guests = (data.participants || []).map(p=>({ name:p.profiles?.nickname || p.name || '', rsvp:p.rsvp }));
+    eventData.wishlist = (data.wishlist || []).map(it=>({ id:it.id, title:it.title, url:it.url, claimedBy:it.claimed_by || '' }));
     await Promise.all([renderWishlist(eventId), renderGuests(eventId)]);
     await subscribeEventRealtime(eventId, {
       onWishlist: () => renderWishlist(eventId),
@@ -1872,7 +1878,7 @@ $('#joinCodeBtn')?.addEventListener('click', () => {
 });
 
 async function joinCurrentEvent(){
-  try{ await callFnEx('join-by-code',{ method:'POST', body:{ code:eventData.join_code }}); }catch(_){ }
+  try{ await callFnEx('event-join-v2',{ method:'POST', body:{ code:eventData.join_code, nickname:currentGuestName || '' }}); }catch(_){ }
 }
 /* RSVP + подарок */
 let currentGuestName='';
@@ -1902,15 +1908,16 @@ function renderGuestWishlist(){
               <div class="gift-actions" style="display:flex;gap:8px">${status}${chooseBtn}</div>
             </div>`;
   }).join('');
-  guestGifts.querySelectorAll('.choose').forEach(b=>b.addEventListener('click',e=>{
+  guestGifts.querySelectorAll('.choose').forEach(b=>b.addEventListener('click',async e=>{
     const id=+e.currentTarget.dataset.id; const it=eventData.wishlist.find(x=>x.id===id);
     if(it.claimedBy && it.claimedBy.toLowerCase()!==currentGuestName.toLowerCase()) return toast('Этот подарок уже выбрали');
     eventData.wishlist.forEach(x=>{ if(x.claimedBy && x.claimedBy.toLowerCase()===currentGuestName.toLowerCase()) x.claimedBy=''; });
     it.claimedBy=currentGuestName; save(); renderGuestWishlist();
+    try{ await apiWishlistClaim(id, currentGuestName); }catch(_){ }
   }));
-  guestGifts.querySelectorAll('.unchoose').forEach(b=>b.addEventListener('click',e=>{
+  guestGifts.querySelectorAll('.unchoose').forEach(b=>b.addEventListener('click',async e=>{
     const id=+e.currentTarget.dataset.id; const it=eventData.wishlist.find(x=>x.id===id);
-    if(it.claimedBy && it.claimedBy.toLowerCase()===currentGuestName.toLowerCase()){ it.claimedBy=''; save(); renderGuestWishlist(); }
+    if(it.claimedBy && it.claimedBy.toLowerCase()===currentGuestName.toLowerCase()){ it.claimedBy=''; save(); renderGuestWishlist(); try{ await apiWishlistClaim(id, ''); }catch(_){ } }
   }));
 }
 $('#skipWishlist')?.addEventListener('click',async()=>{ await joinCurrentEvent(); withTransition(()=>toFinalScene()); });
@@ -2253,14 +2260,11 @@ async function apiGet(path) {
   return data;
 }
 
-async function apiPostAuth(path, body, useAuth = false) {
-  const headers = { 'Content-Type': 'application/json' };
-  const token = localStorage.getItem(FH_TOKEN_KEY);
-  if (useAuth && token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) });
-  const data = await res.json();
-  if (!res.ok || data?.error) throw new Error(data?.error || res.statusText);
-  return data;
+async function apiWishlistAdd(body){
+  return callFnEx('wishlist-add-v2',{ method:'POST', body });
+}
+async function apiWishlistClaim(item_id, nickname){
+  return callFnEx('wishlist-claim-v2',{ method:'POST', body:{ item_id, nickname } });
 }
 
 // ==== Создание события (owner) ====
@@ -2275,13 +2279,8 @@ async function handleCreateEvent(formEl) {
     bring: fd.get('bring') || '',
     notes: fd.get('notes') || ''
   };
-  const wishlist = [];
-  (fd.getAll('wishlist[]') || []).forEach(t => wishlist.push({ title: t }));
-  payload.wishlist = wishlist;
-
-  const data = await apiPostAuth('/events-create', payload, true);
-  // сразу в лобби с id
-  window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.eventId)}`;
+  const data = await callFnEx('event-create-v2', { method:'POST', body: payload });
+  window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.event?.id || data.eventId)}`;
 }
 
 // ==== Присоединение гостя по коду ====
@@ -2289,9 +2288,10 @@ async function handleJoinEvent(formEl) {
   const fd = new FormData(formEl);
   const code = String(fd.get('code') || '').trim().toUpperCase();
   const name = String(fd.get('name') || fd.get('guest_name') || '').trim();
-  if (!code || !name) throw new Error('Заполните код и имя');
-  const data = await apiPostAuth('/events-join', { code, name });
-  window.location.href = `/lobby.html?eventId=${encodeURIComponent(data.eventId)}`;
+  if (!code) throw new Error('Заполните код');
+  const ev = await callFnEx('event-one-v2?code='+encodeURIComponent(code), { method:'GET' });
+  if (name) { try { await callFnEx('event-join-v2', { method:'POST', body:{ code, nickname:name } }); } catch(_){ } }
+  window.location.href = `/lobby.html?eventId=${encodeURIComponent(ev.event.id)}`;
 }
 
 // ==== Привязки к формам (если есть на странице) ====
