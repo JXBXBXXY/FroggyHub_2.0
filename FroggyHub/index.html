@@ -9,11 +9,11 @@
 </head>
 <body class="scene-intro">
   <!-- Шапка -->
-  <nav class="topbar">
-    <button id="nav-menu" class="btn btn--ghost btn--sm" data-go="menu" type="button">Меню</button>
+  <header id="topbar" class="topbar">
+    <button id="nav-menu" class="btn btn--ghost btn--sm" data-go="lobby" type="button">Меню</button>
     <button id="nav-profile" class="btn btn--ghost btn--sm" data-go="profile" type="button">Профиль</button>
-    <button id="logout-btn" class="btn btn--ghost btn--sm" type="button">Выйти</button>
-  </nav>
+    <button id="btn-logout" class="btn btn--ghost btn--sm" type="button">Выйти</button>
+  </header>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <div id="screen-auth" class="container" role="main">
     <div class="card" id="authPanel" style="max-width:620px;margin:40px auto">
@@ -111,7 +111,7 @@
       <div>Что взять: <span id="event-bring">—</span></div>
       <div>Комментарий: <span id="event-comment">—</span></div>
       <div class="mt-4">
-        <button id="back-to-menu" class="btn btn--secondary" data-go="menu" type="button">Вернуться в меню</button>
+        <button id="back-to-menu" class="btn btn--secondary" data-go="lobby" type="button">Вернуться в меню</button>
       </div>
     </section>
     <div class="wrap" id="root" hidden>
@@ -284,6 +284,23 @@
         </section>
       </section>
     </div>
+  </div>
+
+  <!-- ЭКРАН: ПРОФИЛЬ -->
+  <div id="screen-profile" class="container" hidden>
+    <section class="card">
+      <h2>Профиль</h2>
+      <div class="profile-grid">
+        <div>
+          <h3>Ближайшие события</h3>
+          <div id="profile-upcoming" class="profile-list"></div>
+        </div>
+        <div>
+          <h3>Прошедшие</h3>
+          <div id="profile-past" class="profile-list"></div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <script>

@@ -8,7 +8,7 @@ export function cors(extra = {}) {
     'Access-Control-Allow-Origin': CORS_ORIGIN,
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     ...extra
   };
 }
