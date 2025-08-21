@@ -42,6 +42,42 @@ const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} 
 const TOK = 'FH_JWT';
 const getTok = () => localStorage.getItem(TOK);
 
+function authHeader(){
+  const t = localStorage.getItem('FH_JWT');
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+const authHeaders = authHeader;
+
+async function api(path, init={}){
+  init.headers = Object.assign({'Content-Type':'application/json'}, authHeader(), init.headers||{});
+  const res = await fetch(`/.netlify/functions/${path}`, init);
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok || data?.success===false) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function createEventFromDraft(draft){
+  const { event } = await api('event-create', { method:'POST', body: JSON.stringify(draft) });
+  return event; // {id, code, ...}
+}
+
+async function loadEventByCode(code){
+  const { event } = await api('event-one?code='+encodeURIComponent(code));
+  return event;
+}
+
+async function joinEvent(code, nickname){
+  await api('event-join', { method:'POST', body: JSON.stringify({ code, nickname }) });
+}
+
+async function addWish(code, title, url){
+  await api('wishlist-add', { method:'POST', body: JSON.stringify({ code, title, url }) });
+}
+
+async function claimWish(id, nickname){
+  await api('wishlist-claim', { method:'POST', body: JSON.stringify({ id, nickname }) });
+}
+
 function show(name){
   document.querySelectorAll('section[id^="screen-"]').forEach(s => {
     s.hidden = s.id !== `screen-${name}`;
@@ -186,23 +222,29 @@ const state = {
 
 const guest = { code:null, nickname:null, event:null };
 
-$('#join-btn')?.addEventListener('click', ()=>{
+$('#join-btn')?.addEventListener('click', async ()=>{
   const code = ($('#join-code')?.value||'').trim();
   if(code.length!==6){ toast?.('Введите корректный код'); return; }
-  // пока делаем “валидным” любой код, чтобы пройти UX
-  guest.code = code;
-  show('join-name');
+  try {
+    const ev = await loadEventByCode(code);
+    guest.code = code;
+    guest.event = ev;
+    show('join-name');
+  } catch (e) {
+    toast?.('Событие не найдено');
+  }
 });
 
-$('#form-join-name')?.addEventListener('submit', e=>{
+$('#form-join-name')?.addEventListener('submit', async e=>{
   e.preventDefault();
   guest.nickname = $('#jnick').value.trim();
   if(!guest.nickname) return;
-  // подгружаем wishlist из созданного state.create, если код совпал (стаб)
-  const wl = (state.create.code && guest.code===state.create.code) ? state.create.wishlist : [];
-  guest.event = { title: state.create.base.title, date: state.create.base.date, time: state.create.base.time, address: state.create.base.place,
-    dress: state.create.reqs.dress, bring: state.create.reqs.bring, comment: state.create.reqs.comment, wishlist: JSON.parse(JSON.stringify(wl)) };
-  renderJoinWl(); show('join-wishlist');
+  try {
+    await joinEvent(guest.code, guest.nickname);
+    renderJoinWl(); show('join-wishlist');
+  } catch (err) {
+    toast?.(err.message || 'Ошибка');
+  }
 });
 
 function renderJoinWl(){
@@ -219,11 +261,18 @@ function renderJoinWl(){
   `).join('') || '<div style="opacity:.7">Список пуст</div>';
 }
 
-document.addEventListener('click', e=>{
+document.addEventListener('click', async e=>{
   const c = e.target.closest('[data-claim]'); if(!c) return;
   const id = +c.dataset.claim;
   const item = guest.event.wishlist.find(x=>x.id===id);
-  if(item && !item.claimed_by){ item.claimed_by = guest.nickname; renderJoinWl(); }
+  if(item && !item.claimed_by){
+    try {
+      await claimWish(id, guest.nickname);
+      item.claimed_by = guest.nickname; renderJoinWl();
+    } catch (err) {
+      toast?.(err.message || 'Не удалось');
+    }
+  }
 });
 
 $('#btn-join-final')?.addEventListener('click', ()=>{
@@ -299,21 +348,29 @@ document.addEventListener('click', e=>{
 });
 
 // финал
-$('#btn-create-final')?.addEventListener('click', ()=>{
-  state.create.code = six();
-  const ev = {
-    code: state.create.code,
-    title: state.create.base.title,
-    date: state.create.base.date,
-    time: state.create.base.time,
-    address: state.create.base.place,
-    dress: state.create.reqs.dress,
-    bring: state.create.reqs.bring,
-    comment: state.create.reqs.comment,
-    wishlist: state.create.wishlist
-  };
-  populateFinal(ev);
-  show('final');
+$('#btn-create-final')?.addEventListener('click', async ()=>{
+  try {
+    const draft = {
+      type: state.create.type,
+      title: state.create.base.title,
+      date: state.create.base.date,
+      time: state.create.base.time,
+      address: state.create.base.place,
+      dress: state.create.reqs.dress,
+      bring: state.create.reqs.bring,
+      comment: state.create.reqs.comment
+    };
+    const ev = await createEventFromDraft(draft);
+    state.create.code = ev.code;
+    for (const w of state.create.wishlist) {
+      try { await addWish(ev.code, w.title, w.url); } catch {}
+    }
+    const full = await loadEventByCode(ev.code);
+    populateFinal(full);
+    show('final');
+  } catch (err) {
+    toast?.(err.message || 'Не удалось создать');
+  }
 });
 
 function populateFinal(ev){
@@ -359,7 +416,7 @@ function populateFinal(ev){
 }
 
 async function openFinal(code){
-  const { event } = await apiFetch('event-one-v2?code='+encodeURIComponent(code));
+  const event = await loadEventByCode(code);
   populateFinal(event);
   show('final');
 }
@@ -456,11 +513,6 @@ document.addEventListener('click', async (e)=>{
 
   const appState = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
 
-function authHeaders() {
-  const t = localStorage.getItem('FH_JWT');
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
-
 function init() {
   document.addEventListener('click', async (e) => {
     const delBtn = e.target.closest('[data-delete-id]');
@@ -498,7 +550,7 @@ function init() {
 }
 
 // --- API: события ---
-const api = {
+const apiLegacy = {
   events: {
     async create() {
       // сервер создаёт код, даты и т.п. из текущего драфта/формы; при необходимости передай поля
@@ -531,7 +583,7 @@ const api = {
 };
 
 async function renderEvent(eventIdOrObj) {
-  const ev = typeof eventIdOrObj === 'object' ? eventIdOrObj : await api.events.load(eventIdOrObj);
+  const ev = typeof eventIdOrObj === 'object' ? eventIdOrObj : await apiLegacy.events.load(eventIdOrObj);
   appState.currentEvent = ev;
   // заполни поля экрана события
   $('#event-code')?.replaceChildren(document.createTextNode(ev.code ?? '—'));
@@ -1856,16 +1908,6 @@ $('#finishCreate')?.addEventListener('click',()=>withTransition(()=>toFinalScene
 
 
 /* ПРИСОЕДИНЕНИЕ ПО КОДУ */
-async function authHeader(){
-  const sb = await ensureSupabase();
-  if(sb){
-    const { data } = await sb.auth.getSession();
-    const t = data?.session?.access_token;
-    return t ? { Authorization: 'Bearer '+t } : {};
-  }
-  return {};
-}
-
 async function joinByCode(code){
   const announce = document.getElementById('joinCodeError');
   announce.textContent='';
