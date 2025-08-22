@@ -1,3 +1,5 @@
+import { nf, getToken, setToken, clearToken, logout } from './js/api.js';
+
 let __booted = false;
 window.addEventListener('DOMContentLoaded', () => {
   if (__booted) return;
@@ -33,17 +35,10 @@ function onDelegated(selector, type, handler, options){
   }, options || false);
 }
 
-const TOKEN_KEY  = 'FH_JWT';
 const COOKIE_KEY = 'FH_COOKIE_OK';
-const saveToken  = t => { try { localStorage.setItem(TOKEN_KEY, t); } catch {} };
-const getToken   = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null } };
-const clearToken = () => { try { localStorage.removeItem(TOKEN_KEY); } catch {} };
-
-const TOK = 'FH_JWT';
-const getTok = () => localStorage.getItem(TOK);
 
 function authHeader(){
-  const t = localStorage.getItem('FH_JWT');
+  const t = getToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 const authHeaders = authHeader;
@@ -94,13 +89,30 @@ function show(name){
   }
 }
 
-(function boot(){
-  // ВСЕГДА сначала авторизация
-  show('auth');
+async function boot(){
+  const token = getToken();
+  if(!token){
+    document.documentElement.classList.add('auth-required');
+    show('auth');
+    return;
+  }
 
-  // cookie banner
-  if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
-})();
+  const me = await nf('profile');
+  if(me?.success && me?.user){
+    window.__me = me.user;
+    document.documentElement.classList.remove('auth-required');
+    document.documentElement.classList.add('auth-ok');
+    show('menu');
+  }else{
+    document.documentElement.classList.add('auth-required');
+    show('auth');
+  }
+}
+
+window.logout = logout;
+boot();
+
+if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
 
 $('#cookie-accept')?.addEventListener('click', ()=>{
   localStorage.setItem(COOKIE_KEY,'1');
@@ -134,7 +146,7 @@ document.querySelectorAll('input, textarea, select').forEach(el=>{
 
 async function fetchMyEvents() {
   const res = await fetch('/.netlify/functions/events-mine', {
-    headers: { Authorization: `Bearer ${localStorage.getItem('FH_JWT') || ''}` }
+    headers: { Authorization: `Bearer ${getToken() || ''}` }
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || 'Не удалось загрузить события');
@@ -2264,7 +2276,7 @@ if(editForm){
 
 async function login(nickname, password){
   const { token } = await callFn('local-login', { nickname, password });
-  if(token){ saveToken(token); }
+  if(token){ setToken(token); }
   setNickname(nickname);
   return { token };
 }
@@ -2272,7 +2284,7 @@ async function login(nickname, password){
 async function signup(nickname, password){
   await callFn('local-signup', { nickname, password });
   const { token } = await callFn('local-login', { nickname, password });
-  if(token){ saveToken(token); }
+  if(token){ setToken(token); }
   setNickname(nickname);
   return { token };
 }
@@ -2423,7 +2435,6 @@ if(DEBUG_AUTH){
 }
 
 // ==== API helpers (не трогаем существующие экспорты, просто добавляем) ====
-const FH_TOKEN_KEY = 'FH_JWT';
 const API_BASE = '/.netlify/functions';
 
 async function apiGet(path) {
@@ -2515,7 +2526,7 @@ document.addEventListener('click', (e) => {
 
 async function onDeleteEventClick(eventId) {
   if (!confirm('Удалить событие? Это действие необратимо.')) return;
-  const token = localStorage.getItem('FH_JWT');
+  const token = getToken();
   const res = await fetch('/.netlify/functions/event-delete', {
     method: 'POST',
     headers: {
@@ -2824,7 +2835,7 @@ function wireAuthForms(){
       try{
         const data = await apiLogin(nickname, password);
         if (data?.token){
-          saveToken(data.token);
+          setToken(data.token);
           show('menu');        // ← показываем меню/лобби
           if (typeof loadLobby === 'function') loadLobby();
         } else {
@@ -2858,7 +2869,7 @@ function wireAuthForms(){
         if (data?.ok || data?.success){
           const lg = await apiLogin(nickname, password);
           if (lg?.token){
-            saveToken(lg.token);
+            setToken(lg.token);
             show('menu');
             if (typeof loadLobby === 'function') loadLobby();
             return;
