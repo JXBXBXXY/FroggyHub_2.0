@@ -1,10 +1,11 @@
 [build]
-  # Статический сайт — сборка не нужна
+  # Сборка не нужна — это статический фронт
   command = ""
-  # Публикуем директорию, где лежит index.html
   publish = "FroggyHub"
+  functions = "netlify/functions"
 
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js","bcryptjs"]
+# Если у тебя есть SPA-роутинг, раскомментируй блок ниже
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
