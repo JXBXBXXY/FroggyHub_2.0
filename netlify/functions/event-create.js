@@ -1,48 +1,35 @@
 import { supabaseAdmin } from './_lib/supabase.js';
-import { generateJoinCode } from './_utils.js'; // генератор 6-значного кода
+import { generateJoinCode } from './_utils.js';
 
-const json = (status, body) => ({
-  statusCode: status,
+const json = (s, b) => ({
+  statusCode: s,
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify(body),
+  body: JSON.stringify(b),
 });
 
 export async function handler(event) {
-  if (event.httpMethod !== 'POST') {
-    return json(405, { success: false, error: 'Method Not Allowed' });
-  }
-
-  // безопасный парсинг входа
-  let body = {};
-  try { body = JSON.parse(event.body || '{}'); }
-  catch { return json(400, { success: false, error: 'Invalid JSON' }); }
-
-  // валидация
-  const title = (body.title || '').trim();
-  const date  = body.date;
-  const time  = body.time;
-  if (!title || !date || !time) {
-    return json(400, { success: false, error: 'title, date and time are required' });
-  }
-
-  // нормализованный payload
-  const payload = {
-    title,
-    date,
-    time,
-    address: body.address?.trim() || null,
-    dress_code: body.dress_code ?? body.dressCode ?? null,
-    what_to_bring: body.what_to_bring ?? body.whatToBring ?? null,
-    comment: body.comment ?? null,
-    type: body.type ?? 'party',
-    host_user_id: body.host_user_id ?? body.hostUserId ?? null,
-    join_code:
-      (typeof generateJoinCode === 'function'
-        ? generateJoinCode()
-        : String(Math.floor(100000 + Math.random() * 900000))),
-  };
-
   try {
+    if (event.httpMethod !== 'POST') return json(405, { success: false, error: 'Method not allowed' });
+
+    const body = JSON.parse(event.body || '{}');
+
+    // обязательные поля
+    for (const k of ['title', 'date', 'time']) {
+      if (!body[k]) return json(400, { success: false, error: `Missing field: ${k}` });
+    }
+
+    // только разрешённые поля
+    const ALLOWED = ['title','date','time','address','dress_code','what_to_bring','comment','host_user_id'];
+    const payload = {};
+    for (const k of ALLOWED) if (body[k] !== undefined) payload[k] = body[k];
+
+    // защита от опечатки type→time
+    if ('type' in payload) delete payload.type;
+
+    // служебные поля
+    payload.join_code = generateJoinCode();
+    if ('host_user_id' in payload) payload.host_user_id = Number(payload.host_user_id) || null;
+
     const supa = supabaseAdmin();
     const { data, error } = await supa
       .from('events')
@@ -53,7 +40,7 @@ export async function handler(event) {
     if (error) throw error;
     return json(200, { success: true, event: data });
   } catch (e) {
-    console.error('event-create failed', e, { payload });
+    console.error('event-create failed', e);
     return json(500, { success: false, error: e.message || String(e) });
   }
 }
