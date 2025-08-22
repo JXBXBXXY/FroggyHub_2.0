@@ -7,20 +7,23 @@ const json = (s, b) => ({
   body: JSON.stringify(b),
 });
 
+const ALLOWED = ['title','date','time','address','dress_code','what_to_bring','comment'];
+
 export async function handler(event) {
   try {
     const body = event.body ? JSON.parse(event.body) : {};
 
-    // пропускаем только реально используемые/существующие поля
-    const allowed = ['title', 'date', 'time', 'address', 'dress_code', 'what_to_bring'];
+    // отфильтровали только существующие поля и чуть подчистили строки
     const base = Object.fromEntries(
-      Object.entries(body).filter(([k, v]) => allowed.includes(k) && v !== undefined && v !== '')
+      Object.entries(body)
+        .filter(([k, v]) => ALLOWED.includes(k) && v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
     );
 
     const payload = {
       ...base,
       join_code: body.join_code || generateJoinCode(),
-      // host_user_id можно добавить позже из JWT, если нужно
+      // host_user_id можно подставлять из JWT позже
     };
 
     const supa = supabaseAdmin();
