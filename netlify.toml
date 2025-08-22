@@ -1,7 +1,11 @@
 [build]
+  # Сборка не нужна — это статический фронт
   command = ""
   publish = "FroggyHub"
   functions = "netlify/functions"
 
-[build.environment]
-  NODE_VERSION = "20"
+# Если у тебя есть SPA-роутинг, раскомментируй блок ниже
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200

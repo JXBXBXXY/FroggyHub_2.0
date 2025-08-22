@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "echo \"ok\"",
-    "build": "echo \"no build: static site\"",
+"scripts": {
+  "test": "echo \"ok\"",
+  "build": "echo \"no build: static site\"",
+  "dev": "netlify dev"
+}
     "dev": "npx netlify dev -d FroggyHub -f netlify/functions"
   },
   "engines": {
