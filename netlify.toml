@@ -1,10 +1,7 @@
 [build]
-  # Статический сайт — сборка не нужна
-  command = "echo 'no build step'"
-  # Публикуем директорию, где лежит index.html
+  command = ""
   publish = "FroggyHub"
+  functions = "netlify/functions"
 
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
-  external_node_modules = ["@supabase/supabase-js","bcryptjs"]
+[build.environment]
+  NODE_VERSION = "20"
