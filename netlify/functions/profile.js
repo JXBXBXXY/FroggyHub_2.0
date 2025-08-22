@@ -23,7 +23,7 @@ export async function handler(event) {
 
     const supa = supabaseAdmin();
     const { data, error } = await supa
-      .from('users')
+      .from('users_local')
       .select('id, nickname, avatar_url, created_at')
       .eq('id', userId)
       .single();
