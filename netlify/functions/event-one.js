@@ -1,21 +1,36 @@
-import { db, ok, bad, preflight } from './_utils.js';
+import { supabaseAdmin } from './_lib/supabase.js';
 
-export async function onRequestOptions(ctx){ const r = preflight(ctx.request); return r || ok({}); }
+const json = (status, body) => ({
+  statusCode: status,
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(body),
+});
 
-export async function onRequestGet({ request }) {
-  const url = new URL(request.url);
-  const code = url.searchParams.get('code');
-  const id   = url.searchParams.get('id');
+export async function handler(event) {
+  try {
+    const qs = event.queryStringParameters || {};
+    const id = qs.id ? Number(qs.id) : null;
+    const code = qs.code ? String(qs.code).trim() : null;
+    if (!id && !code) return json(400, { success: false, error: 'id or code is required' });
 
-  let q = db.from('events')
-    .select('id,code,type,title,date,time,address,dress,bring,comment,wishlist:wishlist_items(id,title,url,claimed_by)')
-    .limit(1);
+    const supa = supabaseAdmin();
+    let query = supa
+      .from('events')
+      .select(`
+        id, code, join_code, title, date, time,
+        address, dress_code, what_to_bring, comment,
+        wishlist:wishlist_items ( id, title, url, claimed_by )
+      `);
 
-  if (code) q = q.eq('code', code);
-  else if (id) q = q.eq('id', id);
-  else return bad(400, 'code or id required');
+    if (id)  query = query.eq('id', id);
+    if (code) query = query.eq('code', code);
 
-  const { data, error } = await q.single();
-  if (error || !data) return bad(404, 'Not found');
-  return ok({ success: true, event: data });
+    const { data, error } = await query.single();
+    if (error || !data) return json(404, { success: false, error: 'Not found' });
+
+    return json(200, { success: true, event: data });
+  } catch (e) {
+    console.error('event-one error', e);
+    return json(500, { success: false, error: String(e.message || e) });
+  }
 }
