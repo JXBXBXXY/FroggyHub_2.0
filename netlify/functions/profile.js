@@ -1,16 +1,39 @@
-// netlify/functions/profile.js
-import { getServiceClient } from './_supabase.js';
-import { ok, err, requireAuth } from './_auth.js';
+import jwt from 'jsonwebtoken';
+import { supabaseAdmin } from './_lib/supabase.js';
 
-export async function handler(event, context) {
-  return requireAuth(async (_event, ctx) => {
-    const sb = getServiceClient();
-    const { data, error } = await sb
-      .from('users_local')
-      .select('id, nickname, avatar_url')
-      .eq('id', ctx.user.sub)
+function json(status, body) {
+  return {
+    statusCode: status,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+}
+
+export async function handler(event) {
+  try {
+    const auth = event.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!token) return json(401, { success: false, error: 'No token' });
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return json(500, { success: false, error: 'JWT_SECRET missing' });
+
+    const payload = jwt.verify(token, secret); // { sub: <user_id>, nickname: ... }
+    const userId = Number(payload.sub);
+
+    const supa = supabaseAdmin();
+    const { data, error } = await supa
+      .from('users')
+      .select('id, nickname, avatar_url, created_at')
+      .eq('id', userId)
       .single();
-    if (error || !data) return err('User not found', 404);
-    return ok(data);
-  })(event, context);
+
+    if (error) throw error;
+    if (!data) return json(404, { success: false, error: 'User not found' });
+
+    return json(200, { success: true, user: data });
+  } catch (e) {
+    console.error('profile error', e);
+    return json(500, { success: false, error: String(e.message || e) });
+  }
 }
