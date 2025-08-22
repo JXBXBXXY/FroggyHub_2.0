@@ -33,5 +33,8 @@ export function logout() {
   location.href = '/';
 }
 
+// сделать доступным везде
+window.logout = logout;
+
 // Для удобства в браузере:
 window.fhApi = { nf, getToken, setToken, clearToken, logout };
