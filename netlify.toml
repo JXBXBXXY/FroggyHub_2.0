@@ -1,6 +1,6 @@
 [build]
   # Статический сайт — сборка не нужна
-  command = "echo 'no build step'"
+  command = ""
   # Публикуем директорию, где лежит index.html
   publish = "FroggyHub"
 
