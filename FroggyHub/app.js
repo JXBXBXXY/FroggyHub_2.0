@@ -5,6 +5,13 @@ window.addEventListener('DOMContentLoaded', () => {
   if (__booted) return;
   __booted = true;
   init();
+  document.querySelectorAll('[data-logout]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      logout();
+      currentUser = null;
+    });
+  });
 });
 
 const toastEl = document.getElementById('toast');
@@ -109,7 +116,6 @@ async function boot(){
   }
 }
 
-window.logout = logout;
 boot();
 
 if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
@@ -904,29 +910,6 @@ async function sha256(pass){
   return toHex(buf);
 }
 
-async function logout(msg){
-  const sb = await ensureSupabase();
-  manualSignOut = true;
-  try{ await sb.auth.signOut(); }catch(_){ }
-  manualSignOut = false;
-  try{ await fetch('/.netlify/functions/local-logout'); }catch(_){ }
-  clearNickname();
-  renderUserBadge({ nickname:'', email:'' });
-  sessionStorage.removeItem('sb_mode');
-  sessionStorage.removeItem('pendingCreate');
-  localStorage.removeItem(COOKIE_TEMP_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  clearToken();
-  if(msg){
-    sessionBanner.textContent = msg;
-    sessionBanner.hidden = false;
-  }else{
-    sessionBanner.hidden = true;
-  }
-  show('#screen-auth');
-  setAuthState('login');
-}
-
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function buildInviteUrl(code){
@@ -1541,12 +1524,6 @@ ensureSupabase().then(async sb => {
     }
   });
 });
-/* ---------- ВЫХОД ---------- */
-document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-  await logout();
-  currentUser = null;
-});
-
 $('#changePassBtn')?.addEventListener('click', async ()=>{
   clearFormError($('#changePassError'));
   const curr = $('#currPass').value;
@@ -2289,17 +2266,6 @@ async function signup(nickname, password){
   return { token };
 }
 
-['btn-logout','logoutBtn'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(el) el.addEventListener('click', withBusy(el, async ()=>{
-    try{ await callFn('local-logout', {});}catch(e){ console.warn(e); }
-    clearToken();
-    setNickname('');
-    toast('Вы вышли');
-    safeRedirect('/');
-  }));
-});
-
 async function loadProfile(){
   try{
     const res = await fetch('/.netlify/functions/profile-get', {
@@ -2384,10 +2350,6 @@ async function initHubPage(){
     }
   }catch(e){ console.warn('hub profile load failed', e); }
   loadMyEvents();
-  $('#hub-logout')?.addEventListener('click', ()=>{
-    clearToken();
-    window.location.href = '/';
-  });
   $('[data-action="create"]')?.addEventListener('click', (e)=>{
     e.preventDefault();
     window.location.href = '/event-edit.html';
