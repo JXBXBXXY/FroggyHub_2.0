@@ -1,4 +1,4 @@
-import { nf, getToken, setToken, clearToken, logout } from './js/api.js';
+import { nf, getToken, setToken, clearToken } from './js/api.js';
 
 let __booted = false;
 window.addEventListener('DOMContentLoaded', () => {
@@ -109,8 +109,20 @@ async function boot(){
   }
 }
 
-window.logout = logout;
 boot();
+
+// ---- Logout wiring (single place) ----
+function wireLogout() {
+  document.querySelectorAll('[data-logout]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (typeof window.logout === 'function') {
+        window.logout();
+      }
+    });
+  });
+}
+wireLogout();
 
 if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
 
@@ -904,7 +916,7 @@ async function sha256(pass){
   return toHex(buf);
 }
 
-async function logout(msg){
+async function doLogout(msg){
   const sb = await ensureSupabase();
   manualSignOut = true;
   try{ await sb.auth.signOut(); }catch(_){ }
@@ -1472,7 +1484,7 @@ ensureSupabase().then(async sb => {
         }catch(_){ }
         rebindTried = true;
       }
-      await logout('Сессия истекла, войдите снова');
+      await doLogout('Сессия истекла, войдите снова');
       return;
     }
     currentUser = session?.user || null;
@@ -1541,12 +1553,6 @@ ensureSupabase().then(async sb => {
     }
   });
 });
-/* ---------- ВЫХОД ---------- */
-document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-  await logout();
-  currentUser = null;
-});
-
 $('#changePassBtn')?.addEventListener('click', async ()=>{
   clearFormError($('#changePassError'));
   const curr = $('#currPass').value;
@@ -1583,7 +1589,7 @@ $('#confirmDeleteBtn')?.addEventListener('click', async ()=>{
     const token = session?.access_token;
     await fetch('/.netlify/functions/delete-account', { method:'POST', headers:{ Authorization:`Bearer ${token}` } });
     dlg.close();
-    await logout();
+    await doLogout();
   }catch(_){
     dlg.close();
     toast('Не удалось удалить аккаунт');
@@ -2289,17 +2295,6 @@ async function signup(nickname, password){
   return { token };
 }
 
-['btn-logout','logoutBtn'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(el) el.addEventListener('click', withBusy(el, async ()=>{
-    try{ await callFn('local-logout', {});}catch(e){ console.warn(e); }
-    clearToken();
-    setNickname('');
-    toast('Вы вышли');
-    safeRedirect('/');
-  }));
-});
-
 async function loadProfile(){
   try{
     const res = await fetch('/.netlify/functions/profile-get', {
@@ -2384,10 +2379,6 @@ async function initHubPage(){
     }
   }catch(e){ console.warn('hub profile load failed', e); }
   loadMyEvents();
-  $('#hub-logout')?.addEventListener('click', ()=>{
-    clearToken();
-    window.location.href = '/';
-  });
   $('[data-action="create"]')?.addEventListener('click', (e)=>{
     e.preventDefault();
     window.location.href = '/event-edit.html';
