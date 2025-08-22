@@ -1,4 +1,30 @@
 import { nf, getToken, setToken, clearToken } from './js/api.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+// expose Supabase client factory and config (was in index.html)
+window.createClient = createClient;
+window.SUPABASE_URL = "https://smamhlfzserjkdfhthwhdv.supabase.co";
+window.PROXY_SUPABASE_URL = location.origin + '/supabase';
+window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4";
+
+const API = {
+  async createEvent(payload) {
+    const res = await fetch('/.netlify/functions/event-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.event; // { id, join_code, code }
+  },
+  async getEventByCode(code) {
+    const res = await fetch('/.netlify/functions/event-one?code=' + encodeURIComponent(code));
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.event; // объект события + wishlist
+  }
+};
 
 let __booted = false;
 window.addEventListener('DOMContentLoaded', () => {
@@ -43,34 +69,34 @@ function authHeader(){
 }
 const authHeaders = authHeader;
 
-async function api(path, init={}){
-  init.headers = Object.assign({'Content-Type':'application/json'}, authHeader(), init.headers||{});
-  const res = await fetch(`/.netlify/functions/${path}`, init);
-  const data = await res.json().catch(()=>({}));
-  if (!res.ok || data?.success===false) throw new Error(data?.error || `HTTP ${res.status}`);
-  return data;
-}
-
-async function createEventFromDraft(draft){
-  const { event } = await api('event-create', { method:'POST', body: JSON.stringify(draft) });
-  return event; // {id, code, ...}
-}
-
-async function loadEventByCode(code){
-  const { event } = await api('event-one?code='+encodeURIComponent(code));
-  return event;
-}
-
 async function joinEvent(code, nickname){
-  await api('event-join', { method:'POST', body: JSON.stringify({ code, nickname }) });
+  const res = await fetch('/.netlify/functions/event-join', {
+    method:'POST',
+    headers: { 'Content-Type':'application/json', ...authHeader() },
+    body: JSON.stringify({ code, nickname })
+  });
+  const data = await res.json();
+  if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
 }
 
 async function addWish(code, title, url){
-  await api('wishlist-add', { method:'POST', body: JSON.stringify({ code, title, url }) });
+  const res = await fetch('/.netlify/functions/wishlist-add', {
+    method:'POST',
+    headers: { 'Content-Type':'application/json', ...authHeader() },
+    body: JSON.stringify({ code, title, url })
+  });
+  const data = await res.json();
+  if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
 }
 
 async function claimWish(id, nickname){
-  await api('wishlist-claim', { method:'POST', body: JSON.stringify({ id, nickname }) });
+  const res = await fetch('/.netlify/functions/wishlist-claim', {
+    method:'POST',
+    headers: { 'Content-Type':'application/json', ...authHeader() },
+    body: JSON.stringify({ id, nickname })
+  });
+  const data = await res.json();
+  if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
 }
 
 function show(name){
@@ -250,7 +276,7 @@ $('#join-btn')?.addEventListener('click', async ()=>{
   const code = ($('#join-code')?.value||'').trim();
   if(code.length!==6){ toast?.('Введите корректный код'); return; }
   try {
-    const ev = await loadEventByCode(code);
+    const ev = await API.getEventByCode(code);
     guest.code = code;
     guest.event = ev;
     show('join-name');
@@ -384,12 +410,12 @@ $('#btn-create-final')?.addEventListener('click', async ()=>{
       bring: state.create.reqs.bring,
       comment: state.create.reqs.comment
     };
-    const ev = await createEventFromDraft(draft);
+    const ev = await API.createEvent(draft);
     state.create.code = ev.code;
     for (const w of state.create.wishlist) {
       try { await addWish(ev.code, w.title, w.url); } catch {}
     }
-    const full = await loadEventByCode(ev.code);
+    const full = await API.getEventByCode(ev.code);
     populateFinal(full);
     show('final');
   } catch (err) {
@@ -419,14 +445,9 @@ function populateFinal(ev){
   $('#invite-desc').textContent = ev.comment || 'Описание / детали.';
 
   const wlBox = $('#invite-wishlist');
-  wlBox.innerHTML = '';
-  (ev.wishlist || []).forEach(it=>{
-    const a = document.createElement('a');
-    a.className = 'chip' + (it.claimed_by ? ' taken' : '');
-    a.textContent = it.title || '—';
-    if(it.url){ a.href = it.url; a.target = '_blank'; a.rel = 'noopener'; }
-    wlBox.appendChild(a);
-  });
+  wlBox.innerHTML = (ev.wishlist || []).map(it =>
+    `<li>${it.title || '—'}${it.claimed_by ? ' — занято' : ''}${it.url ? ` • <a href="${it.url}" target="_blank">ссылка</a>` : ''}</li>`
+  ).join('');
 
   let picked = null;
   const myNick = guest.nickname || null;
@@ -440,7 +461,7 @@ function populateFinal(ev){
 }
 
 async function openFinal(code){
-  const event = await loadEventByCode(code);
+  const event = await API.getEventByCode(code);
   populateFinal(event);
   show('final');
 }
@@ -2018,44 +2039,12 @@ async function loadEvent(eventId){
       onGuests:   () => renderGuests(eventId),
     });
   }catch(err){
-    if(err.status===401||err.status===403) await needLogin();
-    else toast(explainFnError(err));
+    toast(explainFnError(err));
   }
 }
 
 function cleanupRealtime(){ if (rtChannel) { window.__supabaseClient?.removeChannel(rtChannel); rtChannel = null; } }
 window.addEventListener('beforeunload', cleanupRealtime);
-
-async function needLogin(){
-  const qp = new URLSearchParams(location.search);
-  const code = qp.get('code') || '';
-  if (code) sessionStorage.setItem('pendingCode', code);
-  show('#screen-auth');
-  setAuthState('login');
-}
-
-async function handleDeepLink(){
-  const code = (new URLSearchParams(location.search).get('code') || '').replace(/\D/g,'').slice(0,6);
-  if(!code) return;
-  const sb = await ensureSupabase();
-  if(!sb) return;
-  const { data:{ session } } = await sb.auth.getSession();
-  if(!session){ sessionStorage.setItem('pendingCode', code); show('#screen-auth'); setAuthState('login'); }
-  else { joinByCode(code); }
-}
-
-window.addEventListener('DOMContentLoaded', async () => {
-  const pending = sessionStorage.getItem('pendingCode');
-  if(pending){
-    const sb = await ensureSupabase();
-    if(sb){
-      const { data:{ session } } = await sb.auth.getSession();
-      if(session){ sessionStorage.removeItem('pendingCode'); joinByCode(pending); }
-    }
-  } else {
-    handleDeepLink();
-  }
-});
 
 $('#joinCodeBtn')?.addEventListener('click', () => {
   if(isEventActionPending) return;
@@ -2702,14 +2691,13 @@ function startCountdown(dateStr, timeStr){
 
 function copyInvite(ev){
   const lines = [
-    'Привет! 👋',
-    `Приглашаю тебя на «${ev.title}».`,
-    `Когда: ${ev.date} в ${ev.time}`,
-    ev.address ? `Где: ${ev.address}` : null,
+    `Привет! Приглашаю тебя на «${ev.title}».`,
+    `Когда: ${ev.date}${ev.time ? ' в ' + ev.time : ''}`,
+    `Где: ${ev.address || '—'}`,
     `Код для присоединения: ${ev.code}`,
     '',
-    'Открой FroggyHub и введи код, чтобы отметить «Иду» и посмотреть wishlist.'
-  ].filter(Boolean);
+    'Открой [FroggyHub](https://froggyhubapp.netlify.app) и введи код, чтобы отметить «Иду» и посмотреть wishlist.'
+  ];
   navigator.clipboard.writeText(lines.join('\n'))
     .then(() => showToast('Приглашение скопировано'))
     .catch(() => showToast('Не удалось скопировать'));
