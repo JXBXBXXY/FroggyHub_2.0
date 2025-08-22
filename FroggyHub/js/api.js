@@ -3,7 +3,10 @@ export const TOKEN_KEY = 'fh:token';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (t) => t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+
+export function clearToken() {
+  try { localStorage.removeItem(TOKEN_KEY); } catch {}
+}
 
 export async function nf(path, opts = {}) {
   const token = getToken();
@@ -30,8 +33,11 @@ export async function nf(path, opts = {}) {
 // Глобальный logout удобен для кнопки в шапке
 export function logout() {
   clearToken();
-  location.href = '/';
+  location.assign('/');
 }
+
+// если в разметке вызывается window.logout()
+try { window.logout = logout; } catch {}
 
 // Для удобства в браузере:
 window.fhApi = { nf, getToken, setToken, clearToken, logout };
