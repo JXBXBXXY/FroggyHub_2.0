@@ -7,24 +7,28 @@ const json = (s, b) => ({
   body: JSON.stringify(b),
 });
 
-const ALLOWED = ['title','date','time','address','dress_code','what_to_bring','comment'];
-
 export async function handler(event) {
   try {
-    const body = event.body ? JSON.parse(event.body) : {};
+    if (event.httpMethod !== 'POST') return json(405, { success: false, error: 'Method not allowed' });
 
-    // отфильтровали только существующие поля и чуть подчистили строки
-    const base = Object.fromEntries(
-      Object.entries(body)
-        .filter(([k, v]) => ALLOWED.includes(k) && v !== undefined && v !== null && v !== '')
-        .map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
-    );
+    const body = JSON.parse(event.body || '{}');
 
-    const payload = {
-      ...base,
-      join_code: body.join_code || generateJoinCode(),
-      // host_user_id можно подставлять из JWT позже
-    };
+    // обязательные поля
+    for (const k of ['title', 'date', 'time']) {
+      if (!body[k]) return json(400, { success: false, error: `Missing field: ${k}` });
+    }
+
+    // только разрешённые поля
+    const ALLOWED = ['title','date','time','address','dress_code','what_to_bring','comment','host_user_id'];
+    const payload = {};
+    for (const k of ALLOWED) if (body[k] !== undefined) payload[k] = body[k];
+
+    // защита от опечатки type→time
+    if ('type' in payload) delete payload.type;
+
+    // служебные поля
+    payload.join_code = generateJoinCode();
+    if ('host_user_id' in payload) payload.host_user_id = Number(payload.host_user_id) || null;
 
     const supa = supabaseAdmin();
     const { data, error } = await supa
