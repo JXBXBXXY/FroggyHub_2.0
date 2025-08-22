@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './_lib/supabase.js';
-import { generateJoinCode } from './_utils.js'; // есть в репо
+import { generateJoinCode } from './_utils.js'; // генератор 6-значного кода
 
 const json = (status, body) => ({
   statusCode: status,
@@ -12,12 +12,12 @@ export async function handler(event) {
     return json(405, { success: false, error: 'Method Not Allowed' });
   }
 
-  // безопасный парсинг JSON
+  // безопасный парсинг входа
   let body = {};
   try { body = JSON.parse(event.body || '{}'); }
   catch { return json(400, { success: false, error: 'Invalid JSON' }); }
 
-  // валидация обязательных полей
+  // валидация
   const title = (body.title || '').trim();
   const date  = body.date;
   const time  = body.time;
