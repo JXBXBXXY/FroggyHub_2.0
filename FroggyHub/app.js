@@ -389,7 +389,13 @@ document.addEventListener('click', e=>{
 });
 
 // финал
-$('#btn-create-final')?.addEventListener('click', async ()=>{
+let creating = false;
+$('#form-create-final')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (creating) return;
+  creating = true;
+  const submitBtn = $('#btn-create-final');
+  if (submitBtn) submitBtn.disabled = true;
   try {
     const draft = {
       type: state.create.type,
@@ -411,6 +417,9 @@ $('#btn-create-final')?.addEventListener('click', async ()=>{
     show('final');
   } catch (err) {
     toast?.(err.message || 'Не удалось создать');
+  } finally {
+    creating = false;
+    if (submitBtn) submitBtn.disabled = false;
   }
 });
 
