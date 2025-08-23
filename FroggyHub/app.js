@@ -1,4 +1,4 @@
-import { nf, getToken, setToken, clearToken } from './js/api.js';
+import { nf, getToken, setToken, clearToken, joinEvent } from './js/api.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 // expose Supabase client factory and config (was in index.html)
@@ -68,16 +68,6 @@ function authHeader(){
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 const authHeaders = authHeader;
-
-async function joinEvent(code, nickname){
-  const res = await fetch('/.netlify/functions/event-join', {
-    method:'POST',
-    headers: { 'Content-Type':'application/json', ...authHeader() },
-    body: JSON.stringify({ code, nickname })
-  });
-  const data = await res.json();
-  if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
-}
 
 async function addWish(code, title, url){
   const res = await fetch('/.netlify/functions/wishlist-add', {
@@ -290,7 +280,8 @@ $('#form-join-name')?.addEventListener('submit', async e=>{
   guest.nickname = $('#jnick').value.trim();
   if(!guest.nickname) return;
   try {
-    await joinEvent(guest.code, guest.nickname);
+    const r = await joinEvent({ code: guest.code, nickname: guest.nickname });
+    if (!r.success) throw new Error(r.error || 'Join failed');
     renderJoinWl(); show('join-wishlist');
   } catch (err) {
     toast?.(err.message || 'Ошибка');

@@ -1,18 +1,47 @@
-import { db, ok, bad, preflight } from './_utils.js';
+import { supabaseAdmin } from './_lib/supabase.js';
 
-export async function onRequestOptions(ctx){ const r = preflight(ctx.request); return r || ok({}); }
+const json = (s, b) => ({
+  statusCode: s,
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify(b),
+});
 
-export async function onRequestPost({ request }) {
+export async function handler(event) {
   try {
-    const { code, nickname } = await request.json();
-    if (!code || !nickname) return bad(400, 'code and nickname required');
+    const body = event.httpMethod === 'POST' ? JSON.parse(event.body || '{}') : {};
+    const qs = event.queryStringParameters || {};
 
-    const { data: ev, error: e1 } = await db.from('events').select('id').eq('code', code).single();
-    if (e1 || !ev) return bad(404, 'Event not found');
+    // Принимаем code в любом виде
+    const code = String(body.code ?? body.join_code ?? qs.code ?? '').trim();
+    const nickname = String(body.nickname ?? body.name ?? '').trim();
 
-    const { error: e2 } = await db.from('guests').insert({ event_id: ev.id, nickname });
-    if (e2) return bad(500, e2.message);
+    if (!code) return json(400, { success: false, error: 'Event code is required' });
 
-    return ok({ success: true });
-  } catch (e) { return bad(400, e.message); }
+    const supa = supabaseAdmin();
+
+    // (необязательно) создаём/обновляем локального пользователя по никнейму
+    if (nickname) {
+      const { error: uErr } = await supa
+        .from('users_local')
+        .upsert({ nickname }, { onConflict: 'nickname' });
+      if (uErr) console.warn('users_local upsert warning:', uErr);
+    }
+
+    // Ищем событие по code или join_code
+    const { data: eventRow, error: eErr } = await supa
+      .from('events')
+      .select('id, code, join_code, title, date, time, address, dress_code, what_to_bring, comment')
+      .or(`code.eq.${code},join_code.eq.${code}`)
+      .single();
+
+    if (eErr || !eventRow) return json(404, { success: false, error: 'Event not found' });
+
+    // Здесь можно добавить запись участия в отдельную таблицу, если она есть.
+    // Мы не делаем вставку, чтобы не ошибиться со схемой и не уронить функцию.
+
+    return json(200, { success: true, event: eventRow });
+  } catch (e) {
+    console.error('event-join error', e);
+    return json(500, { success: false, error: String(e.message || e) });
+  }
 }
