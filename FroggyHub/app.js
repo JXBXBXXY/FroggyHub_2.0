@@ -19,7 +19,7 @@ const API = {
     return data.event; // { id, join_code, code }
   },
   async getEventByCode(code) {
-    const res = await fetch('/.netlify/functions/event-one?code=' + encodeURIComponent(code));
+    const res = await fetch('/.netlify/functions/event-one?code=' + encodeURIComponent(code), { headers: authHeader() });
     const data = await res.json();
     if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
     return data.event; // объект события + wishlist
@@ -425,6 +425,8 @@ $('#form-create-final')?.addEventListener('submit', async (e) => {
 
 function populateFinal(ev){
   state.event = ev; state.code = ev.code;
+  const isOwner = !!(ev.host_user_id && window.auth?.user?.id === ev.host_user_id);
+  document.querySelectorAll('[data-owner-only]').forEach(el => { el.hidden = !isOwner; });
   $('#final-title').textContent = ev.title || 'Событие';
   $('#invite-title').textContent = ev.title || 'Событие';
   $('#final-code').textContent = ev.code || '—';
@@ -2642,7 +2644,7 @@ function renderLobbyContent(ev){
         <button class="btn btn--ghost" data-rsvp="maybe">Возможно</button>
         <button class="btn btn--danger" data-rsvp="no">Не иду</button>
       </div>
-      <button class="btn btn--ghost btn--sm" id="copy-invite">Скопировать приглашение</button>
+      <button class="btn btn--ghost btn--sm" id="copy-invite" data-owner-only>Скопировать приглашение</button>
     </section>
 
     <section class="final-stats">
@@ -2656,6 +2658,8 @@ function renderLobbyContent(ev){
       <div class="wl-list" id="wl-list"></div>
     </section>
   `;
+    const isOwner = !!(ev.host_user_id && window.auth?.user?.id === ev.host_user_id);
+    document.querySelectorAll('[data-owner-only]').forEach(el => { el.hidden = !isOwner; });
 
   document.getElementById('copy-invite').addEventListener('click', () => copyInvite(ev));
   wireRsvp(ev.id);

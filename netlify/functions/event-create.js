@@ -1,6 +1,7 @@
 // netlify/functions/event-create.js
 import { supabaseAdmin } from './_lib/supabase.js';
 import { generateJoinCode } from './_utils.js';
+import jwt from 'jsonwebtoken';
 
 const json = (s, b) => ({
   statusCode: s,
@@ -54,7 +55,14 @@ export async function handler(event) {
       (typeof generateJoinCode === 'function' && generateJoinCode()) ||
       String(Math.floor(100000 + Math.random() * 900000));
     payload.code = code;
-    payload.join_code = code;
+      payload.join_code = code;
+        const auth = event.headers.authorization || event.headers.Authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+
+    let hostUserId = null;
+    if (token && process.env.JWT_SECRET) {
+      try { hostUserId = Number(jwt.verify(token, process.env.JWT_SECRET).sub) || null; } catch {}
+    }
 
     // на всякий случай выкидываем лишние ключи
     const insertable = {
@@ -67,6 +75,7 @@ export async function handler(event) {
       comment: payload.comment,
       code: payload.code,
       join_code: payload.join_code,
+        host_user_id: hostUserId,
     };
 
     const { data, error } = await supa
