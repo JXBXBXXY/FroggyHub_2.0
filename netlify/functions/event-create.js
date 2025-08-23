@@ -1,5 +1,6 @@
+// netlify/functions/event-create.js
 import { supabaseAdmin } from './_lib/supabase.js';
-import * as utils from './_utils.js';
+import { generateJoinCode } from './_utils.js';
 
 const json = (s, b) => ({
   statusCode: s,
@@ -7,61 +8,77 @@ const json = (s, b) => ({
   body: JSON.stringify(b),
 });
 
-// берем из utils.generateJoinCode если есть, иначе локалка
-const gen =
-  typeof utils.generateJoinCode === 'function'
-    ? utils.generateJoinCode
-    : () => String(Math.floor(100000 + Math.random() * 900000));
-
-async function uniqueCode(supa, tries = 6) {
-  for (let i = 0; i < tries; i++) {
-    const code = gen();
-
-    // проверяем и по join_code, и по code
-    const { data, error } = await supa
-      .from('events')
-      .select('id')
-      .or(`join_code.eq.${code},code.eq.${code}`)
-      .limit(1);
-
-    if (error) throw error;
-    if (!data || data.length === 0) return code;
-  }
-  throw new Error('Failed to generate unique code');
-}
-
 export async function handler(event) {
   try {
-    const body = event.body ? JSON.parse(event.body) : {};
+    const b = event.httpMethod === 'POST' ? JSON.parse(event.body || '{}') : {};
 
-    // Разрешённые поля
-    const allowed = [
-      'title','date','time','address','dress_code','what_to_bring','comment','host_user_id'
-    ];
-    const payload = {};
-    for (const k of allowed) if (body[k] != null) payload[k] = body[k];
+    const payload = {
+      title: (b.title || '').trim(),
+      date: b.date || null,
+      time: b.time || null,
+      address: b.address?.trim() || null,
+      dress_code: b.dress_code?.trim() || null,
+      what_to_bring: b.what_to_bring?.trim() || null,
+      comment: b.comment?.trim() || null,
+      code: null,
+      join_code: null,
+    };
 
-    if (!payload.title) return json(400, { success:false, error:'title is required' });
-    if (!payload.date)  return json(400, { success:false, error:'date is required' });
-    if (!payload.time)  return json(400, { success:false, error:'time is required' });
+    if (!payload.title || !payload.date || !payload.time) {
+      return json(400, { success: false, error: 'title, date, time are required' });
+    }
 
     const supa = supabaseAdmin();
 
-    // один код -> в обе колонки
-    const code = await uniqueCode(supa);
-    payload.join_code = code;
+    // 1) Анти-дубль: ищем «такое же» событие, созданное совсем недавно
+    const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    let q = supa
+      .from('events')
+      .select('id, code, join_code, title, date, time, address, created_at')
+      .eq('title', payload.title)
+      .eq('date', payload.date)
+      .eq('time', payload.time)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (payload.address) q = q.eq('address', payload.address);
+
+    const { data: candidates } = await q;
+    if (Array.isArray(candidates) && candidates.length) {
+      return json(200, { success: true, event: candidates[0], deduped: true });
+    }
+
+    // 2) Создаём новое (единожды)
+    const code =
+      (typeof generateJoinCode === 'function' && generateJoinCode()) ||
+      String(Math.floor(100000 + Math.random() * 900000));
     payload.code = code;
+    payload.join_code = code;
+
+    // на всякий случай выкидываем лишние ключи
+    const insertable = {
+      title: payload.title,
+      date: payload.date,
+      time: payload.time,
+      address: payload.address,
+      dress_code: payload.dress_code,
+      what_to_bring: payload.what_to_bring,
+      comment: payload.comment,
+      code: payload.code,
+      join_code: payload.join_code,
+    };
 
     const { data, error } = await supa
       .from('events')
-      .insert(payload)
-      .select('id, join_code, code')
+      .insert(insertable)
+      .select('id, code, join_code')
       .single();
 
     if (error) throw error;
-    return json(200, { success:true, event:data });
+    return json(200, { success: true, event: data });
   } catch (e) {
     console.error('event-create failed', e);
-    return json(500, { success:false, error: e.message || String(e) });
+    return json(500, { success: false, error: e.message || String(e) });
   }
 }

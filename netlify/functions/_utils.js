@@ -35,3 +35,4 @@ export function authUser(request) {
 }
 
 export const genCode = () => String(Math.floor(100000 + Math.random() * 900000));
+export const generateJoinCode = genCode;
