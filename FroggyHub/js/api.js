@@ -27,6 +27,15 @@ export async function nf(path, opts = {}) {
   return res.json();
 }
 
+export async function joinEvent({ code, nickname }) {
+  const res = await fetch('/.netlify/functions/event-join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, nickname }),
+  });
+  return res.json();
+}
+
 // Глобальный logout удобен для кнопки в шапке
 export function logout() {
   clearToken();
@@ -37,4 +46,4 @@ export function logout() {
 window.logout = logout;
 
 // Для удобства в браузере:
-window.fhApi = { nf, getToken, setToken, clearToken, logout };
+window.fhApi = { nf, joinEvent, getToken, setToken, clearToken, logout };
