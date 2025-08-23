@@ -1,36 +1,67 @@
+import jwt from 'jsonwebtoken';
 import { supabaseAdmin } from './_lib/supabase.js';
 
-const json = (status, body) => ({
-  statusCode: status,
+const json = (s, b) => ({
+  statusCode: s,
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify(body),
+  body: JSON.stringify(b),
 });
 
 export async function handler(event) {
   try {
-    const qs = event.queryStringParameters || {};
-    const id = qs.id ? Number(qs.id) : null;
-    const code = qs.code ? String(qs.code).trim() : null;
-    if (!id && !code) return json(400, { success: false, error: 'id or code is required' });
+    const params = event.queryStringParameters || {};
+    const id = params.id ? Number(params.id) : null;
+    const code = params.code ? String(params.code) : null;
+    if (!id && !code) return json(400, { success: false, error: 'Provide id or code' });
 
+    // запрашиваем событие
     const supa = supabaseAdmin();
-    let query = supa
+    let q = supa
       .from('events')
-      .select(`
-        id, code, join_code, title, date, time,
-        address, dress_code, what_to_bring, comment,
-        wishlist:wishlist_items ( id, title, url, claimed_by )
-      `);
+      .select('id, code, join_code, title, date, time, address, dress_code, what_to_bring, comment, host_user_id, wishlist_items(*)')
+      .limit(1);
 
-    if (id)  query = query.eq('id', id);
-    if (code) query = query.eq('code', code);
+    if (id) q = q.eq('id', id); else q = q.eq('code', code);
 
-    const { data, error } = await query.single();
-    if (error || !data) return json(404, { success: false, error: 'Not found' });
+    const { data, error } = await q.single();
+    if (error) throw error;
 
-    return json(200, { success: true, event: data });
+    // кто запрашивает?
+    const auth = event.headers.authorization || event.headers.Authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+
+    let requesterId = null;
+    if (token && process.env.JWT_SECRET) {
+      try { requesterId = Number(jwt.verify(token, process.env.JWT_SECRET).sub) || null; } catch {}
+    }
+
+    const isOwner = data.host_user_id && requesterId && Number(data.host_user_id) === requesterId;
+
+    // если не владелец — удаляем чувствительные поля
+    if (!isOwner) {
+      delete data.code;
+      delete data.join_code;
+    }
+
+    return json(200, {
+      success: true,
+      event: {
+        id: data.id,
+        code: data.code,
+        join_code: data.join_code,
+        title: data.title,
+        date: data.date,
+        time: data.time,
+        address: data.address,
+        dress_code: data.dress_code,
+        what_to_bring: data.what_to_bring,
+        comment: data.comment,
+        host_user_id: data.host_user_id,
+        wishlist: data.wishlist || data.wishlist_items || [],
+      },
+    });
   } catch (e) {
     console.error('event-one error', e);
-    return json(500, { success: false, error: String(e.message || e) });
+    return json(500, { success: false, error: e.message || String(e) });
   }
 }
