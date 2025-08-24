@@ -1,45 +1,47 @@
-'use client';
+"use client";
+import { create } from "zustand";
+import type { Settings } from "@/lib/schema";
 
-import { create } from 'zustand';
-import { Settings, defaultSettings } from '@/lib/settings';
-import { t } from '@/lib/i18n';
-
-interface State {
-  settings: Settings;
+type State = {
+  settings: Settings | null;
+  loading: boolean;
+  error?: string;
   load: () => Promise<void>;
   save: (patch: Partial<Settings>) => Promise<void>;
   reset: () => Promise<void>;
-}
+};
 
 export const useSettingsStore = create<State>((set, get) => ({
-  settings: defaultSettings,
-  async load() {
-    const res = await fetch('/api/settings');
-    if (res.ok) {
+  settings: null,
+  loading: false,
+
+  load: async () => {
+    set({ loading: true, error: undefined });
+    try {
+      const res = await fetch("/api/settings", { cache: "no-store" });
       const data = await res.json();
-      set({ settings: data });
+      set({ settings: data, loading: false });
+    } catch (e: any) {
+      set({ error: e?.message ?? "load failed", loading: false });
     }
   },
-  async save(patch) {
-    const current = get().settings;
-    set({ settings: { ...current, ...patch } });
-    const res = await fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
-    if (!res.ok) {
-      console.error(t('error'));
-    } else {
+
+  save: async (patch) => {
+    set({ loading: true, error: undefined });
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
       const data = await res.json();
-      set({ settings: data });
+      if (!res.ok) throw new Error(data?.error || "save failed");
+      set({ settings: data, loading: false });
+    } catch (e: any) {
+      set({ error: e?.message ?? "save failed", loading: false });
     }
   },
-  async reset() {
-    const res = await fetch('/api/settings');
-    if (res.ok) {
-      const data = await res.json();
-      set({ settings: data });
-    }
-  },
+
+  reset: async () => { await get().load(); },
 }));
+
