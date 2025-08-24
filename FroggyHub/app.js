@@ -2950,3 +2950,95 @@ if (!document.body.dataset.screen) show('menu');
     }
   });
 })();
+
+// === FroggyHub: render many floating message-clouds ===
+(function () {
+  const MESSAGES = [
+    "давайте сегодня тусовку?",
+    "в FroggyHub удобнее, чем создавать группы)",
+    "а я знаю что я возьму на день рождение другу)",
+    "приходи к 19:00 ✨",
+    "беру настолки!",
+    "кто возьмёт колу?",
+    "добавил плейлист 🎶",
+    "буду с +1 😉",
+    "кто захватит настолки?",
+    "хочу пиццу 🍕",
+    "друзья, до встречи 🐸",
+    "спойлер: будет торт 🎂",
+  ];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function renderMessageClouds() {
+    const host = document.getElementById("fh-message-clouds");
+    if (!host) return;
+
+    // Больше облачков: 18..36 (зависит от ширины)
+    const count = Math.min(36, Math.max(18, Math.round(window.innerWidth / 60)));
+    host.innerHTML = "";
+
+    for (let i = 0; i < count; i++) {
+      const cloud = document.createElement("div");
+      cloud.className = "fh-cloud";
+      cloud.textContent = MESSAGES[i % MESSAGES.length];
+
+      const top = rand(5, 90);
+      const left = rand(5, 90);
+      const rot = rand(-15, 15);
+      const op = rand(0.15, 0.28);
+      const dur = rand(5, 9);   // длительность анимации
+      const delay = rand(-dur, 0);
+
+      cloud.style.top = top + "%";
+      cloud.style.left = left + "%";
+      cloud.style.opacity = String(op);
+      cloud.style.setProperty("--rot", rot + "deg");
+      cloud.style.animationDuration = dur + "s";
+      cloud.style.animationDelay = delay + "s";
+
+      host.appendChild(cloud);
+    }
+  }
+
+  let t;
+  function schedule() { clearTimeout(t); t = setTimeout(renderMessageClouds, 120); }
+  document.addEventListener("DOMContentLoaded", renderMessageClouds);
+  window.addEventListener("resize", schedule);
+})();
+
+// === Fix: make "Настройки" navigate smoothly (no full reload) ===
+(function () {
+  function goToSettings() {
+    // Мягкая SPA-навигация: меняем URL без перезагрузки.
+    history.pushState({}, "", "/settings");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+
+  // Делегированный обработчик — работает для любых кнопок/иконок
+  document.addEventListener("click", function (e) {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    const el = t.closest("#settingsBtn, [data-role='settings']");
+    if (el) {
+      e.preventDefault?.();
+      goToSettings();
+    }
+  });
+
+  // Прямое навешивание, если элемент уже есть в DOM
+  document.addEventListener("DOMContentLoaded", function () {
+    const btn =
+      document.getElementById("settingsBtn") ||
+      document.querySelector("[data-role='settings']");
+    if (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault?.();
+        goToSettings();
+      });
+      if (!(btn instanceof HTMLAnchorElement)) {
+        btn.style.cursor = "pointer";
+      }
+    }
+  });
+})();
