@@ -2885,3 +2885,68 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if (!document.body.dataset.screen) show('menu');
+
+// === FroggyHub: render soft message-clouds background ===
+(function () {
+  const MESSAGES = [
+    "давайте сегодня тусовку?",
+    "в FroggyHub удобнее, чем создавать группы)",
+    "а я знаю что я возьму на день рождение другу)",
+    "приходи к 19:00 ✨",
+    "беру настолки!",
+  ];
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function renderMessageClouds() {
+    const host = document.getElementById("fh-message-clouds");
+    if (!host) return;
+
+    const count = Math.min(12, Math.max(6, Math.round(window.innerWidth / 150)));
+    host.innerHTML = "";
+
+    for (let i = 0; i < count; i++) {
+      const cloud = document.createElement("div");
+      cloud.className = "fh-cloud";
+      cloud.textContent = MESSAGES[i % MESSAGES.length];
+
+      const top = rand(8, 78);     // проценты
+      const left = rand(6, 82);
+      const rot = rand(-10, 10);   // градусов
+      const op = rand(0.12, 0.22); // мягкая прозрачность
+
+      cloud.style.top = top + "%";
+      cloud.style.left = left + "%";
+      cloud.style.transform = `rotate(${rot}deg)`;
+      cloud.style.opacity = String(op);
+
+      host.appendChild(cloud);
+    }
+  }
+
+  // первичный рендер и легкий дебаунс на ресайз
+  let t;
+  function schedule() { clearTimeout(t); t = setTimeout(renderMessageClouds, 120); }
+  document.addEventListener("DOMContentLoaded", renderMessageClouds);
+  window.addEventListener("resize", schedule);
+})();
+
+// === Fix: make "Настройки" button navigate to /settings ===
+(function () {
+  function goToSettings() { window.location.href = "/settings"; }
+
+  document.addEventListener("click", function (e) {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    const el = t.closest("#settingsBtn, [data-role='settings']");
+    if (el) { e.preventDefault?.(); goToSettings(); }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("settingsBtn") || document.querySelector("[data-role='settings']");
+    if (btn) {
+      btn.addEventListener("click", function (e) { e.preventDefault?.(); goToSettings(); });
+      if (!(btn instanceof HTMLAnchorElement)) btn.style.cursor = "pointer";
+    }
+  });
+})();
