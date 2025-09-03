@@ -4,7 +4,7 @@ import MessageCloudsBackground from "@/components/MessageCloudsBackground";
 
 export default function HomePage() {
   return (
-    <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden px-4">
+    <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden px-4 pt-20">
       {/* облачка ниже контента */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <MessageCloudsBackground />
