@@ -6,8 +6,8 @@ export default function GlassLogoBackground() {
   const pathname = usePathname();
   const isHero = pathname === "/" || pathname === "/final";
 
-  return (
-    <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden">
+    return (
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 overflow-hidden">
       <Image
         src="/assets/froggy_glass_bg.jpeg"
         alt=""

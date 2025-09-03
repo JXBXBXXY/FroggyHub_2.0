@@ -1,15 +1,17 @@
 import Link from "next/link";
+import FrogWithStump from "@/components/FrogWithStump";
 import MessageCloudsBackground from "@/components/MessageCloudsBackground";
 
 export default function HomePage() {
   return (
-    <main className="relative min-h-[100svh] flex flex-col items-center justify-center overflow-hidden px-4">
+    <main className="relative min-h-[100svh] flex items-center justify-center overflow-hidden px-4">
       {/* облачка ниже контента */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <MessageCloudsBackground />
       </div>
 
-      <div className="relative z-30 flex flex-col items-center gap-6 text-center">
+      <div className="relative z-20 flex flex-col items-center gap-6 text-center">
+        <FrogWithStump />
         <h1 className="text-4xl sm:text-5xl font-semibold">FroggyHub</h1>
 
         {/* CTA-панель */}
