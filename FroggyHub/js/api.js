@@ -68,3 +68,25 @@ window.fhApi = { nf, joinEvent, getToken, setToken, clearToken, logout };
     window.getSupabase = () => window.__fh_supabase;
   }
 })();
+
+// --- FH auth routing hooks (append only) ---
+(function () {
+  if (!window.getSupabase) return;
+  const client = window.getSupabase();
+  if (!client) return;
+
+  // Avoid double binding
+  if (window.__fh_auth_bound) return;
+  window.__fh_auth_bound = true;
+
+  client.auth.onAuthStateChange(async (evt, session) => {
+    // If user logs in or signs up -> go to home (or hub)
+    if (session) {
+      // If you prefer hub after auth, change 'home' to 'hub'
+      window.fhRouter && window.fhRouter.go('home');
+    } else {
+      // logged out -> to auth
+      window.fhRouter && window.fhRouter.go('auth');
+    }
+  });
+})();
