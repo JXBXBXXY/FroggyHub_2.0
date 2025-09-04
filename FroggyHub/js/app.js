@@ -13,11 +13,14 @@ import {
   joinEvent,
 } from './api.js';
 
-window.FH = { supa, signIn, signUp, signOut, getSession, getProfile };
+window.FH = window.FH || {};
+Object.assign(window.FH, { supa, signIn, signUp, signOut, getSession, getProfile });
 
 function getSupabase() {
   return supa;
 }
+
+window.getSupabase = getSupabase;
 
 const API = {
   async createEvent(payload) {
@@ -37,29 +40,6 @@ const API = {
     return data.event; // объект события + wishlist
   }
 };
-
-document.addEventListener('DOMContentLoaded', init);
-
-async function init() {
-  let session = null;
-  try {
-    session = await Promise.race([
-      getSession(),
-      new Promise((resolve) => setTimeout(() => resolve(null), 1500)),
-    ]);
-  } catch (_) { /* ignore */ }
-
-  const target = session ? 'home' : 'auth';
-  window.fhRouter && window.fhRouter.go(target);
-
-  document.querySelectorAll('[data-go]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const t = btn.dataset.go;
-      if (t) window.fhRouter && window.fhRouter.go(t);
-    });
-  });
-}
 
 const toastEl = document.getElementById('toast');
 let toastTimer;
@@ -172,32 +152,38 @@ function parseHash() {
 function bindButton(id, handler) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.addEventListener("click", (e) => {
+  el.addEventListener('click', (e) => {
     e.preventDefault?.();
     handler?.(e);
   }, { once: false });
 }
 
-async function bootstrap() {
+const bootstrap = async () => {
+  if (window.FH?.__booted) return;
+  window.FH = window.FH || {};
+  window.FH.__booted = true;
+
   const supabase = getSupabase();
+
+  let session = null;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    currentSession = session ?? null;
-  } catch (e) {
-    console.warn("Session fetch failed, treating as logged out", e);
-    currentSession = null;
-  }
+    session = await Promise.race([
+      getSession(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
+  } catch (_) { /* ignore */ }
+  currentSession = session ?? null;
 
   supabase.auth.onAuthStateChange((_event, session) => {
     currentSession = session ?? null;
     if (currentSession) {
       document.documentElement.classList.remove('auth-required');
       document.documentElement.classList.add('auth-ok');
-      if (parseHash() === "auth") go("home");
+      if (parseHash() === 'auth') go('home');
     } else {
       document.documentElement.classList.remove('auth-ok');
       document.documentElement.classList.add('auth-required');
-      go("auth");
+      go('auth');
     }
   });
 
@@ -210,18 +196,65 @@ async function bootstrap() {
   }
 
   const initial = parseHash();
-  if (initial) go(initial);
-  else currentSession ? go("home") : go("auth");
+  if (initial) (window.fhRouter ? window.fhRouter.go(initial) : go(initial));
+  else {
+    const target = currentSession ? 'home' : 'auth';
+    if (window.fhRouter) window.fhRouter.go(target); else go(target);
+  }
 
-  window.addEventListener("hashchange", () => go(parseHash()));
+  window.addEventListener('hashchange', () => go(parseHash()));
 
-  bindButton("login-btn", loginHandler);
-  bindButton("signup-btn", signupHandler);
-  bindButton("btn-logout", logoutHandler);
-  bindButton("create-event", openCreateFlow);
-  bindButton("join-event", openJoinFlow);
-  bindButton("join-btn", openJoinFlow);
-}
+  document.querySelectorAll('[data-go]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const t = btn.dataset.go;
+      if (t) window.fhRouter && window.fhRouter.go(t);
+    });
+  });
+
+  bindButton('login-btn', loginHandler);
+  bindButton('signup-btn', signupHandler);
+  bindButton('btn-logout', logoutHandler);
+  bindButton('create-event', openCreateFlow);
+  bindButton('join-event', openJoinFlow);
+  bindButton('join-btn', openJoinFlow);
+
+  document.addEventListener('click', async (e) => {
+    const delBtn = e.target.closest('[data-delete-id]');
+    if (delBtn) {
+      e.preventDefault();
+      const id = delBtn.dataset.deleteId;
+      delBtn.disabled = true;
+      try {
+        const res = await fetch('/.netlify/functions/event-delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ id })
+        }).then(r => r.json());
+        if (res?.success) {
+          document.querySelectorAll(`[data-card-id="${id}"]`).forEach(n => n.remove());
+          toast('Удалено');
+        } else {
+          toast('Не удалось удалить');
+          delBtn.disabled = false;
+        }
+      } catch {
+        toast('Ошибка сети');
+        delBtn.disabled = false;
+      }
+      return;
+    }
+
+    const openBtn = e.target.closest('[data-open-id]');
+    if (openBtn) {
+      e.preventDefault();
+      const id = openBtn.dataset.openId;
+      if (typeof openEvent === 'function') openEvent(id);
+    }
+  });
+};
+
+window.FH.init = bootstrap;
 
 if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
 
@@ -666,41 +699,7 @@ document.addEventListener('click', async (e)=>{
 
   const appState = window.__APP_STATE__ ?? (window.__APP_STATE__ = { currentEvent: null });
 
-function init() {
-  document.addEventListener('click', async (e) => {
-    const delBtn = e.target.closest('[data-delete-id]');
-    if (delBtn) {
-      e.preventDefault();
-      const id = delBtn.dataset.deleteId;
-      delBtn.disabled = true;
-      try {
-        const res = await fetch('/.netlify/functions/event-delete', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json', ...authHeaders() },
-          body: JSON.stringify({ id })
-        }).then(r => r.json());
-        if (res?.success) {
-          document.querySelectorAll(`[data-card-id="${id}"]`).forEach(n => n.remove());
-          toast('Удалено');
-        } else {
-          toast('Не удалось удалить');
-          delBtn.disabled = false;
-        }
-      } catch {
-        toast('Ошибка сети');
-        delBtn.disabled = false;
-      }
-      return;
-    }
 
-    const openBtn = e.target.closest('[data-open-id]');
-    if (openBtn) {
-      e.preventDefault();
-      const id = openBtn.dataset.openId;
-      if (typeof openEvent === 'function') openEvent(id);
-    }
-  });
-}
 
 // --- API: события ---
 const apiLegacy = {
@@ -3307,53 +3306,6 @@ if (!document.body.dataset.screen) show('home');
   }
 })();
 
-document.addEventListener('DOMContentLoaded', bootstrap);
-
-// --- FH bootstrap append (do not remove existing code) ---
-(function () {
-  const $ = (sel) => document.querySelector(sel);
-
-  // By default show home; show auth overlay only if no session
-  function showHome() {
-    const el = $('#screen-home');
-    if (el) el.classList.remove('hidden');
-  }
-  function showAuth() {
-    const el = $('#screen-auth');
-    if (el) el.classList.remove('hidden');
-  }
-
-  async function getSessionWithTimeout(ms = 2000) {
-    try {
-      const client = window.getSupabase && window.getSupabase();
-      if (!client) return null;
-      const timeout = new Promise((r) => setTimeout(() => r({ data: { session: null } }), ms));
-      const req = client.auth.getSession();
-      const { data } = await Promise.race([req, timeout]);
-      return data?.session ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  async function fhBootstrap() {
-    // Always render home immediately
-    showHome();
-
-    // Check session without blocking UI
-    const session = await getSessionWithTimeout();
-    if (!session) {
-      // no session → reveal auth overlay (login/signup buttons)
-      showAuth();
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fhBootstrap);
-  } else {
-    fhBootstrap();
-  }
-})();
 
 // --- FH bubbles placement constraints (append only) ---
 (function () {
@@ -3499,3 +3451,8 @@ document.addEventListener('DOMContentLoaded', bootstrap);
     bind('btn-profile','profile');
   });
 })();
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Avoid duplicate start in case of multiple events
+  queueMicrotask(bootstrap);
+});
