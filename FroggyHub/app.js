@@ -3285,3 +3285,91 @@ if (!document.body.dataset.screen) show('home');
 })();
 
 document.addEventListener('DOMContentLoaded', bootstrap);
+
+// --- FH bootstrap append (do not remove existing code) ---
+(function () {
+  const $ = (sel) => document.querySelector(sel);
+
+  // By default show home; show auth overlay only if no session
+  function showHome() {
+    const el = $('#screen-home');
+    if (el) el.classList.remove('hidden');
+  }
+  function showAuth() {
+    const el = $('#screen-auth');
+    if (el) el.classList.remove('hidden');
+  }
+
+  async function getSessionWithTimeout(ms = 2000) {
+    try {
+      const client = window.getSupabase && window.getSupabase();
+      if (!client) return null;
+      const timeout = new Promise((r) => setTimeout(() => r({ data: { session: null } }), ms));
+      const req = client.auth.getSession();
+      const { data } = await Promise.race([req, timeout]);
+      return data?.session ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function fhBootstrap() {
+    // Always render home immediately
+    showHome();
+
+    // Check session without blocking UI
+    const session = await getSessionWithTimeout();
+    if (!session) {
+      // no session → reveal auth overlay (login/signup buttons)
+      showAuth();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fhBootstrap);
+  } else {
+    fhBootstrap();
+  }
+})();
+
+// --- FH bubbles placement constraints (append only) ---
+(function () {
+  const SAFE_ZONES = [
+    // center frog approx region (tune if needed)
+    { x: 0.25, y: 0.18, w: 0.5, h: 0.35 },
+    // CTA band near bottom
+    { x: 0.05, y: 0.72, w: 0.90, h: 0.18 },
+  ];
+
+  function rectsOverlap(a, b) {
+    return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+  }
+
+  // given viewport size and bubble size, generate non-overlapping jittered grid positions
+  window.__fh_placeBubbles = function placeBubbles(count, vw, vh, bw, bh) {
+    const cells = Math.ceil(Math.sqrt(count));
+    const gx = vw / cells;
+    const gy = vh / cells;
+
+    const avoidRects = SAFE_ZONES.map(z => ({ x: vw*z.x, y: vh*z.y, w: vw*z.w, h: vh*z.h }));
+    const placed = [];
+
+    for (let i = 0; i < count * 3 && placed.length < count; i++) {
+      const cx = Math.floor(Math.random() * cells);
+      const cy = Math.floor(Math.random() * cells);
+      const jitterX = (Math.random() - 0.5) * gx * 0.6;
+      const jitterY = (Math.random() - 0.5) * gy * 0.6;
+
+      const x = Math.max(8, cx * gx + jitterX);
+      const y = Math.max(8, cy * gy + jitterY);
+      const rect = { x, y, w: bw, h: bh };
+
+      // avoid frog/CTA & previously placed
+      if (avoidRects.some(r => rectsOverlap(rect, r))) continue;
+      if (placed.some(r => rectsOverlap(rect, r))) continue;
+
+      placed.push(rect);
+    }
+    return placed; // [{x,y,w,h}]
+  };
+})();

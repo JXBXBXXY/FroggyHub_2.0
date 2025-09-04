@@ -47,3 +47,24 @@ window.logout = logout;
 
 // Для удобства в браузере:
 window.fhApi = { nf, joinEvent, getToken, setToken, clearToken, logout };
+// --- FH Supabase singleton (append only) ---
+(function attachSupabaseSingleton() {
+  const SUPABASE_URL = 'https://smamhlfzerjkdfhtwhdv.supabase.co';
+  const SUPABASE_ANON_KEY = '<PUT_YOUR_ANON_KEY_HERE>'; // keep as is if already set elsewhere
+
+  if (window.supabase && !window.__fh_supabase) {
+    window.__fh_supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce',
+        storageKey: 'fh.auth',
+      },
+    });
+  }
+
+  if (!window.getSupabase) {
+    window.getSupabase = () => window.__fh_supabase;
+  }
+})();

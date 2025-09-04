@@ -819,3 +819,7 @@ button:not([disabled]){ cursor:pointer; }
   .final-wrap{margin:16px auto}
   .final-card{padding:16px}
 }
+
+/* FH visibility defaults (append only) */
+#screen-home { display: block; }
+#screen-auth.hidden { display: none; }
