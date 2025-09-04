@@ -1,22 +1,22 @@
-import { nf, getToken, setToken, clearToken, joinEvent } from './js/api.js';
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import {
+  supa,
+  getSession,
+  onAuthState,
+  signIn,
+  signUp,
+  signOut,
+  getProfile,
+  nf,
+  getToken,
+  setToken,
+  clearToken,
+  joinEvent,
+} from './api.js';
 
-// expose Supabase client factory and config (was in index.html)
-window.createClient = createClient;
-window.SUPABASE_URL = "https://smamhlfzserjkdfhthwhdv.supabase.co";
-window.PROXY_SUPABASE_URL = location.origin + '/supabase';
-window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4";
+window.FH = { supa, signIn, signUp, signOut, getSession, getProfile };
 
-// --- Supabase singleton ---
-let __supabase;
 function getSupabase() {
-  if (__supabase) return __supabase;
-  __supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-  });
-  window.supabase = __supabase;
-  window.__supabaseClient = __supabase;
-  return __supabase;
+  return supa;
 }
 
 const API = {
@@ -38,12 +38,28 @@ const API = {
   }
 };
 
-let __booted = false;
-window.addEventListener('DOMContentLoaded', () => {
-  if (__booted) return;
-  __booted = true;
-  init();
-});
+document.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  let session = null;
+  try {
+    session = await Promise.race([
+      getSession(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 1500)),
+    ]);
+  } catch (_) { /* ignore */ }
+
+  const target = session ? 'home' : 'auth';
+  window.fhRouter && window.fhRouter.go(target);
+
+  document.querySelectorAll('[data-go]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const t = btn.dataset.go;
+      if (t) window.fhRouter && window.fhRouter.go(t);
+    });
+  });
+}
 
 const toastEl = document.getElementById('toast');
 let toastTimer;
@@ -776,7 +792,6 @@ const DEBUG_EVENTS = !!window.DEBUG_EVENTS;
 async function ensureSupabase(){
   return getSupabase();
 }
-window.ensureSupabase = ensureSupabase;
 
 const clearNickname = () => setNickname('');
 
