@@ -2315,7 +2315,10 @@ if(editForm){
 
 async function login(nickname, password){
   const { token } = await callFn('local-login', { nickname, password });
-  if(token){ setToken(token); }
+  if(token){
+    setToken(token);
+    window.fhRouter && window.fhRouter.go('home');
+  }
   setNickname(nickname);
   return { token };
 }
@@ -2323,7 +2326,10 @@ async function login(nickname, password){
 async function signup(nickname, password){
   await callFn('local-signup', { nickname, password });
   const { token } = await callFn('local-login', { nickname, password });
-  if(token){ setToken(token); }
+  if(token){
+    setToken(token);
+    window.fhRouter && window.fhRouter.go('home');
+  }
   setNickname(nickname);
   return { token };
 }
@@ -2846,6 +2852,7 @@ function wireAuthForms(){
           setToken(data.token);
           show('menu');        // ← показываем меню/лобби
           if (typeof loadLobby === 'function') loadLobby();
+          window.fhRouter && window.fhRouter.go('home');
         } else {
           alert(data?.error || 'Ошибка входа');
         }
@@ -2880,6 +2887,7 @@ function wireAuthForms(){
             setToken(lg.token);
             show('menu');
             if (typeof loadLobby === 'function') loadLobby();
+            window.fhRouter && window.fhRouter.go('home');
             return;
           }
         }
@@ -3368,8 +3376,111 @@ document.addEventListener('DOMContentLoaded', bootstrap);
       if (avoidRects.some(r => rectsOverlap(rect, r))) continue;
       if (placed.some(r => rectsOverlap(rect, r))) continue;
 
-      placed.push(rect);
-    }
-    return placed; // [{x,y,w,h}]
+  placed.push(rect);
+}
+   return placed; // [{x,y,w,h}]
   };
+})();
+
+// --- FH tiny router (append only) ---
+(function () {
+  const $ = (s) => document.querySelector(s);
+
+  const SCREENS = {
+    home:   '#screen-home',
+    auth:   '#screen-auth',
+    profile:'#screen-profile',
+    hub:    '#screen-hub'
+  };
+
+  function hideAll() {
+    Object.values(SCREENS).forEach(sel => {
+      const el = $(sel);
+      if (el) el.classList.add('hidden');
+    });
+  }
+
+  function show(id) {
+    const sel = SCREENS[id] || SCREENS.home;
+    const el = $(sel);
+    if (el) el.classList.remove('hidden');
+  }
+
+  // public API
+  if (!window.fhRouter) {
+    window.fhRouter = {
+      go(id) {
+        const hash = typeof id === 'string' && id.startsWith('#') ? id : `#${id}`;
+        if (location.hash !== hash) location.hash = hash;
+        // ensure render even if hashchange was suppressed
+        render();
+      }
+    };
+  }
+
+  async function hasSession() {
+    try {
+      const c = window.getSupabase && window.getSupabase();
+      if (!c) return false;
+      const { data } = await c.auth.getSession();
+      return !!data?.session;
+    } catch {
+      return false;
+    }
+  }
+
+  async function decideInitialRoute() {
+    // explicit hash wins; otherwise choose by session
+    const raw = (location.hash || '').replace(/^#/, '');
+    if (raw === 'home' || raw === 'auth' || raw === 'profile' || raw === 'hub') {
+      return raw;
+    }
+    return (await hasSession()) ? 'home' : 'auth';
+  }
+
+  function render() {
+    const id = (location.hash || '').replace(/^#/, '') || 'home';
+    hideAll();
+    show(id);
+  }
+
+  // bootstrap: pick initial route based on session if hash empty
+  (async function bootRoute() {
+    if (!location.hash) {
+      const target = await decideInitialRoute();
+      window.fhRouter.go(target);
+    } else {
+      render();
+    }
+  })();
+
+  // re-render on hash changes
+  window.addEventListener('hashchange', render, { passive: true });
+})();
+
+// --- FH nav buttons binding (append only) ---
+(function () {
+  const $ = (s) => document.querySelector(s);
+  function bind(id, target) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.__fh_bound) return; // idempotent
+    el.__fh_bound = true;
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.fhRouter && window.fhRouter.go(target);
+    });
+  }
+
+  function ready(fn){ 
+    document.readyState === 'loading' ? 
+      document.addEventListener('DOMContentLoaded', fn) : fn();
+  }
+
+  ready(() => {
+    // adapt IDs to your actual buttons if they differ
+    bind('btn-menu',   'home');   // main menu -> home
+    bind('btn-login',  'auth');   // go to auth
+    bind('btn-profile','profile');
+  });
 })();

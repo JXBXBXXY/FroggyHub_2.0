@@ -823,3 +823,10 @@ button:not([disabled]){ cursor:pointer; }
 /* FH visibility defaults (append only) */
 #screen-home { display: block; }
 #screen-auth.hidden { display: none; }
+
+/* FH screens visibility (append only) */
+#screen-home, #screen-auth, #screen-profile, #screen-hub { display: none; }
+#screen-home:not(.hidden),
+#screen-auth:not(.hidden),
+#screen-profile:not(.hidden),
+#screen-hub:not(.hidden) { display: block; }
