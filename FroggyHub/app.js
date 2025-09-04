@@ -7,6 +7,18 @@ window.SUPABASE_URL = "https://smamhlfzserjkdfhthwhdv.supabase.co";
 window.PROXY_SUPABASE_URL = location.origin + '/supabase';
 window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4";
 
+// --- Supabase singleton ---
+let __supabase;
+function getSupabase() {
+  if (__supabase) return __supabase;
+  __supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+  });
+  window.supabase = __supabase;
+  window.__supabaseClient = __supabase;
+  return __supabase;
+}
+
 const API = {
   async createEvent(payload) {
     const res = await fetch('/.netlify/functions/event-create', {
@@ -107,38 +119,93 @@ function show(name){
   }
 }
 
-async function boot(){
-  show('home');
-  const token = getToken();
-  if(!token){
-    document.documentElement.classList.add('auth-required');
-    return;
+const showScreen = show;
+
+const PRIVATE_SCREENS = new Set(["home", "profile", "final"]);
+const PUBLIC_SCREENS = new Set(["auth"]);
+
+let currentSession = null;
+function go(screen) {
+  const s = (screen || "").toLowerCase();
+  const wanted = (PRIVATE_SCREENS.has(s) || PUBLIC_SCREENS.has(s)) ? s : null;
+
+  if (!wanted) {
+    return currentSession ? go("home") : go("auth");
   }
 
-  const me = await nf('profile');
-  if(me?.success && me?.user){
-    window.__me = me.user;
-    document.documentElement.classList.remove('auth-required');
-    document.documentElement.classList.add('auth-ok');
-  }else{
-    document.documentElement.classList.add('auth-required');
+  if (!currentSession && PRIVATE_SCREENS.has(wanted)) {
+    location.hash = "#/auth";
+    return showScreen("auth");
   }
+
+  if (currentSession && wanted === "auth") {
+    location.hash = "#/home";
+    return showScreen("home");
+  }
+
+  if (location.hash !== `#/${wanted}`) location.hash = `#/${wanted}`;
+  return showScreen(wanted);
 }
 
-boot();
+function parseHash() {
+  const h = (location.hash || "").replace(/^#\/?/, "");
+  const screen = h.split("?")[0].trim().toLowerCase();
+  return screen || null;
+}
 
-// ---- Logout wiring (single place) ----
-function wireLogout() {
-  document.querySelectorAll('[data-logout]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (typeof window.logout === 'function') {
-        window.logout();
-      }
-    });
+function bindButton(id, handler) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("click", (e) => {
+    e.preventDefault?.();
+    handler?.(e);
+  }, { once: false });
+}
+
+async function bootstrap() {
+  const supabase = getSupabase();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    currentSession = session ?? null;
+  } catch (e) {
+    console.warn("Session fetch failed, treating as logged out", e);
+    currentSession = null;
+  }
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    currentSession = session ?? null;
+    if (currentSession) {
+      document.documentElement.classList.remove('auth-required');
+      document.documentElement.classList.add('auth-ok');
+      if (parseHash() === "auth") go("home");
+    } else {
+      document.documentElement.classList.remove('auth-ok');
+      document.documentElement.classList.add('auth-required');
+      go("auth");
+    }
   });
+
+  if (currentSession) {
+    document.documentElement.classList.add('auth-ok');
+    document.documentElement.classList.remove('auth-required');
+  } else {
+    document.documentElement.classList.add('auth-required');
+    document.documentElement.classList.remove('auth-ok');
+  }
+
+  const initial = parseHash();
+  if (initial) go(initial);
+  else currentSession ? go("home") : go("auth");
+
+  window.addEventListener("hashchange", () => go(parseHash()));
+
+  bindButton("login-btn", loginHandler);
+  bindButton("signup-btn", signupHandler);
+  bindButton("btn-logout", logoutHandler);
+  bindButton("create-event", openCreateFlow);
+  bindButton("join-event", openJoinFlow);
+  bindButton("join-btn", openJoinFlow);
 }
-wireLogout();
 
 if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
 
@@ -165,16 +232,6 @@ const LS_NICK = 'fh:nickname';
 
 document.querySelectorAll('input, textarea, select').forEach(el=>{
   el.classList.add('input');
-});
-
-[
-  ['create-event','create-event'],
-  ['join-event','join-btn'],
-  ['login','login-btn'],
-  ['signup','signup-btn']
-].forEach(([name,id])=>{
-  const el = document.getElementById(id);
-  console.debug('[btn]', name, 'present=', !!el);
 });
 
 async function fetchMyEvents() {
@@ -232,28 +289,32 @@ async function renderProfile() {
 
 // Навигация по атрибуту data-go
 document.addEventListener('click', (e)=>{
-  const go = e.target.closest('[data-go]');
-  if (!go) return;
-  if (go.matches('#create-event, [data-go="app"][data-mode="create"]')) return;
+  const nav = e.target.closest('[data-go]');
+  if (!nav) return;
+  if (nav.matches('#create-event, [data-go="app"][data-mode="create"]')) return;
   e.preventDefault();
-  const dest = go.getAttribute('data-go');
+  const dest = nav.getAttribute('data-go');
   if (dest === 'settings') return;
-  show(dest);
-  if (dest === 'profile') openProfileScreen();
+  if (PRIVATE_SCREENS.has(dest) || PUBLIC_SCREENS.has(dest)) {
+    go(dest);
+  } else {
+    show(dest);
+  }
+  if (dest === 'profile' && currentSession) openProfileScreen();
   if (dest === 'app') {
-    const mode = go.getAttribute('data-mode') || null;
+    const mode = nav.getAttribute('data-mode') || null;
     setWizardMode?.(mode || 'create');
     requestAnimationFrame(() => document.querySelector('#screen-app input, #screen-app textarea')?.focus());
   }
 });
 
-$('#create-event')?.addEventListener('click', () => {
+function openCreateFlow(){
   if(!getToken()){
-    show('auth');
+    go('auth');
     return;
   }
   openTypeModal(true);
-});
+}
 function openTypeModal(open){ $('#typeModal').hidden = !open; }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') openTypeModal(false); });
 $('#typeModal').addEventListener('click', e=>{
@@ -273,9 +334,9 @@ const state = {
 
 const guest = { code:null, nickname:null, event:null };
 
-$('#join-btn')?.addEventListener('click', async ()=>{
+async function openJoinFlow(){
   if(!getToken()){
-    show('auth');
+    go('auth');
     return;
   }
   const code = ($('#join-code')?.value||'').trim();
@@ -284,11 +345,25 @@ $('#join-btn')?.addEventListener('click', async ()=>{
     const ev = await API.getEventByCode(code);
     guest.code = code;
     guest.event = ev;
-    show('join-name');
+    showScreen('join-name');
   } catch (e) {
     toast?.('Событие не найдено');
   }
-});
+}
+
+function loginHandler(){
+  go('auth');
+  setAuthStep?.('login');
+}
+
+function signupHandler(){
+  go('auth');
+  setAuthStep?.('signup');
+}
+
+async function logoutHandler(){
+  await doLogout?.();
+}
 
 $('#form-join-name')?.addEventListener('submit', async e=>{
   e.preventDefault();
@@ -693,61 +768,14 @@ const setNickname = (n)=> {
 };
 setNickname(getNickname());
 
-/* ---------- Supabase init with proxy fallback ---------- */
+/* ---------- Supabase init (singleton already defined above) ---------- */
 const DEBUG_AUTH = !!window.DEBUG_AUTH;
 const dbgAuth = (...args) => { if (DEBUG_AUTH) console.debug('[auth]', ...args); };
 const DEBUG_EVENTS = !!window.DEBUG_EVENTS;
 
-function probeDirect(url){
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 1500);
-  return fetch(url + '/auth/v1/health', { method: 'HEAD', signal: ctrl.signal })
-    .then(res => { clearTimeout(timer); return res.ok; })
-    .catch(() => { clearTimeout(timer); return false; });
-}
-
 async function ensureSupabase(){
-  if(window.__supabaseClient){ return window.__supabaseClient; }
-
-  if(!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY){
-    throw new Error('Supabase URL or anon key not configured');
-  }
-
-  while(typeof window.createClient !== 'function'){
-    await new Promise(r => setTimeout(r,50));
-  }
-
-  let mode = sessionStorage.getItem('sb_mode');
-  let baseUrl;
-  if(mode){
-    baseUrl = mode === 'proxy' ? window.PROXY_SUPABASE_URL : window.SUPABASE_URL;
-  }else{
-    const ok = await probeDirect(window.SUPABASE_URL);
-    if(ok){
-      baseUrl = window.SUPABASE_URL;
-      mode = 'direct';
-    }else{
-      baseUrl = window.PROXY_SUPABASE_URL;
-      mode = 'proxy';
-    }
-    sessionStorage.setItem('sb_mode', mode);
-  }
-
-  const sb = window.createClient(baseUrl, window.SUPABASE_ANON_KEY, {
-    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
-  });
-  window.__supabaseClient = sb;
-  window.supabase = sb;
-  return sb;
+  return getSupabase();
 }
-
-async function switchToProxyAndRetry(action){
-  sessionStorage.setItem('sb_mode','proxy');
-  window.__supabaseClient = null;
-  const sb = await ensureSupabase();
-  return await action(sb);
-}
-
 window.ensureSupabase = ensureSupabase;
 
 const clearNickname = () => setNickname('');
@@ -765,7 +793,7 @@ function sendAuthTelemetry(kind, mode){
     fetch('/.netlify/functions/auth-telemetry',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ kind, mode: mode || sessionStorage.getItem('sb_mode') || 'direct', ua:navigator.userAgent, ts:Date.now() }),
+      body: JSON.stringify({ kind, mode: mode || 'direct', ua:navigator.userAgent, ts:Date.now() }),
       keepalive:true
     }).catch(()=>{});
   }catch(_){ /* ignore */ }
@@ -962,7 +990,6 @@ async function doLogout(msg){
   try{ await fetch('/.netlify/functions/local-logout'); }catch(_){ }
   clearNickname();
   renderUserBadge({ nickname:'', email:'' });
-  sessionStorage.removeItem('sb_mode');
   sessionStorage.removeItem('pendingCreate');
   localStorage.removeItem(COOKIE_TEMP_KEY);
   localStorage.removeItem(SESSION_KEY);
@@ -1085,7 +1112,7 @@ function updateRegBtnState(){
 
 function updateAuthDebug(){
   if(!DEBUG_AUTH) return;
-  const sbMode = sessionStorage.getItem('sb_mode') || 'direct';
+  const sbMode = 'direct';
   const btn = authState === 'signup' ? regBtn : loginBtn;
   let overlay = false;
   if(btn){
@@ -1345,7 +1372,7 @@ resetSetBtn?.addEventListener('click', async ()=>{
     show('#screen-auth');
     setAuthState('login');
   }
-})();
+  })();
 
 /* ---------- COOKIE CONSENT ---------- */
 const COOKIE_CHOICE_KEY = 'cookie_choice';
@@ -2412,24 +2439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('DOMContentLoaded', initHubPage);
 
-async function uiSmoke(){
-  const report = [];
-  const need = [
-    ['create-event', !!document.querySelector('[data-action="create-event"]')],
-    ['join-event',   !!document.querySelector('[data-action="join-event"]')],
-    ['login',        !!document.querySelector('#login-btn')],
-    ['signup',       !!document.querySelector('#signup-btn')],
-    ['logout',       !!document.querySelector('#btn-logout')],
-  ];
-  need.forEach(([k, ok])=> report.push({button:k, present:ok}));
-  console.table(report);
-  if(report.some(x=>!x.present)) console.warn('Не все кнопки найдены на странице');
-}
-uiSmoke();
-
-if(DEBUG_AUTH){
-  dbgAuth('sb_mode', sessionStorage.getItem('sb_mode') || 'direct');
-}
+// removed uiSmoke debug helper
 
 // ==== API helpers (не трогаем существующие экспорты, просто добавляем) ====
 const API_BASE = '/.netlify/functions';
@@ -3273,3 +3283,5 @@ if (!document.body.dataset.screen) show('home');
     };
   }
 })();
+
+document.addEventListener('DOMContentLoaded', bootstrap);
