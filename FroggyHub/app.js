@@ -90,14 +90,16 @@ async function claimWish(id, nickname){
 }
 
 function show(name){
+  const alias = { home: 'menu' };
+  const target = alias[name] || name;
   document.querySelectorAll('section[id^="screen-"]').forEach(s => {
-    s.hidden = s.id !== `screen-${name}`;
+    s.hidden = s.id !== `screen-${target}`;
   });
   document.body.dataset.screen = name;
   const navMenu = document.getElementById('nav-menu');
-  if (navMenu) navMenu.hidden = (name === 'menu' || name === 'auth');
+  if (navMenu) navMenu.hidden = (target === 'menu' || target === 'auth');
   console.log('[screen] =>', name);
-  if (name === 'final') {
+  if (target === 'final') {
     const right = document.getElementById('final-right');
     if (right) right.hidden = true;
     const wrap = document.querySelector('.final-wrap');
@@ -106,10 +108,10 @@ function show(name){
 }
 
 async function boot(){
+  show('home');
   const token = getToken();
   if(!token){
     document.documentElement.classList.add('auth-required');
-    show('auth');
     return;
   }
 
@@ -118,10 +120,8 @@ async function boot(){
     window.__me = me.user;
     document.documentElement.classList.remove('auth-required');
     document.documentElement.classList.add('auth-ok');
-    show('menu');
   }else{
     document.documentElement.classList.add('auth-required');
-    show('auth');
   }
 }
 
@@ -167,9 +167,14 @@ document.querySelectorAll('input, textarea, select').forEach(el=>{
   el.classList.add('input');
 });
 
-['create-event','join-open','login-btn','signup-btn','btn-logout'].forEach(id=>{
+[
+  ['create-event','create-event'],
+  ['join-event','join-btn'],
+  ['login','login-btn'],
+  ['signup','signup-btn']
+].forEach(([name,id])=>{
   const el = document.getElementById(id);
-  console.debug('[btn]', id, 'present=', !!el);
+  console.debug('[btn]', name, 'present=', !!el);
 });
 
 async function fetchMyEvents() {
@@ -242,7 +247,13 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-$('#create-event')?.addEventListener('click', () => openTypeModal(true));
+$('#create-event')?.addEventListener('click', () => {
+  if(!getToken()){
+    show('auth');
+    return;
+  }
+  openTypeModal(true);
+});
 function openTypeModal(open){ $('#typeModal').hidden = !open; }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') openTypeModal(false); });
 $('#typeModal').addEventListener('click', e=>{
@@ -263,6 +274,10 @@ const state = {
 const guest = { code:null, nickname:null, event:null };
 
 $('#join-btn')?.addEventListener('click', async ()=>{
+  if(!getToken()){
+    show('auth');
+    return;
+  }
   const code = ($('#join-code')?.value||'').trim();
   if(code.length!==6){ toast?.('Введите корректный код'); return; }
   try {
@@ -2884,7 +2899,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-if (!document.body.dataset.screen) show('menu');
+if (!document.body.dataset.screen) show('home');
 
 // === FroggyHub: render soft message-clouds background ===
 (function () {
