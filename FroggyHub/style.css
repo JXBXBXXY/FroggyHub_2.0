@@ -49,11 +49,13 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 
+#app-root{ position:relative; min-height:100vh; }
+
 /* Контейнер для фона с пузырями */
 .fh-bubbles {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -63,17 +65,27 @@ body{
   z-index: 1;
 }
 
+.auth-wrapper, .fh-card { z-index: 10; position: relative; }
+
 /* Базовое состояние пузыря */
 .fh-bubble {
   position: absolute;
   opacity: 0;
-  transform: translate3d(0,0,0) scale(0.98);
+  transform: translate3d(0,0,0) scale(.98);
   transition: opacity .45s ease, transform .45s ease;
   will-change: transform, opacity;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(8px);
+  color: rgba(255,255,255,.9);
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.22);
+  font: 500 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
 .fh-bubble.is-in {
-  opacity: 1;
+  opacity: .92;
   transform: translate3d(var(--tx,0), var(--ty,0), 0) scale(1);
 }
 
