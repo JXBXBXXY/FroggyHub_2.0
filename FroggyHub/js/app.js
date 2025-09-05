@@ -1,4 +1,5 @@
 import { supa } from './api.js';
+window.supa = supa;
 
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨',
@@ -252,136 +253,165 @@ function debounce(fn, wait=100){
   let t; return (...args)=>{clearTimeout(t); t=setTimeout(()=>fn.apply(this,args),wait);};
 }
 
-// ---- BOOTSTRAP (один раз) -----------------------------------
-if (!window.FH) window.FH = {};
-if (window.FH.__booted) { /* уже проинициализировано */ }
-else {
-  window.FH.__booted = true;
+// ---- bubbles control ----
+function startBubbles() {
+  const root = document.querySelector('.fh-bubbles');
+  if (!root) return;
 
-  // -------- Supabase: получить клиент (через существующий _supabase.js)
-  // ожидается window.supabase уже сконфигурирован
-  const getSupabase = () => supa;
+  spawnChips(root);
 
-  // Локальный кэш сессии
-  const LS_KEY = 'fh_session';
-  const getSavedSession = () => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); }
-    catch { return null; }
-  };
-  const setSavedSession = (s) => {
-    try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {}
-  };
+  window.addEventListener('resize', debounce(() => {
+    GRID = createJitteredGrid({ cols:10, rows:8, jitter:18, margin:48 });
+    const box = document.querySelector('.fh-bubbles');
+    if (!box) return;
+    box.innerHTML = '';
+    spawnChips(box);
+  }, 200));
+}
 
-  // --- Экраны
-  const screens = document.querySelectorAll('.screen');
-  function showScreen(name){
-    screens.forEach(s=>s.classList.remove('visible'));
-    const el=document.getElementById(`screen-${name}`);
-    if(el) el.classList.add('visible');
-  }
+// какие экраны у нас есть
+const SCREENS = ['auth','home','join','create','wishlist','final','profile','settings'];
 
-  // --- Простенький роутер
-  async function route() {
-    const supa = getSupabase();
-    if (!supa) {
-      console.warn("[auth] Supabase is not configured");
-      return null;
-    }
-    let session = getSavedSession();
+function qs(s, r = document) { return r.querySelector(s); }
+function qa(s, r = document) { return Array.from(r.querySelectorAll(s)); }
 
-    // быстрая проверка
-    if (!session && supa?.auth) {
-      const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 1500);
-      try {
-        const { data } = await supa.auth.getSession({ signal: ctrl.signal });
-        session = data?.session || null;
-      } catch { /* таймаут/ошибка – игнор */ }
-      clearTimeout(t);
-      if (session) setSavedSession({ user: session.user, access_token: session.access_token });
-    }
-
-    const authed = !!session;
-
-    if (!authed) {
-      showScreen('auth');
-      return;
-    }
-
-    showScreen('home');
-  }
-
-  // --- Навигационные кнопки (делегирование)
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-link]');
-    if (!btn) return;
-    const to = btn.getAttribute('data-link');
-    if (to === 'home') showScreen('home');
-    else if (to === 'profile') showScreen('profile');
-    else if (to === 'settings') showScreen('settings');
+// централизованный показ экрана
+function showScreen(name) {
+  SCREENS.forEach(id => {
+    const el = qs(`#screen-${id}`);
+    if (!el) return;
+    const vis = id === name;
+    el.classList.toggle('visible', vis);
+    el.setAttribute('aria-hidden', String(!vis));
   });
 
-  // --- Обработчики форм логина/регистрации
-  (function bindAuth() {
-    const loginForm  = document.querySelector('#loginForm');
-    const signupForm = document.querySelector('#signupForm');
-    async function handle(form, kind) {
-      if (!form) return;
-      form.addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const fd = new FormData(form);
-        const nickname = (fd.get('nickname') || '').toString().trim();
-        const password = (fd.get('password') || '').toString();
-        if (!nickname || !password) return;
+  // скролл только на вишлисте
+  document.body.classList.toggle('allow-scroll', name === 'wishlist');
 
-        try {
-          const supa = getSupabase();
-          if (!supa) {
-            console.warn("[auth] Supabase is not configured");
-            return null;
-          }
-          let ok = false, session = null;
-
-          if (kind === 'login') {
-            const { data, error } = await supa.auth.signInWithPassword({ email: `${nickname}@local`, password });
-            if (!error) { ok = true; session = data.session; }
-          } else {
-            const { data, error } = await supa.auth.signUp({ email: `${nickname}@local`, password });
-            if (!error) {
-              // повторный вход для единообразия
-              const r = await supa.auth.signInWithPassword({ email: `${nickname}@local`, password });
-              session = r.data.session; ok = !r.error;
-            }
-          }
-
-          if (ok && session) {
-            setSavedSession({ user: session.user, access_token: session.access_token });
-            showScreen('home');
-          }
-        } catch (err) { /* можно показать тост */ }
-      });
-    }
-    handle(loginForm, 'login');
-    handle(signupForm, 'signup');
-  })();
-
-  // ---- Фоновые «смс» (сетка + локальные орбиты)
-  (function bubbles() {
-    const root = document.querySelector('.fh-bubbles');
-    if (!root) return;
-
-    spawnChips(root);
-
-    window.addEventListener('resize', debounce(() => {
-      GRID = createJitteredGrid({ cols:10, rows:8, jitter:18, margin:48 });
-      const box = document.querySelector('.fh-bubbles');
-      if (!box) return;
-      box.innerHTML = '';
-      spawnChips(box);
-    }, 200));
-  })();
-
-  // --- Старт
-  document.addEventListener('DOMContentLoaded', route);
+  // поддерживаем адресную строку
+  if (name) {
+    const target = `#${name}`;
+    if (location.hash !== target) history.replaceState(null, '', target);
+  }
 }
+
+// хранилище сессии в рантайме
+window.FH = window.FH || {};
+FH.session = null;
+
+// слушатель auth состояния (если у тебя уже есть — оставь, только вызови showScreen)
+export function onAuthChanged(cb) {
+  if (!window.supa) { cb(null); return; }
+  return window.supa.auth.onAuthStateChange((_e, s) => cb(s));
+}
+
+// начальная загрузка
+async function bootstrap() {
+  // чипсы запускаются один раз (если есть функция старта — оставь как было)
+  if (typeof startBubbles === 'function') startBubbles();
+
+  // пробуем восстановить сессию
+  if (window.supa) {
+    try {
+      const { data } = await window.supa.auth.getSession();
+      FH.session = data?.session ?? null;
+    } catch { FH.session = null; }
+  }
+
+  // если есть #wishlist/#create и т.п. — применим, иначе auth/home
+  const wanted = (location.hash || '').replace('#','') || (FH.session ? 'home' : 'auth');
+  showScreen(FH.session ? (wanted || 'home') : 'auth');
+
+  // следим за изменением auth
+  onAuthChanged(async (session) => {
+    FH.session = session;
+    if (session) showScreen('home'); else showScreen('auth');
+  });
+
+  // клики по навигационным кнопкам
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-link]');
+    if (!a) return;
+    e.preventDefault();
+    const dest = a.getAttribute('data-link');
+    if (!dest) return;
+    // если не залогинен — держим только на auth
+    if (!FH.session && dest !== 'auth') return showScreen('auth');
+    showScreen(dest);
+  });
+
+  // реакция на изменение хеша (ручной ввод)
+  window.addEventListener('hashchange', () => {
+    const h = (location.hash || '').replace('#','');
+    if (!FH.session && h !== 'auth') return showScreen('auth');
+    showScreen(h || (FH.session ? 'home' : 'auth'));
+  });
+
+  // обработчик формы логина
+  const authForm = qs('#auth-form');
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window.supa) return;
+      const fd = new FormData(authForm);
+      const login = String(fd.get('login') || '').trim();
+      const password = String(fd.get('password') || '').trim();
+      if (!login || !password) return;
+      try {
+        // если login похож на email — логинимся по email
+        const isEmail = /\S+@\S+\.\S+/.test(login);
+        let email = login;
+        if (!isEmail) {
+          // ник -> получаем email (rpc или твой хелпер; ниже — защита)
+          if (window.supa.rpc) {
+            const { data, error } = await supa.rpc('get_email_by_nickname', { p_nickname: login });
+            if (error) throw error;
+            if (!data?.email) throw new Error('Пользователь не найден');
+            email = data.email;
+          } else {
+            throw new Error('Нет RPC для поиска по нику');
+          }
+        }
+        const { data, error } = await supa.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        FH.session = data?.session ?? null;
+        showScreen('home');
+      } catch (err) {
+        console.warn('[auth/login]', err);
+        // покажи ошибку пользователю, если есть box
+        const box = authForm.querySelector('.form-error');
+        if (box) box.textContent = err.message || 'Не удалось войти';
+      }
+    });
+  }
+
+  // обработчик формы регистрации (если нужна)
+  const regForm = qs('#register-form');
+  if (regForm) {
+    regForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!window.supa) return;
+      const fd = new FormData(regForm);
+      const nickname = String(fd.get('nickname') || '').trim();
+      const email    = String(fd.get('email') || '').trim();
+      const password = String(fd.get('password') || '').trim();
+      if (!nickname || !email || !password) return;
+      try {
+        const { data, error } = await supa.auth.signUp({
+          email, password,
+          options: { data: { nickname } }
+        });
+        if (error) throw error;
+        // после регистрации — сразу логин или верификация почты
+        showScreen('home');
+      } catch (err) {
+        console.warn('[auth/register]', err);
+        const box = regForm.querySelector('.form-error');
+        if (box) box.textContent = err.message || 'Не удалось зарегистрироваться';
+      }
+    });
+  }
+}
+
+bootstrap();
 
