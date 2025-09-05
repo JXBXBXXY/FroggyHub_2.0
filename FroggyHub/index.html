@@ -87,21 +87,27 @@
 </head>
 <body class="scene-intro">
   <div class="fh-bg" aria-hidden="true"></div>
-  <div id="fh-message-clouds" aria-hidden="true"></div>
+  <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true">
+    <div class="bubble chip">Создавайте события</div>
+    <div class="bubble chip">Делитесь вишлистами</div>
+    <div class="bubble chip">Планируйте встречи</div>
+    <div class="bubble chip">Приглашайте друзей</div>
+    <div class="bubble chip">Следите за ответами</div>
+  </div>
   <div class="fh-content">
   <!-- Шапка -->
   <nav class="topbar">
     <div class="topbar-left">
-      <a href="#" id="logo" class="logo" data-go="menu">FroggyHub</a>
+      <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
     </div>
     <div class="topbar-right">
-      <button id="nav-menu" class="btn btn-sm btn-ghost" data-go="menu" hidden>Меню</button>
-      <button id="nav-profile" class="btn btn-sm btn-ghost" data-go="profile">Профиль</button>
-      <button id="nav-settings" class="btn btn-sm btn-ghost" data-go="settings" data-role="settings">Настройки</button>
+      <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
+      <button id="nav-profile" class="btn btn-sm btn-ghost" data-link="profile">Профиль</button>
+      <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings">Настройки</button>
     </div>
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
-  <section id="screen-auth" class="container" role="main" hidden>
+  <section id="screen-auth" class="screen container" role="main">
     <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-head">
         <div class="auth-avatar">
@@ -163,7 +169,7 @@
   </section>
 
   <!-- ЭКРАН МЕНЮ -->
-  <section id="screen-menu" class="screen" role="main">
+  <section id="screen-home" class="screen visible" role="main">
     <div id="hero" class="hero hero-frog">
       <img class="frog" src="/assets/frog_idle.png" alt="Froggy" />
       <img class="stump" src="/assets/stump.png" alt="" aria-hidden="true" />
@@ -563,6 +569,6 @@
     </div>
   </div>
 </div>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="./js/app.js"></script>
 </body>
 </html>
