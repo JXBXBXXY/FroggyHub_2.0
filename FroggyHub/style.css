@@ -961,3 +961,47 @@ button:not([disabled]){ cursor:pointer; }
 #screen-auth:not(.hidden),
 #screen-profile:not(.hidden),
 #screen-hub:not(.hidden) { display: block; }
+
+/* --- remove frog hero globally --- */
+.hero, .hero-frog, .frog-hero, .hero .frog,
+#hero, .hero-wrap, .hero-stump {
+  display: none !important;
+}
+
+/* ambient chips always behind screens */
+#fh-message-clouds {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* screens sit above chips */
+.screen {
+  position: relative;
+  z-index: 1;
+}
+
+/* full screen auth page over chips */
+#screen-auth {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 10;
+  /* лёгкая «стеклянная» подложка */
+  backdrop-filter: saturate(120%) blur(2px);
+}
+
+.auth-card {
+  width: min(720px, 92vw);
+  background: rgba(12, 27, 22, 0.55);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+
+/* no scroll by default; allow only on wishlist */
+html, body { height: 100%; }
+body { overflow: hidden; }
+body.allow-scroll { overflow: auto; }
