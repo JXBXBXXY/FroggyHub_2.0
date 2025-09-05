@@ -55,6 +55,15 @@ body{
 }
 
 .fh-bubble {
+  position: absolute;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: var(--brand-600);
+  color: var(--on-brand);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  font-size: 14px;
+  white-space: nowrap;
+  user-select: none;
   animation: floaty 6s ease-in-out infinite alternate;
 }
 
