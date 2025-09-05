@@ -2917,7 +2917,10 @@ const BUBBLE_MESSAGES = [
   "беру настолки!",
 ];
 
+const bubbleAnims = [];
+
 function layoutBubbles(bubbles) {
+  bubbleAnims.length = 0;
   const vw = window.innerWidth, vh = window.innerHeight;
   const cols = Math.max(6, Math.floor(vw / 220));
   const rows = Math.max(4, Math.floor(vh / 160));
@@ -2941,8 +2944,21 @@ function layoutBubbles(bubbles) {
       const bb = { x: box.x-130, y: box.y-26, w: 260, h: 52 };
       if (intersects(bb, frogBox) || intersects(bb, ctaBox) || taken.some(t => intersects(bb, t))) continue;
       taken.push(bb);
-      el.style.transform = `translate(${bb.x}px, ${bb.y}px) rotate(${(Math.random()*16-8).toFixed(1)}deg)`;
+      const rot = Math.random()*16-8;
+      el.style.transform = `translate(${bb.x}px, ${bb.y}px) rotate(${rot.toFixed(1)}deg)`;
       el.style.opacity = '0.9';
+      bubbleAnims.push({
+        el,
+        x: bb.x,
+        y: bb.y,
+        rot,
+        angleX: Math.random()*Math.PI*2,
+        angleY: Math.random()*Math.PI*2,
+        speedX: 0.0005 + Math.random()*0.0015,
+        speedY: 0.0005 + Math.random()*0.0015,
+        radiusX: 10 + Math.random()*25,
+        radiusY: 10 + Math.random()*25
+      });
       break;
     }
   }
@@ -2972,167 +2988,109 @@ function relayoutBubbles() {
   }, 180);
 }
 
+let bubbleRAF;
+function tickBubbles(ts){
+  if(!bubbleRAF) bubbleRAF = ts;
+  const dt = ts - bubbleRAF;
+  bubbleRAF = ts;
+  for(const b of bubbleAnims){
+    b.angleX += b.speedX * dt;
+    b.angleY += b.speedY * dt;
+    const x = b.x + Math.cos(b.angleX) * b.radiusX;
+    const y = b.y + Math.sin(b.angleY) * b.radiusY;
+    b.el.style.transform = `translate(${x}px, ${y}px) rotate(${b.rot.toFixed(1)}deg)`;
+  }
+  requestAnimationFrame(tickBubbles);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   renderBubbles();
+  requestAnimationFrame(tickBubbles);
   window.addEventListener('resize', relayoutBubbles, { passive: true });
 });
 
-// === Fix: make "Настройки" button navigate to /settings ===
-(function () {
-  function goToSettings() { window.location.href = "/settings"; }
+// --- FroggyHub SPA router & auth overlay ---
+(function(){
+  const SCREENS = ['auth','home','profile','settings'];
 
-  document.addEventListener("click", function (e) {
-    const t = e.target;
-    if (!(t instanceof Element)) return;
-    const el = t.closest("#settingsBtn, [data-role='settings']");
-    if (el) { e.preventDefault?.(); goToSettings(); }
-  });
-
-  document.addEventListener("DOMContentLoaded", function () {
-    const btn = document.getElementById("settingsBtn") || document.querySelector("[data-role='settings']");
-    if (btn) {
-      btn.addEventListener("click", function (e) { e.preventDefault?.(); goToSettings(); });
-      if (!(btn instanceof HTMLAnchorElement)) btn.style.cursor = "pointer";
-    }
-  });
-})();
-
-// === Fix: make "Настройки" navigate smoothly (no full reload) ===
-(function () {
-  function goToSettings() {
-    // Мягкая SPA-навигация: меняем URL без перезагрузки.
-    history.pushState({}, "", "/settings");
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  }
-
-  // Делегированный обработчик — работает для любых кнопок/иконок
-  document.addEventListener("click", function (e) {
-    const t = e.target;
-    if (!(t instanceof Element)) return;
-    const el = t.closest("#settingsBtn, [data-role='settings']");
-    if (el) {
-      e.preventDefault?.();
-      goToSettings();
-    }
-  });
-
-  // Прямое навешивание, если элемент уже есть в DOM
-  document.addEventListener("DOMContentLoaded", function () {
-    const btn =
-      document.getElementById("settingsBtn") ||
-      document.querySelector("[data-role='settings']");
-    if (btn) {
-      btn.addEventListener("click", function (e) {
-        e.preventDefault?.();
-        goToSettings();
-      });
-      if (!(btn instanceof HTMLAnchorElement)) {
-        btn.style.cursor = "pointer";
-      }
-    }
-  });
-})();
-// --- FH tiny router (append only) ---
-(function () {
-  const $ = (s) => document.querySelector(s);
-
-  const SCREENS = {
-    home:   '#screen-home',
-    auth:   '#screen-auth',
-    profile:'#screen-profile',
-    hub:    '#screen-hub'
-  };
-
-  function hideAll() {
-    Object.values(SCREENS).forEach(sel => {
-      const el = $(sel);
-      if (el) el.classList.add('hidden');
+  function hideAll(){
+    SCREENS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('visible');
     });
   }
 
-  function show(id) {
-    const sel = SCREENS[id] || SCREENS.home;
-    const el = $(sel);
-    if (el) el.classList.remove('hidden');
+  function show(id){
+    hideAll();
+    const el = document.getElementById(id);
+    if (el) el.classList.add('visible');
   }
 
-  // public API
-  if (!window.fhRouter) {
-    window.fhRouter = {
-      go(id) {
-        const hash = typeof id === 'string' && id.startsWith('#') ? id : `#${id}`;
-        if (location.hash !== hash) location.hash = hash;
-        // ensure render even if hashchange was suppressed
-        render();
-      }
-    };
-  }
-
-  async function hasSession() {
-    try {
+  let hasSess = false;
+  async function checkSession(){
+    try{
       const c = window.getSupabase && window.getSupabase();
-      if (!c) return false;
+      if(!c) return false;
       const { data } = await c.auth.getSession();
       return !!data?.session;
-    } catch {
-      return false;
-    }
+    }catch{ return false; }
   }
 
-  async function decideInitialRoute() {
-    // explicit hash wins; otherwise choose by session
-    const raw = (location.hash || '').replace(/^#/, '');
-    if (raw === 'home' || raw === 'auth' || raw === 'profile' || raw === 'hub') {
-      return raw;
+  async function boot(){
+    hasSess = await checkSession();
+    const initial = (location.hash||'').replace('#','');
+    if(!initial){
+      location.hash = hasSess ? '#home' : '#auth';
     }
-    return (await hasSession()) ? 'home' : 'auth';
+    render();
   }
 
-  function render() {
-    const id = (location.hash || '').replace(/^#/, '') || 'home';
-    hideAll();
+  function render(){
+    let id = (location.hash||'').replace('#','');
+    if(!id) id = hasSess ? 'home' : 'auth';
+    if(id !== 'auth' && !hasSess){
+      id = 'auth';
+      if(location.hash !== '#auth') location.hash = '#auth';
+    }
     show(id);
   }
 
-  // bootstrap: pick initial route based on session if hash empty
-  (async function bootRoute() {
-    if (!location.hash) {
-      const target = await decideInitialRoute();
-      window.fhRouter.go(target);
-    } else {
-      render();
-    }
-  })();
+  function fadeTo(id){
+    show(id);
+    if(location.hash !== '#' + id) location.hash = '#' + id;
+  }
 
-  // re-render on hash changes
-  window.addEventListener('hashchange', render, { passive: true });
-})();
-
-// --- FH nav buttons binding (append only) ---
-(function () {
-  const $ = (s) => document.querySelector(s);
-  function bind(id, target) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (el.__fh_bound) return; // idempotent
-    el.__fh_bound = true;
-    el.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.fhRouter && window.fhRouter.go(target);
+  // auth state listener
+  if(typeof onAuthState === 'function'){
+    onAuthState((session)=>{
+      hasSess = !!session;
+      if(session){
+        try{ localStorage.setItem('fh.session', '1'); }catch{}
+      }else{
+        try{ localStorage.removeItem('fh.session'); }catch{}
+      }
+      fadeTo(hasSess ? 'home' : 'auth');
     });
   }
 
-  function ready(fn){ 
-    document.readyState === 'loading' ? 
-      document.addEventListener('DOMContentLoaded', fn) : fn();
+  // navigation buttons
+  function bindNav(id, target){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('click', e=>{
+      e.preventDefault();
+      location.hash = '#' + target;
+    });
   }
 
-  ready(() => {
-    // adapt IDs to your actual buttons if they differ
-    bind('btn-menu',   'home');   // main menu -> home
-    bind('btn-login',  'auth');   // go to auth
-    bind('btn-profile','profile');
+  document.addEventListener('DOMContentLoaded', ()=>{
+    boot();
+    bindNav('nav-menu','home');
+    bindNav('nav-profile','profile');
+    bindNav('nav-settings','settings');
   });
+
+  window.addEventListener('hashchange', render, { passive:true });
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
