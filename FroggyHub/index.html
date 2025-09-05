@@ -9,110 +9,19 @@
     <link rel="icon"
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <script>
-    // Safe ENV injection for static hosting (Netlify replaces PUBLIC_* at build time)
-    window.ENV = window.ENV || {
-      SUPABASE_URL: "${PUBLIC_SUPABASE_URL}" || "PUBLIC_SUPABASE_URL",
-      SUPABASE_ANON_KEY: "${PUBLIC_SUPABASE_ANON_KEY}" || "PUBLIC_SUPABASE_ANON_KEY"
-    };
-    // Normalise empty placeholders -> undefined
-    for (const k of ["SUPABASE_URL","SUPABASE_ANON_KEY"]) {
-      if (!window.ENV[k] || /PUBLIC_SUPABASE_/i.test(window.ENV[k])) window.ENV[k] = undefined;
-    }
+  (function(){
+    const E = (window.ENV ||= {});
+    // Netlify подставляет значения в PUBLIC_*; валидируем и нормализуем
+    const u = (E.PUBLIC_SUPABASE_URL || '').trim();
+    const k = (E.PUBLIC_SUPABASE_ANON_KEY || '').trim();
+    if (!/^https?:\/\//i.test(u)) E.PUBLIC_SUPABASE_URL = '';
+    if (!k || k.includes('PUBLIC_SUPABASE_ANON_KEY')) E.PUBLIC_SUPABASE_ANON_KEY = '';
+  })();
   </script>
-    <style>
-    /* Message clouds background */
-    #fh-message-clouds {
-      position: fixed; inset: 0;
-      z-index: 0;             /* ниже основного контента */
-      pointer-events: none;   /* не перехватываем клики */
-      overflow: hidden;
-    }
-    .fh-cloud {
-      position: absolute;
-      max-width: 44ch;
-      padding: 10px 14px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: saturate(150%) blur(6px);
-      -webkit-backdrop-filter: saturate(150%) blur(6px);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.85);
-      font-size: 14px;
-      line-height: 1.3;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-      transform-origin: center;
-    }
-    /* на маленьких экранах делаем меньше, чтобы не мешало */
-    @media (max-width: 640px) {
-      .fh-cloud { font-size: 12px; max-width: 32ch; }
-    }
-  </style>
-  <style>
-    /* Message clouds background */
-    #fh-message-clouds {
-      position: fixed; inset: 0;
-      z-index: 0;             /* ниже основного контента */
-      pointer-events: none;   /* не перехватываем клики */
-      overflow: hidden;
-    }
-    .fh-cloud {
-      position: absolute;
-      max-width: 44ch;
-      padding: 10px 14px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: saturate(150%) blur(6px);
-      -webkit-backdrop-filter: saturate(150%) blur(6px);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.85);
-      font-size: 14px;
-      line-height: 1.3;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-      transform-origin: center;
-      animation: floaty 6s ease-in-out infinite;
-    }
-
-    @keyframes floaty {
-      0%   { transform: translateY(0) rotate(var(--rot, 0deg)); }
-      50%  { transform: translateY(-6px) rotate(calc(var(--rot, 0deg) * 1.1)); }
-      100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
-    }
-
-    @media (max-width: 640px) {
-      .fh-cloud { font-size: 12px; max-width: 32ch; }
-    }
-  </style>
-  <style>
-    .fh-bg {
-      position: fixed; inset: 0; z-index: 0;
-      background: #0b241b url("/assets/froggy_glass_bg.jpeg") center 45% / cover no-repeat;
-    }
-    @media (min-width: 640px) {
-      .fh-bg { background-position: center; }
-    }
-    .fh-bg::after { content:""; position:absolute; inset:0; background: rgba(11,36,27,.55); }
-    #fh-message-clouds { position: fixed; inset: 0; z-index: 0; pointer-events:none; }
-    .fh-content { position: relative; z-index: 20; min-height: 100svh; padding-inline: 1rem; }
-    #fh-cta { position: relative; z-index: 30; }
-  </style>
 </head>
 <body class="scene-intro">
-  <div class="fh-bg" aria-hidden="true"></div>
-  <div class="fh-bubbles">
-    <div class="fh-bubbles__grid" id="fh-bubbles"></div>
-  </div>
-  <div class="fh-content" id="fh-content">
-  <!-- Шапка -->
-  <nav class="topbar">
-    <div class="topbar-left">
-      <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
-    </div>
-    <div class="topbar-right">
-      <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
-      <button id="nav-profile" class="btn btn-sm btn-ghost" data-link="profile">Профиль</button>
-      <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings">Настройки</button>
-    </div>
-  </nav>
+  <div class="fh-bubbles" aria-hidden="true"></div>
+  <div id="screens">
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="screen container" role="main">
     <div class="card card-auth auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
@@ -179,7 +88,7 @@
   </section>
 
   <!-- ЭКРАН МЕНЮ -->
-  <section id="screen-home" class="screen visible" role="main">
+<section id="screen-home" class="screen" role="main">
     <div id="hero" class="hero hero-frog">
       <img class="frog" src="/assets/frog_idle.png" alt="Froggy" />
       <img class="stump" src="/assets/stump.png" alt="" aria-hidden="true" />
@@ -256,7 +165,7 @@
   </div>
 </section>
 
-<section id="screen-wishlist" class="screen scrollable" role="main" aria-hidden="true">
+<section id="screen-wishlist" class="screen" data-scroll="auto" role="main" aria-hidden="true">
   <div class="panel">
     <h2>Wishlist</h2>
     <form id="form-wish-add" class="row">
@@ -540,7 +449,19 @@
     </div>
   </section>
 
-  <section id="screen-settings" class="screen"></section>
+<section id="screen-settings" class="screen"></section>
+</div>
+<!-- Шапка -->
+<nav class="topbar">
+  <div class="topbar-left">
+    <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
+  </div>
+  <div class="topbar-right">
+    <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
+    <button id="nav-profile" class="btn btn-sm btn-ghost" data-link="profile">Профиль</button>
+    <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings">Настройки</button>
+  </div>
+</nav>
 
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
   <dialog id="otpModal">
@@ -580,7 +501,6 @@
       <button id="cookie-accept" class="btn btn-primary btn-sm">Принять</button>
     </div>
   </div>
-</div>
 <script src="/.netlify/functions/env"></script>
 <script type="module" src="./js/app.js"></script>
 </body>
