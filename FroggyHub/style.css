@@ -928,6 +928,15 @@ button:not([disabled]){ cursor:pointer; }
   --bubble-bottom-gap: 64px;   /* отступ снизу */
   --bubble-opacity: 0.92;
   --bubble-blur: 0px;          /* фон у пузырей без блюра (чтобы не спорить с карточкой) */
+
+  --chip-fg:        #eaf5f0;          /* цвет текста */
+  --chip-bg-1:      rgba(255,255,255,0.06); /* общий фон */
+  --chip-bg-2:      rgba(255,255,255,0.10); /* блик сверху */
+  --chip-stroke:    rgba(255,255,255,0.09); /* внешняя обводка */
+  --chip-innerLine: rgba(0,0,0,0.22);       /* тонкая внутренняя линия */
+  --chip-shadow:    rgba(0,0,0,0.36);       /* основная тень */
+  --chip-shadow-spread: 22px;               /* рассеяние тени */
+  --chip-font: 14.5px;                      /* комфортный кегль */
 }
 #fh-message-clouds{
   position: fixed;
@@ -936,33 +945,66 @@ button:not([disabled]){ cursor:pointer; }
   pointer-events: none;
   overflow: hidden;
 }
+
 .fh-chip{
   position: absolute;
-  max-width: 38ch;             /* ограничим длину фразы */
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.04);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.06) inset,
-    0 8px 20px rgba(0,0,0,0.35);
-  outline: 1px solid rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.88);
-  backdrop-filter: blur(var(--bubble-blur));
-  -webkit-backdrop-filter: blur(var(--bubble-blur));
-  opacity: 0;
-  transform: translate3d(0, 6px, 0) scale(.995);
-  transition:
-    opacity .6s ease,
-    transform .6s cubic-bezier(.2,.65,.2,1);
-  will-change: transform, opacity;
+  color: var(--chip-fg);
+  font-size: var(--chip-font);
+  line-height: 1;
+  letter-spacing: .2px;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
+
+  background:
+    linear-gradient(180deg, var(--chip-bg-2), var(--chip-bg-1)) padding-box,
+    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)) border-box;
+  border: 1px solid var(--chip-stroke);
+  box-shadow:
+    0 16px var(--chip-shadow-spread) var(--chip-shadow),
+    0 1px 0 rgba(255,255,255,0.07) inset,
+    0 0 0 1px var(--chip-innerLine) inset;
+  backdrop-filter: blur(2px) saturate(110%) brightness(1.02);
+  -webkit-backdrop-filter: blur(2px) saturate(110%) brightness(1.02);
+
+  opacity:0;
+  transform: translate3d(0, 8px, 0) scale(.995);
+  transition:
+    opacity .55s ease,
+    transform .55s cubic-bezier(.2,.65,.2,1);
+  will-change: transform, opacity;
 }
+
+.fh-chip::before{
+  content:"";
+  position:absolute; inset:0;
+  border-radius:inherit;
+  background: linear-gradient( to bottom,
+    rgba(255,255,255,0.30) 0%,
+    rgba(255,255,255,0.12) 14%,
+    rgba(255,255,255,0.00) 40%
+  );
+  mix-blend-mode:soft-light;
+  pointer-events:none;
+}
+
 .fh-chip.show{
-  opacity: var(--bubble-opacity);
+  opacity:.92;
   transform: translate3d(0,0,0) scale(1);
 }
+
+/* эмодзи слегка опускаем, чтобы вписались по базовой линии */
+.fh-chip .e,
+.fh-chip .emoji{
+  display:inline-block;
+  transform: translateY(1px);
+}
+
+/* компактные варианты длиной фразы — чуть меньше паддинги */
+.fh-chip[data-size="sm"]{ padding: 8px 14px; font-size: 13.8px; }
+.fh-chip[data-size="lg"]{ padding: 11px 18px; }
 /* лёгкое «дыхание», но только если не reduced-motion */
 @media (prefers-reduced-motion: no-preference){
   .fh-chip.show{
