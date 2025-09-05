@@ -37,7 +37,7 @@
 }
 
 *{box-sizing:border-box}
-html,body{height:100%;overflow-x:hidden}
+html,body{height:100%;}
 body{
   margin:0;
   background:radial-gradient(120% 120% at 50% 30%, var(--bg-dark2), var(--bg-dark));
@@ -979,7 +979,7 @@ button:not([disabled]){ cursor:pointer; }
 /* screens sit above chips */
 .screen {
   position: relative;
-  z-index: 1;
+  z-index: 10;
 }
 
 /* full screen auth page over chips */
@@ -1001,7 +1001,20 @@ button:not([disabled]){ cursor:pointer; }
   box-shadow: 0 24px 60px rgba(0,0,0,0.35);
 }
 
-/* no scroll by default; allow only on wishlist */
-html, body { height: 100%; }
-body { overflow: hidden; }
+
+/* layers */
+.auth-wrap, .auth-card { position: relative; z-index: 30; }
+
+/* remove blur on auth overlay */
+#screen-auth,
+#auth-overlay,
+.auth-backdrop,
+.auth-card::before,
+.auth-card::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: transparent !important;
+}
+/* scroll lock except wishlist */
+html, body { height: 100%; overflow: hidden; }
 body.allow-scroll { overflow: auto; }

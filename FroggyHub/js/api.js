@@ -1,82 +1,80 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+const ENV = window?.ENV ?? {};
+const URL = (ENV.PUBLIC_SUPABASE_URL || '').trim();
+const KEY = (ENV.PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
-// ---- SAFE SUPABASE FACTORY (guards placeholders/invalid URL) ----
+function looksLikePlaceholder(s) {
+  return !s || /PUBLIC_SUPABASE_/i.test(s) || s.endsWith('/');
+}
+
+let _supa = null;
 export const supa = (() => {
-  const rawUrl = window?.ENV?.PUBLIC_SUPABASE_URL ?? "";
-  const rawKey = window?.ENV?.PUBLIC_SUPABASE_ANON_KEY ?? "";
-
-  // Плейсхолдеры Netlify/пустые строки считаем «нет кредов»
-  const isPlaceholder = (v) =>
-    !v || /^\$?PUBLIC_SUPABASE_/i.test(String(v));
-
-  if (isPlaceholder(rawUrl) || isPlaceholder(rawKey)) {
-    console.warn("[supa] creds are placeholders/missing, skip init", {
-      url: rawUrl,
-      hasKey: !!rawKey,
-    });
+  if (_supa) return _supa;
+  if (looksLikePlaceholder(URL) || looksLikePlaceholder(KEY)) {
+    console.warn('[supa] creds are placeholders/missing, skip init', { URL, KEY: KEY && KEY.slice(0,6) + '…' });
     return null;
   }
-
-  const url = String(rawUrl).trim();
-  const key = String(rawKey).trim();
-
-  // Валидация URL — если кривой, не инициализируем
-  try {
-    // бросит исключение, если url невалидный
-    // eslint-disable-next-line no-new
-    new URL(url);
-  } catch {
-    console.warn("[supa] invalid URL, skip init", { url });
-    return null;
-  }
-
-  try {
-    return createClient(url, key, {
-      auth: { persistSession: true, autoRefreshToken: true },
-    });
-  } catch (e) {
-    console.error("[supa] init error", e);
-    return null;
-  }
+  _supa = window.supabase?.createClient
+    ? window.supabase.createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true } })
+    : null;
+  return _supa;
 })();
-// -----------------------------------------------------------------
 
 export const getSession = () => {
   if (!supa) {
-    console.warn("[auth] Supabase is not configured");
+    console.warn('[auth] Supabase is not configured');
     return null;
   }
   return supa.auth.getSession().then((r) => r.data.session);
 };
+
 export const onAuthState = (cb) => {
   if (!supa) {
-    console.warn("[auth] Supabase is not configured");
+    console.warn('[auth] Supabase is not configured');
     return null;
   }
   return supa.auth.onAuthStateChange((_evt, session) => cb(session));
 };
-export const signIn = (email, password) => {
-  if (!supa) {
-    console.warn("[auth] Supabase is not configured");
-    return null;
+
+export async function signIn({ login, password }) {
+  if (!supa) throw new Error('Supabase is not configured');
+  const isEmail = /\S+@\S+\.\S+/.test(login);
+  let email = login;
+  if (!isEmail && supa.rpc) {
+    const { data, error } = await supa.rpc('get_email_by_nickname', { p_nickname: login });
+    if (error) throw error;
+    if (!data?.email) throw new Error('User not found');
+    email = data.email;
   }
   return supa.auth.signInWithPassword({ email, password });
-};
-export const signUp = (email, password) => {
-  if (!supa) {
-    console.warn("[auth] Supabase is not configured");
-    return null;
-  }
-  return supa.auth.signUp({ email, password });
-};
+}
+
+export async function signUpWithNickname({ nickname, email, password }) {
+  if (!supa) throw new Error('Supabase is not configured');
+  return supa.auth.signUp({
+    email,
+    password,
+    options: { data: { nickname } }
+  });
+}
+
+export function resetPassword(email) {
+  if (!supa) throw new Error('Supabase is not configured');
+  return supa.auth.resetPasswordForEmail(email);
+}
+
 export const signOut = () => {
   if (!supa) {
-    console.warn("[auth] Supabase is not configured");
+    console.warn('[auth] Supabase is not configured');
     return null;
   }
   return supa.auth.signOut();
 };
+
 export async function getProfile() {
+  if (!supa) {
+    console.warn('[auth] Supabase is not configured');
+    return null;
+  }
   const { data } = await supa.from('profiles').select('*').single();
   return data;
 }
@@ -127,4 +125,3 @@ fetch(`${window.ENV.PUBLIC_SUPABASE_URL}/auth/v1/health`, {
 }).then(r => r.text()).then(console.log).catch(console.error);
 // Должен вернуться JSON с GoTrue, без CORS/host not found.
 */
-
