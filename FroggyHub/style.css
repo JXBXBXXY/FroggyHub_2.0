@@ -51,6 +51,7 @@ body{
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
 }
 
 /* Состояния пузыря */
@@ -108,11 +109,13 @@ body{
   padding: .5rem 1rem;
   border-radius: 999px;
   background: rgba(255,255,255,0.06);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
   color: #e6f6ef;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
   backdrop-filter: blur(2px);
   white-space: nowrap;
-  transform: translateZ(0);
+  will-change: transform;
+  transform: translate3d(0,0,0);
+  user-select: none;
 }
 
 /* На маленьких экранах делаем чипы компактнее */
@@ -983,7 +986,6 @@ button:not([disabled]){ cursor:pointer; }
 }
 /* Базовая фиксация скролла: по умолчанию скролла НЕТ */
 html, body { height: 100%; }
-body.allow-scroll { overflow: hidden; }
 #screen-wishlist {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
