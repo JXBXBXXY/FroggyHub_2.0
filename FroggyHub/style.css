@@ -36,78 +36,88 @@
   --frog-hero-min: 360px;
   --fh-bubbles-top-gap: 72px;
   --fh-bubbles-bottom-gap: 120px;
+  --chip-gap-x: 18px;
+  --chip-gap-y: 16px;
+  --chip-radius: 999px;
+  --chip-fade-in: 420ms;
+  --chip-fade-out: 420ms;
+  --bubble-layer-z: 1;   /* фон ниже экранов */
+  --screens-z: 2;
+  --auth-z: 3;
 }
 
 *{box-sizing:border-box}
-html,body{height:100%;overflow-x:hidden}
+html,body{height:100%;}
 body{
   margin:0;
-  background:radial-gradient(120% 120% at 50% 30%, var(--bg-dark2), var(--bg-dark));
+  overflow:hidden;
+  background:#0e2a23;
   color:var(--text);
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 
-/* Контейнер для фона с пузырями */
-.fh-bubbles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-  padding-top: var(--fh-bubbles-top-gap);
-  padding-bottom: var(--fh-bubbles-bottom-gap);
+/* Разрешаем скролл, когда нужно */
+body.allow-scroll{ overflow:auto; }
+
+/* Контейнер «смсок» за экранами */
+.fh-bubbles{
+  position:fixed; inset:0;
+  z-index:var(--bubble-layer-z);
+  pointer-events:none;
 }
 
-/* Состояния пузыря */
-.fh-bubble {
-  position: absolute;
-  padding: 8px 14px;
-  border-radius: 20px;
-  background: var(--brand-600);
-  color: var(--on-brand);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  font-size: 14px;
-  white-space: nowrap;
-  user-select: none;
-  opacity: 0;
-  transform: translate3d(0,0,0) scale(1);
-  transition: opacity 350ms ease, transform 350ms ease;
-  will-change: opacity, transform;
-}
-.fh-bubble--in {
-  opacity: 1;
-}
-.fh-bubble--out {
-  opacity: 0;
-  transform: translate3d(0, 6px, 0) scale(.98);
-}
-
-@keyframes floaty {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(4px, -6px) scale(1.05); }
-  100% { transform: translate(-3px, 3px) scale(0.95); }
-}
-
-/* Базовый вид «смс» в виде iOS-пилюли */
-.bubble.chip{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:8px 12px;border-radius:999px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
-  color: rgba(255,255,255,.85);
-  font-size: 14px; line-height: 1;
-  transform: translate3d(0,0,0);
-  transition: transform .2s ease-out, opacity .3s ease;
-  white-space: nowrap;
-  will-change: transform;
-}
-
+/* Чипы-сообщения */
 .fh-bubbles .chip{
-  margin: 6px 8px;
-  will-change: transform, opacity;
-  transition: opacity .45s ease, transform .6s ease;
+  display:inline-block;
+  max-width: 38ch;
+  padding: 8px 14px;
+  margin: 0;
+  border-radius: var(--chip-radius);
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d9f5e9;
+  backdrop-filter: blur(3px) saturate(105%);
+  -webkit-backdrop-filter: blur(3px) saturate(105%);
+  opacity:0; transform: translateY(6px);
+  animation: chipIn var(--chip-fade-in) ease forwards;
+}
+
+@keyframes chipIn{
+  to{ opacity:1; transform:translateY(0); }
+}
+@keyframes chipOut{
+  to{ opacity:0; transform:translateY(6px); }
+}
+
+/* Экранный слой выше фона */
+#screens{ position:relative; z-index:var(--screens-z); padding-top:60px; }
+
+/* Карточка авторизации — стекло, ниже центра и сильнее «мутная» */
+.auth-card{
+  position: relative;
+  top: 4vh; /* опустить немного */
+  background: rgba(9, 35, 28, 0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 18px 60px rgba(0,0,0,0.45);
+  backdrop-filter: blur(18px) brightness(0.95);
+  -webkit-backdrop-filter: blur(18px) brightness(0.95);
+  z-index: var(--auth-z);
+}
+
+/* Чуть усилить свечения при фокусе инпутов */
+.auth-card .input:focus{
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.4), inset 0 0 0 1px rgba(52,211,153,0.25);
+  outline: none;
+}
+
+/* Без наложений: чипы будут вставать в ячейки сетки — пробелы между ними гарантированы */
+.fh-bubbles .grid{
+  position:absolute; inset:6vh 5vw; /* поля сверху/снизу чтобы не лезли под меню */
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-rows: minmax(34px, auto);
+  gap: var(--chip-gap-y) var(--chip-gap-x);
 }
 
 /* При скрытии контейнера экрана */
@@ -751,7 +761,7 @@ body.scene-intro .speech{display:block}
 
 /* Top bar */
 .topbar{
-  position: sticky; top: 0; z-index: 50;
+  position: fixed; top: 0; left:0; right:0; z-index: 50;
   display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px;
   background:rgba(0,0,0,.15); backdrop-filter:blur(6px);
@@ -885,15 +895,6 @@ button:not([disabled]){ cursor:pointer; }
 .w-100{width:100%}
 
 /* === Auth polish === */
-.auth-card{max-width:640px;margin:6vh auto;padding:20px 22px;border-radius:18px;
-  background:rgba(10,24,20,0.58);border:1px solid rgba(255,255,255,.09);
-  backdrop-filter:blur(18px) saturate(120%);
-  -webkit-backdrop-filter:blur(18px) saturate(120%);
-  box-shadow:0 18px 40px rgba(0,0,0,.35);
-  transform:translateY(6vh);
-  position:relative;
-  z-index:5;
-}
 .auth-card h1,.auth-card h2{letter-spacing:.2px}
 .auth-card .tabs{margin:10px 0 14px}
 .auth-card .input, .auth-card input[type="text"], .auth-card input[type="password"]{
@@ -907,19 +908,6 @@ button:not([disabled]){ cursor:pointer; }
   .auth-card{margin:3vh 12px;padding:16px}
 }
 
-@media (min-height:720px){
-  .auth-card{transform:translateY(8vh)}
-}
-
-/* Glass auth card — чуть мутнее и ниже центра */
-.hero-frog .card-auth,
-#screen-auth .card-auth {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: rgba(8, 30, 22, 0.24);
-  transform: translateY(4vh);
-}
-
 /* === Final single-column === */
 .final-wrap{max-width:860px;margin:32px auto;padding:0 16px;display:block}
 .final-card{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
@@ -931,34 +919,4 @@ button:not([disabled]){ cursor:pointer; }
   .final-card{padding:16px}
 }
 
-/* --- Scroll control ------------------------------------------------------ */
-html, body {
-  height: 100%;
-}
-body.fh-scroll-locked {
-  overflow: hidden;
-}
 
-/* Разрешаем скролл только для экранов, которым это нужно */
-.screen.scrollable {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* --- Бабблы: слой под основным контентом, но над фоном ------------------- */
-.fh-bubbles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1; /* ниже экранов/оверлеев */
-}
-
-/* Стек: фоновый слой (1), экраны (2), оверлей авторизации (3) */
-.fh-content { position: relative; z-index: 2; }
-.auth-overlay { position: relative; z-index: 3; }
-
-/* Чтобы «смски» не залипали к краям */
-.fh-bubbles__grid {
-  position: absolute;
-  inset: 6vh 6vw; /* внутренние поля сверху/снизу/слева/справа */
-}
