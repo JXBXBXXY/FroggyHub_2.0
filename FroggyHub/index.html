@@ -88,11 +88,11 @@
 <body class="scene-intro">
   <div class="fh-bg" aria-hidden="true"></div>
   <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true">
-    <div class="bubble chip">Создавайте события</div>
-    <div class="bubble chip">Делитесь вишлистами</div>
-    <div class="bubble chip">Планируйте встречи</div>
-    <div class="bubble chip">Приглашайте друзей</div>
-    <div class="bubble chip">Следите за ответами</div>
+    <div class="fh-chip">Создавайте события</div>
+    <div class="fh-chip">Делитесь вишлистами</div>
+    <div class="fh-chip">Планируйте встречи</div>
+    <div class="fh-chip">Приглашайте друзей</div>
+    <div class="fh-chip">Следите за ответами</div>
   </div>
   <div class="fh-content">
   <!-- Шапка -->
@@ -108,7 +108,9 @@
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="screen container" role="main">
-    <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
+    <div class="auth-card-wrap">
+      <div class="auth-card">
+        <div class="card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-head">
         <div class="auth-avatar">
           <img src="/assets/frog_idle.png" alt="Froggy" />
@@ -165,6 +167,8 @@
           <div id="reg-status" aria-live="polite"></div>
         </form>
       </section>
+        </div>
+      </div>
     </div>
   </section>
 
