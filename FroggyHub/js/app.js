@@ -233,7 +233,7 @@ function updateChips(chips, root){
       chip.el.classList.add('chip-leave-active');
       const t=350+Math.random()*150;
       setTimeout(()=>{
-        root.removeChild(chip.el);
+        if (chip.el && chip.el.parentNode) chip.el.parentNode.removeChild(chip.el);
         const anchor=GRID[Math.floor(Math.random()*GRID.length)];
         const n=createChip(root, anchor);
         chips.splice(chips.indexOf(chip),1,n);

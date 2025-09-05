@@ -573,6 +573,13 @@
     </div>
   </div>
 </div>
+<!-- Supabase ENV for browser (Netlify will substitute on deploy) -->
+<script>
+  window.ENV = {
+    PUBLIC_SUPABASE_URL: "$PUBLIC_SUPABASE_URL",
+    PUBLIC_SUPABASE_ANON_KEY: "$PUBLIC_SUPABASE_ANON_KEY",
+  };
+</script>
 <script type="module" src="./js/app.js"></script>
 </body>
 </html>
