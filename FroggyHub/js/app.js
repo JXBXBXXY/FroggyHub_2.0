@@ -110,168 +110,155 @@ document.addEventListener('DOMContentLoaded', route);
 }
 
 // ==== BUBBLE ENGINE ===================================================
-(function initBubbles(){
+(function bubblesInit(){
   const stage = document.querySelector('.fh-bubbles');
-  if (!stage || stage.__ready) return; stage.__ready = true;
+  if (!stage || stage.__init) return; stage.__init = true;
 
-  // Сообщения (можно дополнять)
   const MESSAGES = [
-    'Кто возьмёт колу? 🥤','Буду с +1 🙂','Зайду за напитками 🛒','Я купил шарики 🎈',
-    'Забронировал столик 🍽️','Приеду на час раньше ⏱️','Давайте играть в мафию 😎',
-    'Кто возьмёт гитару? 🎸','Нужны свечи 🕯️','Принесу проектор 📽️','Я на машине 🚗',
-    'Возьму пледы 🧣','Давайте сделаем фото 📸','Где паркуемся? 🅿️','Я за пиццу 🍕',
-    'Кто возьмёт посуду? 🍽️','Я за салатом 🥗','Кто на десерт? 🧁','Поделитесь адресом 🗺️',
-    'Скиньте код 🔐','У кого карты? 🃏','Буду онлайн 💻','У меня есть проектор 🔌',
-    'Привезу настольный футбол ⚽️','Возьму настолки 🎲'
+    'Кто возьмёт колу? 🥤','Буду с +1 🙂','Заберу пиццу по пути 🍕','Я на машине 🚗',
+    'У кого карты? 🃏','Принесу проектор 📽️','Давайте сделаем фото 📸','Буду онлайн 💻',
+    'Зайду за напитками 🛒','Кто возьмёт посуду? 🍽️','Нужны свечи 🕯️','Привезу настолки 🎲',
+    'Приеду раньше ⏱️','Где паркуемся? 🅿️','Давайте сегодня тусовку? ✨','Я за салатом 🥗'
   ];
 
-  // Настройки
-  const LIFE_MS = 3200;         // жизнь 3.2s
-  const FADE_MS = 380;          // затухание/появление
-  const ORBIT = 8;              // орбитальное дрожание (px)
-  const GAP = 14;               // отступ «анти-оверлап»
-  const EXCLUDE_MARGIN = 24;    // буфер вокруг карточки
+  // параметры анимации
+  const LIFE = 3200;      // «жизнь» чипа
+  const FADE = 380;       // фейд
+  const PAD = 14;         // зазор между чипами
+  const ORBIT = 8;        // небольшое «дыхание» вокруг точки
 
-  // Сколько пузырей по площади
-  function targetCount(){
-    const area = innerWidth * innerHeight;
-    if (area > 1.6e6) return 84;         // ~> 1600x1000
-    if (area > 9e5)  return 64;          // ~> 1366x768
-    if (area > 5e5)  return 44;          // tablets
-    return 28;                           // mobile
-  }
+  // оценка размеров чипа для сетки
+  const probe = document.createElement('div');
+  probe.className = 'fh-bubble is-in';
+  probe.style.position='absolute';
+  probe.style.visibility='hidden';
+  probe.textContent='Давайте сделаем фото 📸';
+  stage.appendChild(probe);
+  const BH = Math.max(32, probe.getBoundingClientRect().height);
+  const BW = Math.max(160, probe.getBoundingClientRect().width);
+  probe.remove();
 
-  // Получить bbox области, куда нельзя ставить (карта авторизации)
-  function getExclude(){
+  function authRect(){
     const card = document.querySelector('.auth-wrapper, .fh-card');
-    if (!card) return null;
+    if(!card) return null;
     const r = card.getBoundingClientRect();
-    return {
-      left:  Math.max(0, r.left  - EXCLUDE_MARGIN),
-      top:   Math.max(0, r.top   - EXCLUDE_MARGIN),
-      right: Math.min(innerWidth,  r.right + EXCLUDE_MARGIN),
-      bottom:Math.min(innerHeight, r.bottom+ EXCLUDE_MARGIN)
-    };
+    const m = 24; // маленькая «буферная зона» вокруг карточки
+    return {left:r.left-m, top:r.top-m, right:r.right+m, bottom:r.bottom+m};
   }
 
-  // Построить сетку для размещения без пересечений
+  // Построение сетки с «буфером» и маской занятых соседей
   function buildGrid(){
-    const cols = Math.max(6, Math.floor(innerWidth  / 220)); // ширина ячейки ~220
-    const rows = Math.max(6, Math.floor(innerHeight / 120)); // высота  ~120
+    const ex = authRect();
+    const cols = Math.max(6, Math.floor(innerWidth / (BW + PAD*2)));
+    const rows = Math.max(6, Math.floor(innerHeight / (BH + PAD*2)));
     const cw = innerWidth / cols, ch = innerHeight / rows;
+
     const cells = [];
-    const exclude = getExclude();
-    for (let y=0;y<rows;y++){
-      for (let x=0;x<cols;x++){
-        const cx = x*cw, cy = y*ch;
-        const rect = { left:cx, top:cy, right:cx+cw, bottom:cy+ch, cx:cx+cw/2, cy:cy+ch/2 };
-        // отсечь область карточки
-        if (exclude && !(rect.right < exclude.left || rect.left > exclude.right ||
-                         rect.bottom < exclude.top || rect.top > exclude.bottom)) {
-          continue;
-        }
-        cells.push({x, y, rect, taken:false});
+    for(let y=0;y<rows;y++){
+      for(let x=0;x<cols;x++){
+        const cx = x*cw + cw/2;
+        const cy = y*ch + ch/2;
+        const left = cx - BW/2 - PAD, top = cy - BH/2 - PAD,
+              right = cx + BW/2 + PAD, bottom = cy + BH/2 + PAD;
+
+        // не заходим в область карточки авторизации
+        if (ex && !(right < ex.left || left > ex.right || bottom < ex.top || top > ex.bottom)) continue;
+
+        cells.push({x, y, cx, cy, taken:false});
       }
     }
-    return {cells, cw, ch};
+    return {cells, cols, rows, cw, ch};
   }
 
   let grid = buildGrid();
+  const TARGET = Math.min(grid.cells.length, 72); // не больше количества доступных ячеек
 
-  // Создать/поддерживать нужное число пузырей
-  const want = targetCount();
-  const bubbles = [];
-  for (let i=0;i<want;i++){
+  // запрещаем соседние клетки (чтобы чипы не соприкасались)
+  function markNeighborhood(cell, mark){
+    for (const c of grid.cells){
+      if (Math.abs(c.x - cell.x) <= 1 && Math.abs(c.y - cell.y) <= 1){
+        c.taken = mark;
+      }
+    }
+  }
+
+  function freeCells(){
+    return grid.cells.filter(c => !c.taken);
+  }
+
+  // создаём DOM-чипы
+  const chips = Array.from({length: TARGET}, (_,i)=>{
     const el = document.createElement('div');
     el.className = 'fh-bubble';
-    el.textContent = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+    el.textContent = MESSAGES[Math.floor(Math.random()*MESSAGES.length)];
     stage.appendChild(el);
-    bubbles.push({el, t0: performance.now() + Math.random()*LIFE_MS});
+    return {el, cell:null, t0: performance.now() + i*60};
+  });
+
+  // размещение в свободной ячейке (без соседей)
+  function place(chip){
+    const pool = freeCells();
+    if (!pool.length) return;
+    const cell = pool[Math.floor(Math.random()*pool.length)];
+    chip.cell = cell;
+    markNeighborhood(cell, true);
+
+    // случайный легкий сдвиг внутри ячейки
+    const jx = (Math.random()-.5) * (grid.cw - BW - PAD*2);
+    const jy = (Math.random()-.5) * (grid.ch - BH - PAD*2);
+    setPos(chip.el, cell.cx + jx, cell.cy + jy);
+    chip.el.classList.add('is-in');
   }
 
-  // Выбор свободной ячейки, близкой к idx (для равномерности)
-  function pickCell(seedIdx = 0){
-    const free = grid.cells.filter(c => !c.taken);
-    if (!free.length) return null;
-    const idx = Math.min(free.length-1, Math.floor(seedIdx % free.length));
-    return free[idx];
+  function setPos(el, cx, cy){
+    // орбита дышит в RAF, базовые координаты — дата-атрибуты
+    el.dataset.baseX = String(cx);
+    el.dataset.baseY = String(cy);
+    el.style.setProperty('--tx', `${Math.round(cx)}px`);
+    el.style.setProperty('--ty', `${Math.round(cy)}px`);
   }
 
-  // Расстановка без пересечений + «джиттер»
-  function place(el, cell){
-    const {rect} = cell;
-    cell.taken = true;
-    const jx = (Math.random()-.5) * (grid.cw*0.25);
-    const jy = (Math.random()-.5) * (grid.ch*0.25);
-    const x = Math.round(rect.cx + jx);
-    const y = Math.round(rect.cy + jy);
-    el.style.setProperty('--tx', x+'px');
-    el.style.setProperty('--ty', y+'px');
-  }
+  // первичное размещение
+  for(const chip of chips) place(chip);
 
-  // Переразметка сетки при ресайзе (debounce)
-  let rezTimer = 0;
-  addEventListener('resize', () => {
-    clearTimeout(rezTimer);
-    rezTimer = setTimeout(() => {
+  // цикл: выцветаем → освобождаем ячейку → берём новую
+  function tick(now){
+    for(const chip of chips){
+      const age = now - chip.t0;
+      if (age > LIFE){
+        chip.t0 = now;
+        // fade-out
+        chip.el.classList.remove('is-in');
+        const old = chip.cell;
+        if (old){ markNeighborhood(old, false); chip.cell = null; }
+        // подождать fade, затем показать в новой ячейке
+        setTimeout(()=>place(chip), FADE);
+      }else{
+        // лёгкая орбита
+        const bx = Number(chip.el.dataset.baseX||0);
+        const by = Number(chip.el.dataset.baseY||0);
+        const ox = Math.sin(now/900 + bx*0.001)*ORBIT;
+        const oy = Math.cos(now/1100 + by*0.001)*ORBIT;
+        chip.el.style.setProperty('--tx', `${Math.round(bx+ox)}px`);
+        chip.el.style.setProperty('--ty', `${Math.round(by+oy)}px`);
+      }
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  let raf = requestAnimationFrame(tick);
+
+  // перестройка на ресайз/ориентацию
+  let rto;
+  addEventListener('resize', ()=>{
+    clearTimeout(rto);
+    rto = setTimeout(()=>{
+      cancelAnimationFrame(raf);
       grid = buildGrid();
-      // пересадить текущие пузыри на ближайшие свободные ячейки
-      grid.cells.forEach(c => c.taken = false);
-      bubbles.forEach((b, i) => {
-        const cell = pickCell(i*1.7) || grid.cells[i % grid.cells.length];
-        if (!cell) return;
-        place(b.el, cell);
-        b.el.classList.add('is-in');
-      });
+      // снять все блокировки и раскидать заново
+      grid.cells.forEach(c=>c.taken=false);
+      for(const chip of chips){ chip.el.classList.remove('is-in'); }
+      setTimeout(()=>{ for(const chip of chips){ place(chip); } raf = requestAnimationFrame(tick); }, FADE);
     }, 120);
   }, {passive:true});
-
-  // Анимация «жизни» + орбита
-  function tick(now){
-    grid.cells.forEach(c => c.taken = false);
-    bubbles.forEach((b, i) => {
-      const alive = (now - b.t0) % (LIFE_MS + FADE_MS*2);
-      const el = b.el;
-
-      // цикл: fade-in -> live -> fade-out
-      if (alive < FADE_MS) {
-        // вход
-        if (!el.classList.contains('is-in')) el.classList.add('is-in');
-      } else if (alive > FADE_MS + LIFE_MS) {
-        // выход
-        el.classList.remove('is-in');
-      }
-
-      // если только что «родился» или «телепортируется» — дать новую ячейку
-      if (!el.__cell || !el.classList.contains('is-in') && alive < FADE_MS/2){
-        const cell = pickCell(i*2.3) || grid.cells[i % grid.cells.length];
-        if (cell){
-          place(el, cell);
-          el.__cell = cell;
-        }
-      } else {
-        // пометить ячейку занятой, чтобы другие не пересекались
-        el.__cell && (el.__cell.taken = true);
-      }
-
-      // орбитальное дрожание
-      const a = now/1000 * (0.6 + (i%7)/10);
-      const ox = Math.cos(a + i)*ORBIT;
-      const oy = Math.sin(a*1.1 + i*0.7)*ORBIT;
-      el.style.transform = `translate3d(calc(var(--tx) + ${ox}px), calc(var(--ty) + ${oy}px), 0)`;
-    });
-
-    requestAnimationFrame(tick);
-  }
-
-  // Первичное появление
-  requestAnimationFrame(() => {
-    grid.cells.forEach(c => c.taken = false);
-    bubbles.forEach((b,i) => {
-      const cell = pickCell(i*1.3) || grid.cells[i % grid.cells.length];
-      if (cell){ place(b.el, cell); b.el.classList.add('is-in'); }
-    });
-    requestAnimationFrame(tick);
-  });
 })();
 

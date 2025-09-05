@@ -52,11 +52,11 @@ body{
 #app-root{ position:relative; min-height:100vh; }
 
 /* Контейнер для фона с пузырями */
-.fh-bubbles {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
+.fh-bubbles{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
 }
 
 #screen-auth,
@@ -71,8 +71,8 @@ body{
 .fh-bubble {
   position: absolute;
   opacity: 0;
-  transform: translate3d(0,0,0) scale(.98);
-  transition: opacity .4s ease, transform .4s ease;
+  transform:translate3d(var(--tx,0px),var(--ty,0px),0) scale(.98);
+  transition: opacity .38s ease, transform .38s ease;
   will-change: transform, opacity;
   background: rgba(255,255,255,.08);
   border: 1px solid rgba(255,255,255,.12);
@@ -85,8 +85,8 @@ body{
 }
 
 .fh-bubble.is-in {
-  opacity: .92;
-  transform: translate3d(var(--tx,0),var(--ty,0),0) scale(1);
+  opacity:.92;
+  transform:translate3d(var(--tx,0px),var(--ty,0px),0) scale(1);
 }
 
 /* Базовый вид «смс» в виде iOS-пилюли */
