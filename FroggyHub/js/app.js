@@ -110,147 +110,6 @@ const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 function pickMessage() {
   return FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
 }
-function createJitteredGrid({ cols, rows, jitter, margin }) {
-  const anchors = [];
-  const w = window.innerWidth - margin * 2;
-  const h = window.innerHeight - margin * 2;
-  const cw = w / cols;
-  const ch = h / rows;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      anchors.push({
-        x: margin + c * cw + cw / 2 + (Math.random() * 2 - 1) * jitter,
-        y: margin + r * ch + ch / 2 + (Math.random() * 2 - 1) * jitter,
-      });
-    }
-  }
-  return anchors;
-}
-
-let GRID = createJitteredGrid({
-  cols: 10, rows: 8, jitter: 18, margin: 48
-});
-
-const MAX = window.innerWidth >= 1200 ? 36 : window.innerWidth >= 900 ? 26 : 16;
-
-function spawnChips(root){
-  root.innerHTML='';
-  const chips=[];
-  for(let i=0;i<MAX;i++){
-    const anchor=GRID[Math.floor(Math.random()*GRID.length)];
-    chips.push(createChip(root, anchor));
-  }
-  requestAnimationFrame(()=>requestAnimationFrame(()=>updateChips(chips, root)));
-}
-
-function createChip(root, anchor){
-  const el=document.createElement('div');
-  el.className='fh-chip chip-enter';
-  el.textContent=pickMessage();
-  const offset=()=> (Math.random()<0.5?-1:1)*(12+Math.random()*12);
-  const sx=offset(), sy=offset();
-  el.style.transform=`translate(${anchor.x+sx}px, ${anchor.y+sy}px)`;
-  root.appendChild(el);
-  requestAnimationFrame(()=>{
-    el.classList.add('chip-enter-active');
-    el.style.transform=`translate(${anchor.x}px, ${anchor.y}px)`;
-  });
-  el.addEventListener('transitionend',()=>el.classList.remove('chip-enter','chip-enter-active'),{once:true});
-  return{
-    el,
-    anchor:{...anchor},
-    phase:Math.random()*Math.PI*2,
-    omega:prefersReduced?0:(0.08+Math.random()*0.10),
-    radius:6+Math.random()*8,
-    life:performance.now()+3500+Math.random()*1000,
-    leaving:false,
-    x:anchor.x,
-    y:anchor.y
-  };
-}
-
-function updateChips(chips, root){
-  const now=performance.now();
-  const cellSize=80;
-  const hash=new Map();
-
-  chips.forEach(chip=>{
-    if(chip.leaving) return;
-    chip.phase+=chip.omega*(prefersReduced?0:(now-(chip.prev||now))/1000);
-    chip.prev=now;
-    chip.x=chip.anchor.x+chip.radius*Math.cos(chip.phase);
-    chip.y=chip.anchor.y+chip.radius*Math.sin(chip.phase);
-    const gx=Math.floor(chip.x/cellSize);
-    const gy=Math.floor(chip.y/cellSize);
-    const key=gx+','+gy;
-    if(!hash.has(key)) hash.set(key,[]);
-    hash.get(key).push(chip);
-  });
-
-  chips.forEach(chip=>{
-    if(chip.leaving) return;
-    const gx=Math.floor(chip.x/cellSize);
-    const gy=Math.floor(chip.y/cellSize);
-    for(let dx=-1;dx<=1;dx++){
-      for(let dy=-1;dy<=1;dy++){
-        const list=hash.get((gx+dx)+','+(gy+dy));
-        if(!list) continue;
-        for(const other of list){
-          if(other===chip || other.leaving) continue;
-          const dxv=chip.x-other.x;
-          const dyv=chip.y-other.y;
-          const dist=Math.hypot(dxv,dyv);
-          const minDist=24;
-          if(dist>0 && dist<minDist){
-            const push=(minDist-dist)/2;
-            const nx=dxv/dist;
-            const ny=dyv/dist;
-            chip.x+=nx*push;
-            chip.y+=ny*push;
-            other.x-=nx*push;
-            other.y-=ny*push;
-          }
-        }
-      }
-    }
-  });
-
-  chips.forEach(chip=>{
-    chip.el.style.transform=`translate(${chip.x}px, ${chip.y}px)`;
-    if(Math.random()<0.1){
-      const mult=0.96+Math.random()*0.04;
-      chip.el.style.opacity=0.9*mult;
-    } else {
-      chip.el.style.opacity=0.9;
-    }
-    if(!chip.leaving && now>chip.life){
-      chip.leaving=true;
-      const offset=()=> (Math.random()<0.5?-1:1)*(12+Math.random()*12);
-      const sx=offset(), sy=offset();
-      chip.el.style.transform=`translate(${chip.x+sx}px, ${chip.y+sy}px)`;
-      chip.el.classList.add('chip-leave');
-      chip.el.offsetWidth;
-      chip.el.classList.add('chip-leave-active');
-      const t=350+Math.random()*150;
-      setTimeout(()=>{
-        root.removeChild(chip.el);
-        const anchor=GRID[Math.floor(Math.random()*GRID.length)];
-        const n=createChip(root, anchor);
-        chips.splice(chips.indexOf(chip),1,n);
-      },t);
-    }
-  });
-
-  requestAnimationFrame(()=>updateChips(chips, root));
-}
-
-function desiredBubbleCount(){
-  return MAX;
-}
-
-function debounce(fn, wait=100){
-  let t; return (...args)=>{clearTimeout(t); t=setTimeout(()=>fn.apply(this,args),wait);};
-}
 
 // ---- BOOTSTRAP (один раз) -----------------------------------
 if (!window.FH) window.FH = {};
@@ -357,20 +216,129 @@ else {
     handle(signupForm, 'signup');
   })();
 
-  // ---- Фоновые «смс» (сетка + локальные орбиты)
-  (function bubbles() {
-    const root = document.querySelector('.fh-bubbles');
-    if (!root) return;
+  // ---- Фоновые «смс» без перекрытия
+  (function initBubblesNoOverlap() {
+    const container = document.querySelector('.fh-bubbles');
+    if (!container) return;
 
-    spawnChips(root);
+    // подготовка и генерация пузырей
+    container.innerHTML = '';
+    const MAX = window.innerWidth >= 1200 ? 36 : window.innerWidth >= 900 ? 26 : 16;
+    for (let i = 0; i < MAX; i++) {
+      const el = document.createElement('div');
+      el.className = 'fh-bubble';
+      el.textContent = pickMessage();
+      container.appendChild(el);
+    }
 
-    window.addEventListener('resize', debounce(() => {
-      GRID = createJitteredGrid({ cols:10, rows:8, jitter:18, margin:48 });
-      const box = document.querySelector('.fh-bubbles');
-      if (!box) return;
-      box.innerHTML = '';
-      spawnChips(box);
-    }, 200));
+    const GAP = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bubble-gap')) || 12;
+    const PAD = 8;
+    const MAX_JITTER = prefersReduced ? 0 : 4;
+    const MAX_RELAX_STEPS = 8;
+    const VIEW_W = container.clientWidth;
+    const VIEW_H = container.clientHeight;
+
+    const nodes = Array.from(container.querySelectorAll('.fh-bubble'));
+    if (!nodes.length) return;
+
+    const items = nodes.map((el, i) => {
+      el.style.position = 'absolute';
+      el.style.left = '-9999px';
+      el.style.top = '-9999px';
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      return { el, i, w, h, x: 0, y: 0, ax: 0, ay: 0, jx: 0, jy: 0 };
+    });
+
+    // pack по «полкам»
+    let cursorX = GAP, cursorY = GAP, rowH = 0;
+    for (const it of items) {
+      const w = it.w + GAP + PAD * 2;
+      const h = it.h + GAP + PAD * 2;
+
+      if (cursorX + w > VIEW_W - GAP) {
+        cursorX = GAP;
+        cursorY += rowH;
+        rowH = 0;
+      }
+      it.ax = cursorX + PAD;
+      it.ay = cursorY + PAD;
+      it.x = it.ax;
+      it.y = it.ay;
+
+      cursorX += w;
+      rowH = Math.max(rowH, h);
+    }
+
+    function relaxOnce() {
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = items[i], b = items[j];
+          const ax2 = a.x, ay2 = a.y, aw = a.w, ah = a.h;
+          const bx2 = b.x, by2 = b.y, bw = b.w, bh = b.h;
+
+          const overlapX = Math.max(0, Math.min(ax2 + aw + GAP, bx2 + bw + GAP) - Math.max(ax2 - GAP, bx2 - GAP) - (aw + bw));
+          const overlapY = Math.max(0, Math.min(ay2 + ah + GAP, by2 + bh + GAP) - Math.max(ay2 - GAP, by2 - GAP) - (ah + bh));
+
+          if (overlapX > 0 || overlapY > 0) {
+            const pushX = overlapX * 0.5 * (a.x <= b.x ? -1 : 1);
+            const pushY = overlapY * 0.5 * (a.y <= b.y ? -1 : 1);
+            a.x += pushX;  a.y += pushY;
+            b.x -= pushX;  b.y -= pushY;
+            a.x = Math.max(GAP, Math.min(a.x, VIEW_W - GAP - a.w));
+            b.x = Math.max(GAP, Math.min(b.x, VIEW_W - GAP - b.w));
+            a.y = Math.max(GAP, Math.min(a.y, VIEW_H - GAP - a.h));
+            b.y = Math.max(GAP, Math.min(b.y, VIEW_H - GAP - b.h));
+          }
+        }
+      }
+    }
+    for (let i = 0; i < MAX_RELAX_STEPS; i++) relaxOnce();
+
+    for (const it of items) {
+      it.el.style.left = `${it.x}px`;
+      it.el.style.top  = `${it.y}px`;
+      it.el.style.transform = `translate3d(0,0,0)`;
+      it.el.style.opacity = '1';
+    }
+
+    let t0 = performance.now();
+    function tick(now) {
+      const dt = (now - t0) / 1000;
+      t0 = now;
+
+      for (const it of items) {
+        const ang = (now * 0.0002) + it.i * 0.37;
+        const jx = Math.cos(ang) * MAX_JITTER;
+        const jy = Math.sin(ang * 1.2) * MAX_JITTER;
+        let nx = it.ax + jx;
+        let ny = it.ay + jy;
+        it.x += (nx - it.x) * 0.08;
+        it.y += (ny - it.y) * 0.08;
+        it.x = Math.max(GAP, Math.min(it.x, VIEW_W - GAP - it.w));
+        it.y = Math.max(GAP, Math.min(it.y, VIEW_H - GAP - it.h));
+      }
+
+      relaxOnce();
+
+      for (const it of items) {
+        it.el.style.transform = `translate3d(${Math.round(it.x)}px, ${Math.round(it.y)}px, 0)`;
+      }
+
+      requestAnimationFrame(tick);
+    }
+    for (const it of items) {
+      it.el.style.left = '0px';
+      it.el.style.top  = '0px';
+      it.el.style.position = 'absolute';
+    }
+    requestAnimationFrame(tick);
+
+    let rAf;
+    window.addEventListener('resize', () => {
+      cancelAnimationFrame(rAf);
+      rAf = requestAnimationFrame(() => initBubblesNoOverlap());
+    }, { passive: true });
   })();
 
   // --- Старт

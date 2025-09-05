@@ -34,6 +34,8 @@
   --danger:#ff6b6b;
   --frog-hero-max: 540px;
   --frog-hero-min: 360px;
+  --bubble-gap: 12px;      /* минимальная дистанция между пузырями */
+  --bubble-padding: 10px;  /* внутренний паддинг вокруг текста */
 }
 
 *{box-sizing:border-box}
@@ -63,7 +65,8 @@ body{
 /* Состояния пузыря */
 .fh-bubble {
   position: absolute;
-  padding: 8px 14px;
+  padding: var(--bubble-padding);
+  margin: 0;               /* управляем отступами сами, через x/y */
   border-radius: 20px;
   background: var(--brand-600);
   color: var(--on-brand);
@@ -74,7 +77,7 @@ body{
   opacity: 0;
   transform: translate3d(0,0,0) scale(1);
   transition: opacity 350ms ease, transform 350ms ease;
-  will-change: opacity, transform;
+  will-change: transform, opacity;
 }
 .fh-bubble--in {
   opacity: 1;
