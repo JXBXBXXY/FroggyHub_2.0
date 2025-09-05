@@ -979,7 +979,7 @@ button:not([disabled]){ cursor:pointer; }
 /* screens sit above chips */
 .screen {
   position: relative;
-  z-index: 1;
+  z-index: 10;
 }
 
 /* full screen auth page over chips */
@@ -989,8 +989,6 @@ button:not([disabled]){ cursor:pointer; }
   display: grid;
   place-items: center;
   z-index: 10;
-  /* лёгкая «стеклянная» подложка */
-  backdrop-filter: saturate(120%) blur(2px);
 }
 
 .auth-card {
@@ -999,9 +997,33 @@ button:not([disabled]){ cursor:pointer; }
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 20px;
   box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+  position: relative;
+  z-index: 30;
 }
 
 /* no scroll by default; allow only on wishlist */
 html, body { height: 100%; }
 body { overflow: hidden; }
 body.allow-scroll { overflow: auto; }
+
+.auth-wrap {
+  position: relative;
+  z-index: 30;
+}
+
+/* ==== AUTH CARD: никакого блюра фона ==== */
+.auth-backdrop,
+.auth-card::before,
+.auth-card::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: transparent !important;
+}
+
+/* Плавнее тени у пузырей (чтоб были как в «идеальном» деплое) */
+.chip {
+  border-radius: 999px;
+  box-shadow:
+    0 2px 8px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.04);
+}
