@@ -116,9 +116,9 @@ body{
 .fh-auth {
   position: relative;
   z-index: 5;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 24, 20, 0.58);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
 }
@@ -882,8 +882,11 @@ button:not([disabled]){ cursor:pointer; }
 
 /* === Auth polish === */
 .auth-card{max-width:640px;margin:6vh auto;padding:20px 22px;border-radius:18px;
-  background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
-  box-shadow:0 18px 40px rgba(0,0,0,.35)}
+  background:rgba(10,24,20,0.58);border:1px solid rgba(255,255,255,.09);
+  backdrop-filter:blur(18px) saturate(120%);
+  -webkit-backdrop-filter:blur(18px) saturate(120%);
+  box-shadow:0 18px 40px rgba(0,0,0,.35);
+  transform:translateY(6vh)}
 .auth-card h1,.auth-card h2{letter-spacing:.2px}
 .auth-card .tabs{margin:10px 0 14px}
 .auth-card .input, .auth-card input[type="text"], .auth-card input[type="password"]{
@@ -895,6 +898,10 @@ button:not([disabled]){ cursor:pointer; }
 .btn-primary:hover{filter:brightness(1.06)}
 @media (max-width:720px){
   .auth-card{margin:3vh 12px;padding:16px}
+}
+
+@media (min-height:720px){
+  .auth-card{transform:translateY(8vh)}
 }
 
 /* === Final single-column === */
