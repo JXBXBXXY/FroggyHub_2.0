@@ -1,115 +1,5 @@
 import { supa } from './api.js';
 
-const FH_MESSAGES = [
-  'Я приду к 19:00 ✨',
-  'Я возьму пиццу 🍕',
-  'Кто возьмёт колу? 🥤',
-  'Ребят, постучите в дверь 🚪',
-  'Буду позже 🙈',
-  'Закажем такси? 🚖',
-  'Добавил плейлист 🎶',
-  'У кого карты? 🎴',
-  'Забронировал столик 🍽️',
-  'Сделаем фото 📸',
-  'Я за пивом 🍺',
-  'Принесу проектор 📽️',
-  'Я купил шарики 🎈',
-  'Спойлер: будет торт 🎂',
-  'Я возьму чипсы 🥨',
-  'Друзья, до встречи 🐸',
-  'Нужны свечи 🕯️',
-  'Кто возьмет настолки? 🎲',
-  'Всем привет! 👋',
-  'Буду с +1 🙂',
-  'Я за сладким 🍩',
-  'Кто за лимонадом? 🍋',
-  'Прихвачу фрукты 🍇',
-  'Поставлю чайник ☕',
-  'Возьму пледы 🧣',
-  'Захвачу музыку 🔊',
-  'Кто возьмет мангал? 🔥',
-  'Я за салатом 🥗',
-  'Давайте играть в мафию 😎',
-  'Поделитесь адресом 🗺️',
-  'Где паркуемся? 🅿️',
-  'Принесу колонку 📢',
-  'Я принесу десерт 🍰',
-  'Кто возьмёт свечи? 🕯️',
-  'Я возьму сок 🧃',
-  'Берите тёплые вещи 🧥',
-  'Я за хлопьями 🍿',
-  'Нужен штопор? 🍷',
-  'Кто возьмёт гитару? 🎸',
-  'Давайте устроим караоке 🎤',
-  'Привезу настольный футбол ⚽',
-  'Я везу кота 🐱',
-  'Кто-то едет на велосипеде? 🚲',
-  'Приготовлю салаты 🥬',
-  'Я за фруктами 🍏',
-  'Сделаю лимонад 🍋',
-  'У меня есть проектор 📽️',
-  'Я приеду на час раньше ⏱️',
-  'Привезу геймпад 🎮',
-  'Я на метро 🚇',
-  'Возьму фотоаппарат 📷',
-  'Кто-то пьет чай? 🍵',
-  'Я привезу воду 💧',
-  'Есть у кого настольный теннис? 🏓',
-  'Я за хлебом 🍞',
-  'Кто возьмёт кофе? ☕',
-  'Давайте фильм посмотрим 🎬',
-  'Я приготовлю пасту 🍝',
-  'Возьму гитару 🎸',
-  'Нужны батарейки? 🔋',
-  'Я на машине 🚗',
-  'Кто возьмет тарелки? 🍽️',
-  'Буду через 15 минут ⏳',
-  'Захвачу зонтик ☔',
-  'Я возьму торт 🍰',
-  'Не забудьте зарядки 🔌',
-  'Я уже в пути 🛣️',
-  'Поставлю музыку 🎧',
-  'Принесу игру в угадайку 🤔',
-  'Я за печеньем 🍪',
-  'Буду online 💻',
-  'Увидимся у входа 🚪',
-  'Я за наушниками 🎧',
-  'Кто возьмет посуду? 🍽️',
-  'Мне нужно такси 🛺',
-  'У кого есть карты? 🃏',
-  'Заберу пиццу по пути 🍕',
-  'Кто за гирляндами? 🌟',
-  'Я отпечатаю фото 📸',
-  'Кто на десерт? 🍮',
-  'Встречаемся у метро 🚉',
-  'Я возьму мороженое 🍦',
-  'Поставлю плейлист вечера 🎵',
-  'Привезу настольный хоккей 🏒',
-  'Я беру карты Таро 🃏',
-  'Прихвачу селфи-палку 🤳',
-  'Запасуся маршмеллоу 🍡',
-  'Буду на самокате 🛴',
-  'Захвачу настольный дартс 🎯',
-  'У кого есть мяч? 🏀',
-  'Привезу лампу лаву 🪔',
-  'Я с домашним лимонадом 🍹',
-  'Захвачу гитару-бас 🎸',
-  'Принесу плейстейшен 🎮',
-  'Кто возьмёт микрофон? 🎙️',
-  'Я куплю фейерверки 🎆',
-  'Привезу попкорн 🍿',
-  'Зайду за напитками 🍻',
-  'Подготовлю викторину ❓',
-  'Привезу селфи-зону 📸',
-  'Захвачу набор для рисования 🎨',
-  'Кто принесёт настольные игры? 🎲'
-];
-
-const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-function pickMessage() {
-  return FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
-}
 
 // ---- BOOTSTRAP (один раз) -----------------------------------
 if (!window.FH) window.FH = {};
@@ -215,237 +105,173 @@ else {
     handle(loginForm, 'login');
     handle(signupForm, 'signup');
   })();
-
-  // Ensure bubbles layer exists and populated, then kick visibility
-  (function ensureBubbles() {
-    const stage = document.querySelector('.fh-bubbles');
-    if (!stage) return;
-
-    // если уже отрисованы > 20 — ничего не делаем
-    if (stage.querySelectorAll('.fh-bubble').length > 20) {
-      // На всякий случай: снимем «невидимость», если она зависла
-      stage.querySelectorAll('.fh-bubble').forEach(n => n.classList.add('is-in'));
-      return;
-    }
-
-    const messages = [
-      'Кто возьмёт колу? 🥤','Буду с +1 🙂','Зайду за напитками 🛒',
-      'Я купил шарики 🎈','Забронировал столик 🍽️','Приеду на час раньше ⏱️',
-      'Давайте играть в мафию 😎','Кто возьмёт гитару? 🎸','Нужны свечи 🕯️',
-      'Принесу проектор 📽️','Я на машине 🚗','Возьму пледы 🧣',
-      'Давайте сделаем фото 📸','Где паркуемся? 🅿️','Я за пиццу 🍕',
-      'Кто возьмёт посуду? 🍽️','Я за салатом 🥗','Кто на десерт? 🧁',
-      'Поделитесь адресом 🗺️','Скиньте код 🔐','У кого карты? 🃏'
-    ];
-
-    // Сколько хотим сразу
-    const COUNT = 60;
-    const frag = document.createDocumentFragment();
-    for (let i = 0; i < COUNT; i++) {
-      const b = document.createElement('div');
-      b.className = 'fh-bubble';
-      b.textContent = messages[Math.floor(Math.random() * messages.length)];
-      // временно за экран, чтобы не мигали
-      b.style.setProperty('--tx', '-9999px');
-      b.style.setProperty('--ty', '-9999px');
-      frag.appendChild(b);
-    }
-    stage.appendChild(frag);
-
-    // Дай браузеру вставить DOM, затем включи «видимость» — сразу,
-    // чтобы они не остались прозрачными
-    requestAnimationFrame(() => {
-      stage.querySelectorAll('.fh-bubble').forEach(n => n.classList.add('is-in'));
-    });
-  })();
-
-  // ===== BUBBLES: grid + no-overlap + fade swap =====
-  (function bubblesManager() {
-    const stage = document.querySelector('.fh-bubbles');
-    if (!stage) return;
-
-    // параметры
-    const GAP = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bubble-gap')) || 12;
-    const JITTER = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bubble-jitter')) || 4;
-    const SWAP_INTERVAL_MS = 3200;     // каждые ~3.2с
-    const SWAP_BATCH = 6;              // сколько пузырей меняем за тик
-    const RELAX_STEPS = 6;             // шагов разведения после новой раскладки
-    const nodes = Array.from(stage.querySelectorAll('.fh-bubble'));
-    if (!nodes.length) return;
-
-    // измеряем
-    const items = nodes.map((el, i) => {
-      el.style.left = '0px'; el.style.top = '0px';
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      el.style.transform = 'translate3d(-9999px,-9999px,0)';
-      return { el, i, w, h, ax: 0, ay: 0, x: 0, y: 0 };
-    });
-
-    function stageSize() { return { W: stage.clientWidth, H: stage.clientHeight }; }
-
-    // строим сетку якорей под средний размер пузыря + GAP
-    function makeAnchors() {
-      const { W, H } = stageSize();
-      const avgW = items.reduce((s, it) => s + it.w, 0) / items.length;
-      const avgH = items.reduce((s, it) => s + it.h, 0) / items.length;
-      const cellW = Math.max(120, Math.round(avgW + GAP * 2));
-      const cellH = Math.max(48,  Math.round(avgH + GAP * 2));
-
-      const cols = Math.max(1, Math.floor(W / cellW));
-      const rows = Math.max(1, Math.floor(H / cellH));
-      const anchors = [];
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const cx = Math.round((c + 0.5) * (W / cols));
-          const cy = Math.round((r + 0.5) * (H / rows));
-          // лёгкий джиттер якоря, чтоб не было идеальной сетки
-          const jx = (Math.random() * 2 - 1) * (cellW * 0.15);
-          const jy = (Math.random() * 2 - 1) * (cellH * 0.15);
-          anchors.push({ x: clamp(cx + jx, GAP, W - GAP), y: clamp(cy + jy, GAP, H - GAP) });
-        }
-      }
-      return anchors;
-    }
-
-    function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
-
-    // быстрая проверка пересечений прямоугольников с зазором GAP
-    function isOverlap(a, b) {
-      return !(a.x + a.w + GAP <= b.x ||
-               b.x + b.w + GAP <= a.x ||
-               a.y + a.h + GAP <= b.y ||
-               b.y + b.h + GAP <= a.y);
-    }
-
-    // «полочное» начальное размещение + релаксация (разведение)
-    function placeWithoutOverlap(targets) {
-      // 1) начально просто проставим центры по ближайшим якорям
-      const rects = items.map((it, idx) => {
-        const t = targets[idx % targets.length];
-        return { idx, x: Math.round(t.x - it.w / 2), y: Math.round(t.y - it.h / 2), w: it.w, h: it.h };
-      });
-
-      // 2) несколько итераций разведения
-      for (let s = 0; s < RELAX_STEPS; s++) {
-        for (let i = 0; i < rects.length; i++) {
-          for (let j = i + 1; j < rects.length; j++) {
-            const A = rects[i], B = rects[j];
-            if (isOverlap(A, B)) {
-              const dx = ((A.x + A.w / 2) <= (B.x + B.w / 2)) ? -1 : 1;
-              const dy = ((A.y + A.h / 2) <= (B.y + B.h / 2)) ? -1 : 1;
-              A.x += dx; B.x -= dx;
-              A.y += dy; B.y -= dy;
-            }
-          }
-        }
-      }
-
-      // 3) применяем
-      for (const R of rects) {
-        const it = items[R.idx];
-        it.ax = clamp(R.x, GAP, stage.clientWidth  - GAP - it.w);
-        it.ay = clamp(R.y, GAP, stage.clientHeight - GAP - it.h);
-        it.x = it.ax; it.y = it.ay;
-        it.el.style.setProperty('--tx', it.x + 'px');
-        it.el.style.setProperty('--ty', it.y + 'px');
-        it.el.classList.add('is-in');
-      }
-    }
-
-    // начальная раскладка
-    let anchors = shuffle(makeAnchors());
-    placeWithoutOverlap(anchors);
-
-    // анимация лёгкого «дрожания» вокруг якорей (не нарушаем GAP)
-    let t0 = performance.now();
-    function tick(now) {
-      const dt = (now - t0) / 1000; t0 = now;
-      for (const it of items) {
-        const ang = now * 0.00025 + it.i * 0.61;
-        const jx = Math.cos(ang) * JITTER;
-        const jy = Math.sin(ang * 1.33) * JITTER;
-        const nx = clamp(it.ax + jx, GAP, stage.clientWidth  - GAP - it.w);
-        const ny = clamp(it.ay + jy, GAP, stage.clientHeight - GAP - it.h);
-        // плавно к цели
-        it.x += (nx - it.x) * 0.12;
-        it.y += (ny - it.y) * 0.12;
-        it.el.style.setProperty('--tx', Math.round(it.x) + 'px');
-        it.el.style.setProperty('--ty', Math.round(it.y) + 'px');
-      }
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-
-    // циклическая «жизнь»: fade-swap части пузырей
-    setInterval(() => {
-      // обновим сетку якорей и возьмём случайные позиции
-      anchors = shuffle(makeAnchors());
-
-      // выберем батч для обновления (частично — выглядят как «перемешивание»)
-      const batch = shuffle([...items]).slice(0, Math.min(SWAP_BATCH, items.length));
-
-      // иногда делаем настоящий swap: меняем местами якоря двух тузов
-      if (items.length >= 2 && Math.random() < 0.5) {
-        const a = items[Math.floor(Math.random() * items.length)];
-        const b = items[Math.floor(Math.random() * items.length)];
-        const tmpX = a.ax, tmpY = a.ay;
-        a.ax = b.ax; a.ay = b.ay;
-        b.ax = tmpX; b.ay = tmpY;
-      }
-
-      // остальным — новые точки с разведением
-      const targetRects = batch.map((it, idx) => {
-        const t = anchors[(it.i + idx * 3) % anchors.length];
-        return { idx: it.i, x: Math.round(t.x - it.w / 2), y: Math.round(t.y - it.h / 2), w: it.w, h: it.h };
-      });
-
-      // разведём внутри батча
-      for (let s = 0; s < RELAX_STEPS; s++) {
-        for (let i = 0; i < targetRects.length; i++) {
-          for (let j = i + 1; j < targetRects.length; j++) {
-            const A = targetRects[i], B = targetRects[j];
-            if (isOverlap(A, B)) {
-              const dx = ((A.x + A.w / 2) <= (B.x + B.w / 2)) ? -1 : 1;
-              const dy = ((A.y + A.h / 2) <= (B.y + B.h / 2)) ? -1 : 1;
-              A.x += dx; B.x -= dx;
-              A.y += dy; B.y -= dy;
-            }
-          }
-        }
-      }
-
-      // плавный цикл: затухание → перенос → проявление
-      batch.forEach((it) => it.el.classList.remove('is-in'));
-      setTimeout(() => {
-        for (const R of targetRects) {
-          const it = items[R.idx];
-          it.ax = clamp(R.x, GAP, stage.clientWidth  - GAP - it.w);
-          it.ay = clamp(R.y, GAP, stage.clientHeight - GAP - it.h);
-          // мгновенно ставим новые якоря, фактическая позиция «догонит» через tick()
-          it.el.style.setProperty('--tx', Math.round(it.x) + 'px');
-          it.el.style.setProperty('--ty', Math.round(it.y) + 'px');
-        }
-        // проявляемся
-        requestAnimationFrame(() => batch.forEach((it) => it.el.classList.add('is-in')));
-      }, 450); // тайм под CSS transition
-    }, SWAP_INTERVAL_MS);
-
-    // перераскладка при ресайзе
-    let resizeId;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeId);
-      resizeId = setTimeout(() => {
-        anchors = shuffle(makeAnchors());
-        placeWithoutOverlap(anchors);
-      }, 150);
-    });
-
-    function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-  })();
-
   // --- Старт
-  document.addEventListener('DOMContentLoaded', route);
+document.addEventListener('DOMContentLoaded', route);
 }
+
+// ==== BUBBLE ENGINE ===================================================
+(function initBubbles(){
+  const stage = document.querySelector('.fh-bubbles');
+  if (!stage || stage.__ready) return; stage.__ready = true;
+
+  // Сообщения (можно дополнять)
+  const MESSAGES = [
+    'Кто возьмёт колу? 🥤','Буду с +1 🙂','Зайду за напитками 🛒','Я купил шарики 🎈',
+    'Забронировал столик 🍽️','Приеду на час раньше ⏱️','Давайте играть в мафию 😎',
+    'Кто возьмёт гитару? 🎸','Нужны свечи 🕯️','Принесу проектор 📽️','Я на машине 🚗',
+    'Возьму пледы 🧣','Давайте сделаем фото 📸','Где паркуемся? 🅿️','Я за пиццу 🍕',
+    'Кто возьмёт посуду? 🍽️','Я за салатом 🥗','Кто на десерт? 🧁','Поделитесь адресом 🗺️',
+    'Скиньте код 🔐','У кого карты? 🃏','Буду онлайн 💻','У меня есть проектор 🔌',
+    'Привезу настольный футбол ⚽️','Возьму настолки 🎲'
+  ];
+
+  // Настройки
+  const LIFE_MS = 3200;         // жизнь 3.2s
+  const FADE_MS = 380;          // затухание/появление
+  const ORBIT = 8;              // орбитальное дрожание (px)
+  const GAP = 14;               // отступ «анти-оверлап»
+  const EXCLUDE_MARGIN = 24;    // буфер вокруг карточки
+
+  // Сколько пузырей по площади
+  function targetCount(){
+    const area = innerWidth * innerHeight;
+    if (area > 1.6e6) return 84;         // ~> 1600x1000
+    if (area > 9e5)  return 64;          // ~> 1366x768
+    if (area > 5e5)  return 44;          // tablets
+    return 28;                           // mobile
+  }
+
+  // Получить bbox области, куда нельзя ставить (карта авторизации)
+  function getExclude(){
+    const card = document.querySelector('.auth-wrapper, .fh-card');
+    if (!card) return null;
+    const r = card.getBoundingClientRect();
+    return {
+      left:  Math.max(0, r.left  - EXCLUDE_MARGIN),
+      top:   Math.max(0, r.top   - EXCLUDE_MARGIN),
+      right: Math.min(innerWidth,  r.right + EXCLUDE_MARGIN),
+      bottom:Math.min(innerHeight, r.bottom+ EXCLUDE_MARGIN)
+    };
+  }
+
+  // Построить сетку для размещения без пересечений
+  function buildGrid(){
+    const cols = Math.max(6, Math.floor(innerWidth  / 220)); // ширина ячейки ~220
+    const rows = Math.max(6, Math.floor(innerHeight / 120)); // высота  ~120
+    const cw = innerWidth / cols, ch = innerHeight / rows;
+    const cells = [];
+    const exclude = getExclude();
+    for (let y=0;y<rows;y++){
+      for (let x=0;x<cols;x++){
+        const cx = x*cw, cy = y*ch;
+        const rect = { left:cx, top:cy, right:cx+cw, bottom:cy+ch, cx:cx+cw/2, cy:cy+ch/2 };
+        // отсечь область карточки
+        if (exclude && !(rect.right < exclude.left || rect.left > exclude.right ||
+                         rect.bottom < exclude.top || rect.top > exclude.bottom)) {
+          continue;
+        }
+        cells.push({x, y, rect, taken:false});
+      }
+    }
+    return {cells, cw, ch};
+  }
+
+  let grid = buildGrid();
+
+  // Создать/поддерживать нужное число пузырей
+  const want = targetCount();
+  const bubbles = [];
+  for (let i=0;i<want;i++){
+    const el = document.createElement('div');
+    el.className = 'fh-bubble';
+    el.textContent = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+    stage.appendChild(el);
+    bubbles.push({el, t0: performance.now() + Math.random()*LIFE_MS});
+  }
+
+  // Выбор свободной ячейки, близкой к idx (для равномерности)
+  function pickCell(seedIdx = 0){
+    const free = grid.cells.filter(c => !c.taken);
+    if (!free.length) return null;
+    const idx = Math.min(free.length-1, Math.floor(seedIdx % free.length));
+    return free[idx];
+  }
+
+  // Расстановка без пересечений + «джиттер»
+  function place(el, cell){
+    const {rect} = cell;
+    cell.taken = true;
+    const jx = (Math.random()-.5) * (grid.cw*0.25);
+    const jy = (Math.random()-.5) * (grid.ch*0.25);
+    const x = Math.round(rect.cx + jx);
+    const y = Math.round(rect.cy + jy);
+    el.style.setProperty('--tx', x+'px');
+    el.style.setProperty('--ty', y+'px');
+  }
+
+  // Переразметка сетки при ресайзе (debounce)
+  let rezTimer = 0;
+  addEventListener('resize', () => {
+    clearTimeout(rezTimer);
+    rezTimer = setTimeout(() => {
+      grid = buildGrid();
+      // пересадить текущие пузыри на ближайшие свободные ячейки
+      grid.cells.forEach(c => c.taken = false);
+      bubbles.forEach((b, i) => {
+        const cell = pickCell(i*1.7) || grid.cells[i % grid.cells.length];
+        if (!cell) return;
+        place(b.el, cell);
+        b.el.classList.add('is-in');
+      });
+    }, 120);
+  }, {passive:true});
+
+  // Анимация «жизни» + орбита
+  function tick(now){
+    grid.cells.forEach(c => c.taken = false);
+    bubbles.forEach((b, i) => {
+      const alive = (now - b.t0) % (LIFE_MS + FADE_MS*2);
+      const el = b.el;
+
+      // цикл: fade-in -> live -> fade-out
+      if (alive < FADE_MS) {
+        // вход
+        if (!el.classList.contains('is-in')) el.classList.add('is-in');
+      } else if (alive > FADE_MS + LIFE_MS) {
+        // выход
+        el.classList.remove('is-in');
+      }
+
+      // если только что «родился» или «телепортируется» — дать новую ячейку
+      if (!el.__cell || !el.classList.contains('is-in') && alive < FADE_MS/2){
+        const cell = pickCell(i*2.3) || grid.cells[i % grid.cells.length];
+        if (cell){
+          place(el, cell);
+          el.__cell = cell;
+        }
+      } else {
+        // пометить ячейку занятой, чтобы другие не пересекались
+        el.__cell && (el.__cell.taken = true);
+      }
+
+      // орбитальное дрожание
+      const a = now/1000 * (0.6 + (i%7)/10);
+      const ox = Math.cos(a + i)*ORBIT;
+      const oy = Math.sin(a*1.1 + i*0.7)*ORBIT;
+      el.style.transform = `translate3d(calc(var(--tx) + ${ox}px), calc(var(--ty) + ${oy}px), 0)`;
+    });
+
+    requestAnimationFrame(tick);
+  }
+
+  // Первичное появление
+  requestAnimationFrame(() => {
+    grid.cells.forEach(c => c.taken = false);
+    bubbles.forEach((b,i) => {
+      const cell = pickCell(i*1.3) || grid.cells[i % grid.cells.length];
+      if (cell){ place(b.el, cell); b.el.classList.add('is-in'); }
+    });
+    requestAnimationFrame(tick);
+  });
+})();
 

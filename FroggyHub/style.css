@@ -72,21 +72,21 @@ body{
   position: absolute;
   opacity: 0;
   transform: translate3d(0,0,0) scale(.98);
-  transition: opacity .45s ease, transform .45s ease;
+  transition: opacity .4s ease, transform .4s ease;
   will-change: transform, opacity;
   background: rgba(255,255,255,.08);
   border: 1px solid rgba(255,255,255,.12);
   backdrop-filter: blur(8px);
-  color: rgba(255,255,255,.9);
+  color: rgba(255,255,255,.92);
   padding: 8px 14px;
   border-radius: 999px;
   box-shadow: 0 6px 16px rgba(0,0,0,.22);
-  font: 500 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font: 500 14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
 }
 
 .fh-bubble.is-in {
   opacity: .92;
-  transform: translate3d(var(--tx,0), var(--ty,0), 0) scale(1);
+  transform: translate3d(var(--tx,0),var(--ty,0),0) scale(1);
 }
 
 /* Базовый вид «смс» в виде iOS-пилюли */
