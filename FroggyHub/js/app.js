@@ -1,63 +1,219 @@
 import { supa } from './api.js';
 
 const FH_MESSAGES = [
-  "Я возьму пиццу 🍕",
-  "Я приду в 9 ⏰",
-  "Ребят, постучите в дверь 🚪",
-  "Кто возьмет колу? 🥤",
-  "Буду с +1 😊",
-  "Спойлер: будет торт 🎂",
-  "Добавил плейлист 🎶",
-  "Беру настолки! 🎲",
-  "Давайте сегодня тусовку?",
-  "Приходи к 19:00 ✨",
-  "Я возьму чипсы",
-  "Друзья, до встречи 🐸",
-  "Я за пивом 🍺",
-  "Забронировал столик 🍽️",
-  "Принесу проектор 📽️",
-  "Закажем такси? 🚖",
-  "Я купил шарики 🎈",
-  "Кто возьмёт гитару? 🎸",
-  "Я буду позже 🙈",
-  "У кого карты? 🃏",
-  "Я за сладким 🍩",
-  "Давайте сделаем фото 📸"
+  'Я приду к 19:00 ✨',
+  'Я возьму пиццу 🍕',
+  'Кто возьмёт колу? 🥤',
+  'Ребят, постучите в дверь 🚪',
+  'Буду позже 🙈',
+  'Закажем такси? 🚖',
+  'Добавил плейлист 🎶',
+  'У кого карты? 🎴',
+  'Забронировал столик 🍽️',
+  'Сделаем фото 📸',
+  'Я за пивом 🍺',
+  'Принесу проектор 📽️',
+  'Я купил шарики 🎈',
+  'Спойлер: будет торт 🎂',
+  'Я возьму чипсы 🥨',
+  'Друзья, до встречи 🐸',
+  'Нужны свечи 🕯️',
+  'Кто возьмет настолки? 🎲',
+  'Всем привет! 👋',
+  'Буду с +1 🙂',
+  'Я за сладким 🍩',
+  'Кто за лимонадом? 🍋',
+  'Прихвачу фрукты 🍇',
+  'Поставлю чайник ☕',
+  'Возьму пледы 🧣',
+  'Захвачу музыку 🔊',
+  'Кто возьмет мангал? 🔥',
+  'Я за салатом 🥗',
+  'Давайте играть в мафию 😎',
+  'Поделитесь адресом 🗺️',
+  'Где паркуемся? 🅿️',
+  'Принесу колонку 📢',
+  'Я принесу десерт 🍰',
+  'Кто возьмёт свечи? 🕯️',
+  'Я возьму сок 🧃',
+  'Берите тёплые вещи 🧥',
+  'Я за хлопьями 🍿',
+  'Нужен штопор? 🍷',
+  'Кто возьмёт гитару? 🎸',
+  'Давайте устроим караоке 🎤',
+  'Привезу настольный футбол ⚽',
+  'Я везу кота 🐱',
+  'Кто-то едет на велосипеде? 🚲',
+  'Приготовлю салаты 🥬',
+  'Я за фруктами 🍏',
+  'Сделаю лимонад 🍋',
+  'У меня есть проектор 📽️',
+  'Я приеду на час раньше ⏱️',
+  'Привезу геймпад 🎮',
+  'Я на метро 🚇',
+  'Возьму фотоаппарат 📷',
+  'Кто-то пьет чай? 🍵',
+  'Я привезу воду 💧',
+  'Есть у кого настольный теннис? 🏓',
+  'Я за хлебом 🍞',
+  'Кто возьмёт кофе? ☕',
+  'Давайте фильм посмотрим 🎬',
+  'Я приготовлю пасту 🍝',
+  'Возьму гитару 🎸',
+  'Нужны батарейки? 🔋',
+  'Я на машине 🚗',
+  'Кто возьмет тарелки? 🍽️',
+  'Буду через 15 минут ⏳',
+  'Захвачу зонтик ☔',
+  'Я возьму торт 🍰',
+  'Не забудьте зарядки 🔌',
+  'Я уже в пути 🛣️',
+  'Поставлю музыку 🎧',
+  'Принесу игру в угадайку 🤔',
+  'Я за печеньем 🍪',
+  'Буду online 💻',
+  'Увидимся у входа 🚪',
+  'Я за наушниками 🎧',
+  'Кто возьмет посуду? 🍽️',
+  'Мне нужно такси 🛺',
+  'У кого есть карты? 🃏',
+  'Заберу пиццу по пути 🍕',
+  'Кто за гирляндами? 🌟',
+  'Я отпечатаю фото 📸',
+  'Кто на десерт? 🍮',
+  'Встречаемся у метро 🚉',
+  'Я возьму мороженое 🍦'
 ];
 
-function spawnBubbles(container, count = 40) {
-  const placedBubbles = [];
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function isOverlapping(x, y, w, h) {
-    return placedBubbles.some(b => !(x + w < b.x || b.x + b.w < x || y + h < b.y || b.y + b.h < y));
+function pickMessage() {
+  return FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
+}
+
+function rectAt(pos, el) {
+  const { width, height } = el.getBoundingClientRect();
+  return { left: pos.x, top: pos.y, right: pos.x + width, bottom: pos.y + height };
+}
+
+function rectsOverlap(a, b, pad = 0) {
+  return !(a.right + pad < b.left || a.left - pad > b.right || a.bottom + pad < b.top || a.top - pad > b.bottom);
+}
+
+function overlapsAny(pos, el) {
+  const r1 = rectAt(pos, el);
+  const nodes = document.querySelectorAll('.fh-bubble.fh-bubble--in');
+  for (const n of nodes) {
+    if (n === el) continue;
+    const r2 = n.getBoundingClientRect();
+    if (rectsOverlap(r1, r2, 6)) return true;
+  }
+  return false;
+}
+
+function clampToContainer(p, el) {
+  const c = el.parentElement.getBoundingClientRect();
+  const { width, height } = el.getBoundingClientRect();
+  return {
+    x: Math.max(8, Math.min(c.width - width - 8, p.x)),
+    y: Math.max(8, Math.min(c.height - height - 8, p.y)),
+  };
+}
+
+function lifeCycle(bubble, anchor) {
+  const el = bubble.el;
+  if (prefersReduced) {
+    bubble.timer = setInterval(() => {
+      el.textContent = pickMessage();
+    }, 10000 + Math.random() * 2000);
+    return;
   }
 
+  const run = () => {
+    const visibleMs = 3000 + Math.random() * 1000;
+    bubble.timer = setTimeout(() => {
+      el.classList.remove('fh-bubble--in');
+      el.classList.add('fh-bubble--out');
+
+      const onEnd = () => {
+        el.removeEventListener('transitionend', onEnd);
+        el.textContent = pickMessage();
+
+        const dx = Math.random() * 80 - 40;
+        const dy = Math.random() * 80 - 40;
+        const target = clampToContainer({ x: anchor.x + dx, y: anchor.y + dy }, el);
+
+        let tries = 0;
+        while (tries < 30 && overlapsAny(target, el)) {
+          target.x += Math.random() * 20 - 10;
+          target.y += Math.random() * 20 - 10;
+          tries++;
+        }
+
+        el.style.left = `${target.x}px`;
+        el.style.top = `${target.y}px`;
+
+        el.classList.remove('fh-bubble--out');
+        requestAnimationFrame(() => el.classList.add('fh-bubble--in'));
+
+        run();
+      };
+
+      el.addEventListener('transitionend', onEnd, { once: true });
+    }, visibleMs);
+  };
+  run();
+}
+
+function findNonOverlappingPosition(container, el, placed) {
+  const c = container.getBoundingClientRect();
+  let tries = 0;
+  let x, y;
+  do {
+    x = 24 + Math.random() * (c.width - 160);
+    y = 24 + Math.random() * (c.height - 60);
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    const r1 = el.getBoundingClientRect();
+    const hit = placed.some(p => rectsOverlap(r1, p.el.getBoundingClientRect(), 8));
+    if (!hit) break;
+    tries++;
+  } while (tries < 60);
+  return { x, y };
+}
+
+function desiredBubbleCount() {
+  const area = window.innerWidth * window.innerHeight;
+  return Math.min(80, Math.max(20, Math.round(area / 12000)));
+}
+
+function debounce(fn, wait = 100) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+function spawnBubbles(container, count) {
+  const placed = [];
   for (let i = 0; i < count; i++) {
-    const bubble = document.createElement("div");
-    bubble.className = "fh-bubble";
-    bubble.textContent = FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
-    bubble.style.position = "absolute";
-    bubble.style.visibility = "hidden";
-    bubble.style.animationDelay = `${Math.random() * 5}s`;
-    bubble.style.background = Math.random() > 0.5 ? 'var(--brand-600)' : 'var(--brand-700)';
-    container.appendChild(bubble);
+    const el = document.createElement('div');
+    el.className = 'fh-bubble';
+    el.textContent = pickMessage();
+    container.appendChild(el);
 
-    const { width: w, height: h } = bubble.getBoundingClientRect();
-    let x, y, attempts = 0;
-    do {
-      x = Math.random() * (container.clientWidth - w);
-      y = Math.random() * (container.clientHeight - h);
-      attempts++;
-    } while (isOverlapping(x, y, w, h) && attempts < 50);
+    const pos = findNonOverlappingPosition(container, el, placed);
+    el.style.left = `${pos.x}px`;
+    el.style.top = `${pos.y}px`;
+    requestAnimationFrame(() => el.classList.add('fh-bubble--in'));
 
-    bubble.style.left = `${x}px`;
-    bubble.style.top = `${y}px`;
-    bubble.style.visibility = "visible";
-    placedBubbles.push({ x, y, w, h });
+    const bubble = { el };
+    const anchor = { x: pos.x, y: pos.y };
+    const delay = Math.random() * 400;
+    setTimeout(() => lifeCycle(bubble, anchor), delay);
 
-    setInterval(() => {
-      bubble.textContent = FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
-    }, 10000 + Math.random() * 5000);
+    placed.push({ el, x: pos.x, y: pos.y });
   }
 }
 
@@ -174,18 +330,14 @@ else {
     const root = document.querySelector('.fh-bubbles');
     if (!root) return;
 
-    function init() {
-      root.innerHTML = '';
-      spawnBubbles(root, 40);
-    }
+    spawnBubbles(root, desiredBubbleCount());
 
-    const reinit = (() => {
-      let t;
-      return () => { clearTimeout(t); t = setTimeout(init, 120); };
-    })();
-
-    init();
-    window.addEventListener('resize', reinit, { passive:true });
+    window.addEventListener('resize', debounce(() => {
+      const box = document.querySelector('.fh-bubbles');
+      if (!box) return;
+      box.innerHTML = '';
+      spawnBubbles(box, desiredBubbleCount());
+    }, 200));
   })();
 
   // --- Старт
