@@ -186,6 +186,8 @@ const FH_BUBBLES = (() => {
       const chip = document.createElement('div');
       chip.className = 'fh-chip';
       chip.textContent = pickMessage();
+      const r = Math.random();
+      chip.dataset.size = r < 0.22 ? 'sm' : (r > 0.78 ? 'lg' : '');
       chip.style.setProperty('--seed', (Math.random()*2).toFixed(2));
       state.el.appendChild(chip);
       state.chips.push(chip);
@@ -322,6 +324,8 @@ const FH_BUBBLES = (() => {
       chip.classList.remove('show');          // уйти в fade-out
       setTimeout(() => {
         chip.textContent = pickMessage();     // сменить фразу
+        const r = Math.random();
+        chip.dataset.size = r < 0.22 ? 'sm' : (r > 0.78 ? 'lg' : '');
         placeChip(chip);                       // найти новое место
         requestAnimationFrame(() => chip.classList.add('show')); // fade-in
       }, 400); // время затухания синхронизировано с CSS transition
