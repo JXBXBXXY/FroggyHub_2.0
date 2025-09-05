@@ -26,12 +26,38 @@ const FH_MESSAGES = [
 ];
 
 function spawnBubbles(container, count = 40) {
+  const placedBubbles = [];
+
+  function isOverlapping(x, y, w, h) {
+    return placedBubbles.some(b => !(x + w < b.x || b.x + b.w < x || y + h < b.y || b.y + b.h < y));
+  }
+
   for (let i = 0; i < count; i++) {
-    const msg = FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
     const bubble = document.createElement("div");
     bubble.className = "fh-bubble";
-    bubble.textContent = msg;
+    bubble.textContent = FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
+    bubble.style.position = "absolute";
+    bubble.style.visibility = "hidden";
+    bubble.style.animationDelay = `${Math.random() * 5}s`;
+    bubble.style.background = Math.random() > 0.5 ? 'var(--brand-600)' : 'var(--brand-700)';
     container.appendChild(bubble);
+
+    const { width: w, height: h } = bubble.getBoundingClientRect();
+    let x, y, attempts = 0;
+    do {
+      x = Math.random() * (container.clientWidth - w);
+      y = Math.random() * (container.clientHeight - h);
+      attempts++;
+    } while (isOverlapping(x, y, w, h) && attempts < 50);
+
+    bubble.style.left = `${x}px`;
+    bubble.style.top = `${y}px`;
+    bubble.style.visibility = "visible";
+    placedBubbles.push({ x, y, w, h });
+
+    setInterval(() => {
+      bubble.textContent = FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
+    }, 10000 + Math.random() * 5000);
   }
 }
 
@@ -147,60 +173,19 @@ else {
   (function bubbles() {
     const root = document.querySelector('.fh-bubbles');
     if (!root) return;
-    root.innerHTML = '';
-    spawnBubbles(root, 40);
-    const items = Array.from(root.querySelectorAll('.fh-bubble'));
-    if (!items.length) return;
 
-    function layout() {
-      const W = root.clientWidth;
-      const H = root.clientHeight;
-      const cols = Math.max(6, Math.floor(W / 240));
-      const rows = Math.max(4, Math.floor(H / 160));
-      const cellW = W / cols;
-      const cellH = H / rows;
-
-      items.forEach((el, i) => {
-        const c = i % cols;
-        const r = Math.floor(i / cols) % rows;
-        // лёгкий джиттер внутри ячейки
-        const jx = (Math.random()-0.5) * cellW * 0.35;
-        const jy = (Math.random()-0.5) * cellH * 0.35;
-        const x = c * cellW + cellW * 0.5 + jx;
-        const y = r * cellH + cellH * 0.5 + jy;
-
-        el.__base = { x, y };
-        // разные «орбиты» вокруг базовой точки
-        el.__orb = {
-          rX: 8 + Math.random()*24,
-          rY: 6 + Math.random()*18,
-          speed: 0.4 + Math.random()*0.9,
-          phi: Math.random() * Math.PI * 2
-        };
-      });
+    function init() {
+      root.innerHTML = '';
+      spawnBubbles(root, 40);
     }
 
-    function tick(ts) {
-      items.forEach(el => {
-        const b = el.__base, o = el.__orb;
-        if (!b || !o) return;
-        o.phi += 0.0025 * o.speed;
-        const x = b.x + Math.cos(o.phi) * o.rX;
-        const y = b.y + Math.sin(o.phi*1.1) * o.rY;
-        el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${Math.sin(o.phi)*4}deg)`;
-        el.style.opacity = 0.92;
-      });
-      requestAnimationFrame(tick);
-    }
-
-    const relayout = (() => {
-      let t; 
-      return () => { clearTimeout(t); t = setTimeout(layout, 120); };
+    const reinit = (() => {
+      let t;
+      return () => { clearTimeout(t); t = setTimeout(init, 120); };
     })();
 
-    layout();
-    requestAnimationFrame(tick);
-    window.addEventListener('resize', relayout, { passive:true });
+    init();
+    window.addEventListener('resize', reinit, { passive:true });
   })();
 
   // --- Старт
