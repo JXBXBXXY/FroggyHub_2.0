@@ -34,6 +34,8 @@
   --danger:#ff6b6b;
   --frog-hero-max: 540px;
   --frog-hero-min: 360px;
+  --fh-bubbles-top-gap: 72px;
+  --fh-bubbles-bottom-gap: 120px;
 }
 
 *{box-sizing:border-box}
@@ -52,6 +54,8 @@ body{
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  padding-top: var(--fh-bubbles-top-gap);
+  padding-bottom: var(--fh-bubbles-bottom-gap);
 }
 
 /* Состояния пузыря */
@@ -98,6 +102,12 @@ body{
   transition: transform .2s ease-out, opacity .3s ease;
   white-space: nowrap;
   will-change: transform;
+}
+
+.fh-bubbles .chip{
+  margin: 6px 8px;
+  will-change: transform, opacity;
+  transition: opacity .45s ease, transform .6s ease;
 }
 
 /* При скрытии контейнера экрана */
@@ -880,7 +890,10 @@ button:not([disabled]){ cursor:pointer; }
   backdrop-filter:blur(18px) saturate(120%);
   -webkit-backdrop-filter:blur(18px) saturate(120%);
   box-shadow:0 18px 40px rgba(0,0,0,.35);
-  transform:translateY(6vh)}
+  transform:translateY(6vh);
+  position:relative;
+  z-index:5;
+}
 .auth-card h1,.auth-card h2{letter-spacing:.2px}
 .auth-card .tabs{margin:10px 0 14px}
 .auth-card .input, .auth-card input[type="text"], .auth-card input[type="password"]{

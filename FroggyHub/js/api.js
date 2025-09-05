@@ -1,42 +1,91 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-const getEnv = () => (window.ENV || {});
-const makeClient = () => {
-  const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = getEnv();
+const ENV = window?.ENV ?? {};
+let _supa;
+
+/** Фабрика клиента Supabase с защитой от пустых creds */
+export function supa() {
+  if (_supa) return _supa;
+  const url = ENV.PUBLIC_SUPABASE_URL;
+  const key = ENV.PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
-    console.error("Supabase ENV missing", { url, keyPresent: !!key });
+    console.warn('[supa] creds are missing, return null client');
     return null;
   }
-  return createClient(url, key, {
-    auth: { persistSession: true, autoRefreshToken: true }
+  _supa = createClient(url, key, {
+    auth: { persistSession: true, autoRefreshToken: true },
   });
-};
-
-export const supa = makeClient();
-
-// Helpers
-export async function getSession() {
-  if (!supa) return null;
-  const { data } = await supa.auth.getSession();
-  return data?.session || null;
+  return _supa;
 }
 
-export async function signInWithNicknameOrEmail({ login, password }) {
-  if (!supa) throw new Error("Supabase not ready");
-  const isEmail = /\S+@\S+\.\S+/.test(login);
-  const args = isEmail ? { email: login, password } : { email: `${login}@users.local`, password };
-  // Если логина нет — автосоздаем пользователя (upsert-паттерн)
-  let { data, error } = await supa.auth.signInWithPassword(args);
-  if (error?.status === 400) {
-    const reg = await supa.auth.signUp(args);
-    if (reg.error) throw reg.error;
-    ({ data, error } = await supa.auth.signInWithPassword(args));
+/** Простая проверка e-mail */
+const isEmail = v => /\S+@\S+\.\S+/.test(String(v||'').trim());
+
+/** Преобразуем никнейм в валидный e-mail домена проекта */
+export function nicknameToEmail(nickname) {
+  const base = String(nickname||'').trim().toLowerCase();
+  // только буквы/цифры/подчёркивания/точки/дефисы
+  const local = base.replace(/[^a-z0-9._-]/g, '');
+  return `${local}@users.froggyhub.app`;
+}
+
+/** Регистрация по никнейму+email+пароль (email можно сгенерировать) */
+export async function signUpWithNickname({ nickname, email, password }) {
+  const client = supa();
+  if (!client) throw new Error('Supabase is not configured');
+  const safeEmail = isEmail(email) ? email : nicknameToEmail(nickname);
+  if (!nickname || !safeEmail || !password) {
+    throw new Error('Заполните никнейм, email и пароль');
   }
+  const { data, error } = await client.auth.signUp({
+    email: safeEmail,
+    password,
+    options: { data: { nickname: String(nickname).trim() } },
+  });
   if (error) throw error;
-  return data?.session || null;
+  return data;
+}
+
+/** Умный вход: принимает login (ник или e-mail) + пароль */
+export async function signInSmart({ login, password }) {
+  const client = supa();
+  if (!client) throw new Error('Supabase is not configured');
+  const raw = String(login||'').trim();
+  if (!raw || !password) throw new Error('Заполните логин и пароль');
+
+  let email = raw;
+  if (!isEmail(raw)) {
+    // Пробуем найти e-mail по никнейму в публичном профиле (если есть RPC — используй, а пока просто конвертация)
+    email = nicknameToEmail(raw);
+  }
+
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+export async function getSession() {
+  const client = supa();
+  if (!client) return null;
+  const { data, error } = await client.auth.getSession();
+  if (error) throw error;
+  return data?.session ?? null;
 }
 
 export async function signOut() {
-  if (!supa) return;
-  await supa.auth.signOut();
+  const client = supa();
+  if (!client) return;
+  const { error } = await client.auth.signOut();
+  if (error) throw error;
 }
+
+/** Подписка на смену состояния авторизации */
+export function onAuthChanged(cb) {
+  const client = supa();
+  if (!client) return () => {};
+  const { data: sub } = client.auth.onAuthStateChange((_evt, session) => {
+    try { cb?.(session); } catch {}
+  });
+  return () => sub?.subscription?.unsubscribe?.();
+}
+
