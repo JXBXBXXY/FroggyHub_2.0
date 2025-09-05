@@ -1,5 +1,40 @@
 import { supa } from './api.js';
 
+const FH_MESSAGES = [
+  "Я возьму пиццу 🍕",
+  "Я приду в 9 ⏰",
+  "Ребят, постучите в дверь 🚪",
+  "Кто возьмет колу? 🥤",
+  "Буду с +1 😊",
+  "Спойлер: будет торт 🎂",
+  "Добавил плейлист 🎶",
+  "Беру настолки! 🎲",
+  "Давайте сегодня тусовку?",
+  "Приходи к 19:00 ✨",
+  "Я возьму чипсы",
+  "Друзья, до встречи 🐸",
+  "Я за пивом 🍺",
+  "Забронировал столик 🍽️",
+  "Принесу проектор 📽️",
+  "Закажем такси? 🚖",
+  "Я купил шарики 🎈",
+  "Кто возьмёт гитару? 🎸",
+  "Я буду позже 🙈",
+  "У кого карты? 🃏",
+  "Я за сладким 🍩",
+  "Давайте сделаем фото 📸"
+];
+
+function spawnBubbles(container, count = 40) {
+  for (let i = 0; i < count; i++) {
+    const msg = FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
+    const bubble = document.createElement("div");
+    bubble.className = "fh-bubble";
+    bubble.textContent = msg;
+    container.appendChild(bubble);
+  }
+}
+
 // ---- BOOTSTRAP (один раз) -----------------------------------
 if (!window.FH) window.FH = {};
 if (window.FH.__booted) { /* уже проинициализировано */ }
@@ -112,7 +147,9 @@ else {
   (function bubbles() {
     const root = document.querySelector('.fh-bubbles');
     if (!root) return;
-    const items = Array.from(root.querySelectorAll('.bubble'));
+    root.innerHTML = '';
+    spawnBubbles(root, 40);
+    const items = Array.from(root.querySelectorAll('.fh-bubble'));
     if (!items.length) return;
 
     function layout() {
