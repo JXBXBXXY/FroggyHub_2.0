@@ -105,79 +105,116 @@ const FH_MESSAGES = [
   'Захвачу набор для рисования 🎨',
   'Кто принесёт настольные игры? 🎲'
 ];
-
-// === МОНТАЖ ФОНОВЫХ ЧИПОВ ===
-const FH_MAX_CHIPS = 20;
+// === ПЛАВАЮЩИЕ ЧИПЫ ===
+const FH_MAX_CHIPS = 20;          // не больше 20, чтобы не фризило
 let fhCloudsRoot = null;
-let fhChipNodes = [];
+let fhChips = [];                 // [{el, x, y, vx, vy, w, h}...]
+let fhAnimId = 0;
 
-/** Создаём fixed-контейнер за экранами */
 function ensureCloudsRoot() {
   if (fhCloudsRoot && document.body.contains(fhCloudsRoot)) return fhCloudsRoot;
-  if (fhCloudsRoot && fhCloudsRoot.parentNode) fhCloudsRoot.parentNode.removeChild(fhCloudsRoot);
+  if (fhCloudsRoot?.parentNode) fhCloudsRoot.parentNode.removeChild(fhCloudsRoot);
   fhCloudsRoot = document.createElement('div');
   fhCloudsRoot.id = 'fh-message-clouds';
   document.body.appendChild(fhCloudsRoot);
   return fhCloudsRoot;
 }
 
-/** Равномерно раскладываем чипы по 3 колонкам и нескольким «рядам» */
-function layoutChips() {
-  if (!fhCloudsRoot) return;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+function rand(min, max) { return Math.random() * (max - min) + min; }
 
-  const cols = [Math.round(vw * 0.08), Math.round(vw * 0.45), Math.round(vw * 0.78)];
-  const rows = Math.min(8, Math.max(5, Math.floor(vh / 140))); // 5..8 рядов по высоте
-
-  fhChipNodes.forEach((node, i) => {
-    const col = cols[i % cols.length];
-    const row = (i / cols.length) | 0;
-    const y = Math.round((vh * 0.12) + (row % rows) * (vh * 0.08));
-    node.style.left = `${col}px`;
-    node.style.top  = `${Math.min(vh - 60, y)}px`;
-  });
-}
-
-/** Монтируем до N чипов один раз */
-function mountClouds() {
+function spawnChips() {
   const root = ensureCloudsRoot();
-  if (fhChipNodes.length) { layoutChips(); return; }
 
-  const pool = Array.isArray(FH_MESSAGES) ? FH_MESSAGES.slice() : [];
+  // если уже заспавнили — просто перезапустим анимацию
+  if (fhChips.length) { startFloat(); return; }
+
+  const pool = Array.isArray(FH_MESSAGES) ? [...FH_MESSAGES] : [];
   if (!pool.length) return;
 
+  // перемешаем и ограничим
   for (let i = pool.length - 1; i > 0; i--) {
-    const j = (Math.random() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]];
+    const j = (Math.random() * (i + 1)) | 0;
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   const list = pool.slice(0, FH_MAX_CHIPS);
 
-  fhChipNodes = list.map(text => {
-    const chip = document.createElement('div');
-    chip.className = 'fh-chip';
-    chip.textContent = text;
-    root.appendChild(chip);
-    return chip;
+  // создаём DOM-узлы
+  list.forEach(msg => {
+    const el = document.createElement('div');
+    el.className = 'fh-chip';
+    el.textContent = msg;
+    root.appendChild(el);
+
+    // первичное измерение
+    const { width:w = 140, height:h = 40 } = el.getBoundingClientRect();
+
+    // стартовая позиция (не у самых краёв) и скорость
+    const x = rand(20, window.innerWidth  - w - 20);
+    const y = rand(20, window.innerHeight - h - 20);
+    const vx = rand(-0.05, 0.05);  // px/мс
+    const vy = rand(-0.04, 0.04);
+
+    fhChips.push({ el, x, y, vx, vy, w, h });
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   });
 
-  layoutChips();
+  startFloat();
 }
 
-window.addEventListener('resize', layoutChips, { passive: true });
-window.addEventListener('orientationchange', () => setTimeout(layoutChips, 180), { passive: true });
+function startFloat() {
+  stopFloat(); // на всякий
+  let last = performance.now();
 
+  function tick(now) {
+    const dt = now - last;       // мс
+    last = now;
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    for (const c of fhChips) {
+      // обновляем позицию
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+
+      // «отталкивание» от краёв
+      if (c.x < 10)                   { c.x = 10;                   c.vx *= -1; }
+      if (c.y < 10)                   { c.y = 10;                   c.vy *= -1; }
+      if (c.x > W - c.w - 10)         { c.x = W - c.w - 10;         c.vx *= -1; }
+      if (c.y > H - c.h - 10)         { c.y = H - c.h - 10;         c.vy *= -1; }
+
+      c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
+    }
+
+    fhAnimId = requestAnimationFrame(tick);
+  }
+
+  fhAnimId = requestAnimationFrame(tick);
+}
+
+function stopFloat() {
+  if (fhAnimId) cancelAnimationFrame(fhAnimId);
+  fhAnimId = 0;
+}
+
+// При ресайзе подправим границы, не пересоздавая DOM
+window.addEventListener('resize', () => {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  fhChips.forEach(c => {
+    c.x = Math.min(Math.max(10, c.x), W - c.w - 10);
+    c.y = Math.min(Math.max(10, c.y), H - c.h - 10);
+    c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
+  });
+}, { passive:true });
+
+// Вызови это один раз при старте приложения и при смене экрана:
 function mountBackgroundOnce() {
-  try { mountClouds(); } catch (e) { console.warn('[chips]', e); }
+  try { spawnChips(); } catch(e){ console.warn('[chips]', e); }
 }
+document.addEventListener('DOMContentLoaded', mountBackgroundOnce);
 
 const SCREENS = ['auth','home','profile','settings','create','join','wishlist','final'];
-
-function setScrollByScreen(screenId){
-  document.body.classList.remove('allow-scroll');
-  if (screenId === 'wishlist') {
-    document.body.classList.add('allow-scroll');
-  }
-}
 
 function showScreen(name) {
   SCREENS.forEach(id => {
@@ -187,7 +224,6 @@ function showScreen(name) {
     el.classList.toggle('visible', visible);
     el.setAttribute('aria-hidden', String(!visible));
   });
-  setScrollByScreen(name);
   mountBackgroundOnce();
 }
 
@@ -198,10 +234,7 @@ function routeFromHash() {
 }
 
 window.addEventListener('hashchange', routeFromHash);
-document.addEventListener('DOMContentLoaded', () => {
-  mountBackgroundOnce();
-  routeFromHash();
-});
+document.addEventListener('DOMContentLoaded', routeFromHash);
 
 document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-link]');
