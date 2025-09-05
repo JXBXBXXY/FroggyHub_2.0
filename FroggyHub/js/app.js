@@ -1,75 +1,66 @@
-import { getSession, onAuth, signInOrSignUp } from './api.js';
+import { supa, signUpWithNickname, signInSmart, getSession, signOut, onAuthChanged } from './api.js';
 
-const SCREENS = ['auth','home','profile','settings','create','join'];
+const qs=(s,r=document)=>r.querySelector(s);
+const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const SCREENS={ auth:'#screen-auth', home:'#screen-home' };
 
-function showScreen(name) {
-  SCREENS.forEach(id => {
-    const el = document.querySelector(`#screen-${id}`);
-    if (!el) return;
-    el.classList.toggle('visible', id === name);
-    el.setAttribute('aria-hidden', id === name ? 'false' : 'true');
+function showScreen(name){
+  const id=SCREENS[name]||name;
+  qa('.screen').forEach(el=>{
+    const visible=('#'+el.id)===id;
+    el.classList.toggle('visible',visible);
+    el.setAttribute('aria-hidden',String(!visible));
   });
-  // Обновляем hash для SPA
-  if (name !== 'auth') location.hash = `#${name}`;
+  const newHash=id.startsWith('#')?id:`#${id}`;
+  if(location.hash!==newHash) history.replaceState(null,'',newHash);
 }
 
-function routeFromHash() {
-  const target = (location.hash || '#home').replace('#','');
-  showScreen(SCREENS.includes(target) ? target : 'home');
-}
-
-function bindNav() {
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-link]');
-    if (!btn) return;
+function navBind(){
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('[data-link]');
+    if(!a) return;
     e.preventDefault();
-    const dest = btn.getAttribute('data-link');
-    if (SCREENS.includes(dest)) showScreen(dest);
+    const target=a.getAttribute('data-link');
+    if(target) showScreen(target);
+  });
+  window.addEventListener('hashchange',()=>{
+    const key=location.hash.replace('#','')||'home';
+    if(SCREENS[key]) showScreen(key);
   });
 }
 
-function bindAuthForm() {
-  const form = document.querySelector('#auth-form');
-  if (!form) return;
-  const loginInput = form.querySelector('input[name="login"]');
-  const passInput  = form.querySelector('input[name="password"]');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const identifier = (loginInput?.value || '').trim();
-    const password   = (passInput?.value  || '').trim();
-    if (!identifier || !password) return;
-    form.classList.add('is-loading');
-    try {
-      const session = await signInOrSignUp({ identifier, password });
-      if (session) showScreen('home');
-    } catch (err) {
-      console.warn('[auth]', err?.message || err);
-      // Мягкая подсветка ошибки
-      form.classList.add('shake');
-      setTimeout(() => form.classList.remove('shake'), 300);
-    } finally {
-      form.classList.remove('is-loading');
-    }
+function bindAuthForms(){
+  const authForm=qs('#auth-form');
+  if(authForm){
+    authForm.addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(authForm);
+      const login=fd.get('login'), password=fd.get('password');
+      const errBox=authForm.querySelector('.form-error');
+      try{ await signInSmart({login,password}); showScreen('home'); }
+      catch(err){ errBox&&(errBox.textContent=err.message); }
+    });
+  }
+  const regForm=qs('#register-form');
+  if(regForm){
+    regForm.addEventListener('submit',async e=>{
+      e.preventDefault();
+      const fd=new FormData(regForm);
+      const nickname=fd.get('nickname'), email=fd.get('email'), password=fd.get('password');
+      const errBox=regForm.querySelector('.form-error');
+      try{ await signUpWithNickname({nickname,email,password}); showScreen('home'); }
+      catch(err){ errBox&&(errBox.textContent=err.message); }
+    });
+  }
+  qa('[data-action="logout"]').forEach(btn=>{
+    btn.addEventListener('click',async()=>{ try{await signOut();}catch{} });
   });
 }
 
-async function bootstrap() {
-  // 1) отрисовываем Home по умолчанию, auth поверх если нет сессии
-  showScreen('home');
-  // 2) слушаем auth
-  onAuth((session) => {
-    if (session) showScreen('home'); else showScreen('auth');
-  });
-  // 3) проверяем существующую сессию
-  const session = await getSession();
-  if (session) showScreen('home'); else showScreen('auth');
-  // 4) навигация
-  bindNav();
-  bindAuthForm();
-  // 5) роутинг по hash
-  window.addEventListener('hashchange', routeFromHash);
-  if (location.hash) routeFromHash();
+async function boot(){
+  navBind(); bindAuthForms();
+  try{ const s=await getSession(); showScreen(s?'home':'auth'); }
+  catch{ showScreen('auth'); }
+  onAuthChanged((_e,s)=>showScreen(s?'home':'auth'));
 }
-
-document.addEventListener('DOMContentLoaded', bootstrap);
-
+document.addEventListener('DOMContentLoaded',boot);

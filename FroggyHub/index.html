@@ -146,14 +146,17 @@
               <input id="resetPass2" type="password" minlength="4" autocomplete="new-password">
             </label>
           </div>
-          <div id="login-status" aria-live="polite"></div>
+          <div id="login-status" class="form-error" aria-live="polite"></div>
         </form>
       </section>
 
       <section id="pane-register" class="pane is-hidden" role="tabpanel" aria-labelledby="tab-register">
-        <form id="signupForm" class="grid" novalidate>
+        <form id="register-form" class="grid" novalidate>
           <label>Имя / Никнейм
             <input id="signup-nickname" name="nickname" required minlength="2" autocomplete="nickname">
+          </label>
+          <label>Email
+            <input id="signup-email" name="email" type="email" required autocomplete="email">
           </label>
           <label>Пароль
             <input id="signup-password" name="password" type="password" required minlength="4" autocomplete="new-password">
@@ -162,7 +165,7 @@
             <input id="signup-password2" name="password2" type="password" required minlength="4" autocomplete="new-password">
           </label>
             <button id="signup-btn" class="btn btn-primary btn-xl w-100" type="submit">Зарегистрироваться</button>
-          <div id="reg-status" aria-live="polite"></div>
+          <div id="reg-status" class="form-error" aria-live="polite"></div>
         </form>
       </section>
     </div>
