@@ -1006,3 +1006,68 @@ input, .input{
   padding: 0 14px;
 }
 
+
+/* Пузырьки не мешают кликам по UI */
+#fh-message-clouds {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: var(--bubble-layer-z);
+  padding: 0;
+}
+
+/* Базовый вид iOS-pill, опираемся на уже существующую .bubble.chip */
+.bubble.chip {
+  position: absolute;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translate3d(0,0,0) scale(0.98);
+  opacity: 0;
+}
+
+/* фаза появления */
+.bubble-enter {
+  animation: bubbleEnter 320ms ease-out forwards;
+}
+@keyframes bubbleEnter {
+  from { opacity: 0; transform: translate3d(var(--tx,0), var(--ty,0), 0) scale(0.9); }
+  to   { opacity: 1; transform: translate3d(var(--tx,0), var(--ty,0), 0) scale(1); }
+}
+
+/* лёгкое «покачивание» */
+.bubble-alive {
+  animation: bubbleFloat 3.2s ease-in-out infinite alternate;
+}
+@keyframes bubbleFloat {
+  from { transform: translate3d(calc(var(--tx,0) + -4px), calc(var(--ty,0) + -3px), 0) scale(1); }
+  to   { transform: translate3d(calc(var(--tx,0) + 4px),  calc(var(--ty,0) + 3px),  0) scale(1.01); }
+}
+
+/* фаза исчезновения */
+.bubble-exit {
+  animation: bubbleExit 320ms ease-in forwards;
+}
+@keyframes bubbleExit {
+  from { opacity: 1; filter: none; }
+  to   { opacity: 0; filter: blur(1px); }
+}
+
+/* чуть ниже центра и чуть более выраженный фон */
+.auth-card {
+  margin-top: 10vh;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+/* Глобально отключаем прокрутку */
+html, body {
+  overflow: hidden;
+}
+
+/* Разрешаем прокрутку ТОЛЬКО в зоне wishlist */
+#screen-wishlist, #screen-wishlist .wl-wrap {
+  max-height: 100svh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+

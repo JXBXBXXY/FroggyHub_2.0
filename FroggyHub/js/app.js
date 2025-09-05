@@ -135,8 +135,8 @@ function bindAuthForms(){
 
 function bootstrap(){
   // фоновые чипы
-  mountClouds(AMBIENT);
-  shuffleClouds(9000);
+  // mountClouds(AMBIENT);
+  // shuffleClouds(9000);
 
   // навигация
   bindNav();

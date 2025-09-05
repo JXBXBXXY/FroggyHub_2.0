@@ -32,5 +32,11 @@
   <section id="screen-settings" class="screen" aria-hidden="true"></section>
 
   <script type="module" src="./js/app.js"></script>
+  <script type="module">
+  import { initBubbles } from './js/bubbles.js';
+  window.addEventListener('DOMContentLoaded', () => {
+    initBubbles({ containerId: 'fh-message-clouds', count: 7 });
+  });
+  </script>
 </body>
 </html>
