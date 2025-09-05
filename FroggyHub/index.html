@@ -8,6 +8,17 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon"
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <script>
+    // Safe ENV injection for static hosting (Netlify replaces PUBLIC_* at build time)
+    window.ENV = window.ENV || {
+      SUPABASE_URL: "${PUBLIC_SUPABASE_URL}" || "PUBLIC_SUPABASE_URL",
+      SUPABASE_ANON_KEY: "${PUBLIC_SUPABASE_ANON_KEY}" || "PUBLIC_SUPABASE_ANON_KEY"
+    };
+    // Normalise empty placeholders -> undefined
+    for (const k of ["SUPABASE_URL","SUPABASE_ANON_KEY"]) {
+      if (!window.ENV[k] || /PUBLIC_SUPABASE_/i.test(window.ENV[k])) window.ENV[k] = undefined;
+    }
+  </script>
     <style>
     /* Message clouds background */
     #fh-message-clouds {
@@ -87,13 +98,7 @@
 </head>
 <body class="scene-intro">
   <div class="fh-bg" aria-hidden="true"></div>
-  <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true">
-    <div class="bubble chip">Создавайте события</div>
-    <div class="bubble chip">Делитесь вишлистами</div>
-    <div class="bubble chip">Планируйте встречи</div>
-    <div class="bubble chip">Приглашайте друзей</div>
-    <div class="bubble chip">Следите за ответами</div>
-  </div>
+  <div class="fh-bubbles" aria-hidden="true"></div>
   <div class="fh-content">
   <!-- Шапка -->
   <nav class="topbar">
@@ -108,7 +113,7 @@
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="screen container" role="main">
-    <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
+    <div class="card card-auth auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-head">
         <div class="auth-avatar">
           <img src="/assets/frog_idle.png" alt="Froggy" />

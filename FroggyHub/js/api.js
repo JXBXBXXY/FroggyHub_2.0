@@ -1,52 +1,42 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-const ENV = window?.ENV ?? {};
-let _supa;
-export const supa = (() => {
-  if (_supa) return _supa;
-  _supa = createClient(ENV.PUBLIC_SUPABASE_URL, ENV.PUBLIC_SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
-  window.FH = window.FH || {};
-  window.FH.supa = _supa;
-  return _supa;
-})();
-
-const isEmail = (v) => /\S+@\S+\.\S+/.test(String(v||'').trim());
-
-export async function signUpWithNickname({ nickname, email, password }) {
-  if (!nickname || !email || !password) throw new Error('Заполните никнейм, email и пароль');
-  const { data, error } = await supa.auth.signUp({
-    email, password,
-    options: { data: { nickname: String(nickname).trim() } },
-  });
-  if (error) throw error;
-  try {
-    const user = data.user;
-    if (user) {
-      await supa.from('profiles').upsert({
-        id: user.id, nickname: String(nickname).trim(), email: String(email).trim(),
-      });
-    }
-  } catch {}
-  return data;
-}
-
-export async function signInSmart({ login, password }) {
-  const raw = String(login||'').trim();
-  if (!raw || !password) throw new Error('Заполните логин и пароль');
-  let email = raw;
-  if (!isEmail(raw)) {
-    const { data, error } = await supa.rpc('get_email_by_nickname', { p_nickname: raw });
-    if (error) throw error;
-    if (!data || !data.email) throw new Error('Пользователь с таким никнеймом не найден');
-    email = data.email;
+const getEnv = () => (window.ENV || {});
+const makeClient = () => {
+  const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = getEnv();
+  if (!url || !key) {
+    console.error("Supabase ENV missing", { url, keyPresent: !!key });
+    return null;
   }
-  const { data, error } = await supa.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
+  return createClient(url, key, {
+    auth: { persistSession: true, autoRefreshToken: true }
+  });
+};
+
+export const supa = makeClient();
+
+// Helpers
+export async function getSession() {
+  if (!supa) return null;
+  const { data } = await supa.auth.getSession();
+  return data?.session || null;
 }
 
-export async function getSession(){ const {data,error}=await supa.auth.getSession(); if(error)throw error; return data.session??null;}
-export async function signOut(){ const {error}=await supa.auth.signOut(); if(error)throw error;}
-export function onAuthChanged(cb){ return supa.auth.onAuthStateChange((e,s)=>{ try{cb?.(e,s);}catch{} }); }
+export async function signInWithNicknameOrEmail({ login, password }) {
+  if (!supa) throw new Error("Supabase not ready");
+  const isEmail = /\S+@\S+\.\S+/.test(login);
+  const args = isEmail ? { email: login, password } : { email: `${login}@users.local`, password };
+  // Если логина нет — автосоздаем пользователя (upsert-паттерн)
+  let { data, error } = await supa.auth.signInWithPassword(args);
+  if (error?.status === 400) {
+    const reg = await supa.auth.signUp(args);
+    if (reg.error) throw reg.error;
+    ({ data, error } = await supa.auth.signInWithPassword(args));
+  }
+  if (error) throw error;
+  return data?.session || null;
+}
+
+export async function signOut() {
+  if (!supa) return;
+  await supa.auth.signOut();
+}

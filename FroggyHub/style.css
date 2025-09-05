@@ -50,14 +50,8 @@ body{
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
   overflow: hidden;
-}
-
-#screen-auth,
-#screen-home {
-  position: relative;
-  z-index: 2;
 }
 
 /* Состояния пузыря */
@@ -107,8 +101,8 @@ body{
 }
 
 /* При скрытии контейнера экрана */
-.screen{display:none;opacity:0;transition:opacity .25s ease}
-.screen.visible{display:block;opacity:1}
+.screen { position: relative; z-index: 1; opacity: 0; transition: opacity .25s ease; }
+.screen.visible { opacity: 1; }
 
 /* Карточка авторизации/регистрации */
 #screen-auth .card,
@@ -904,6 +898,15 @@ button:not([disabled]){ cursor:pointer; }
   .auth-card{transform:translateY(8vh)}
 }
 
+/* Glass auth card — чуть мутнее и ниже центра */
+.hero-frog .card-auth,
+#screen-auth .card-auth {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(8, 30, 22, 0.24);
+  transform: translateY(4vh);
+}
+
 /* === Final single-column === */
 .final-wrap{max-width:860px;margin:32px auto;padding:0 16px;display:block}
 .final-card{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
@@ -915,13 +918,3 @@ button:not([disabled]){ cursor:pointer; }
   .final-card{padding:16px}
 }
 
-/* FH visibility defaults (append only) */
-#screen-home { display: block; }
-#screen-auth.hidden { display: none; }
-
-/* FH screens visibility (append only) */
-#screen-home, #screen-auth, #screen-profile, #screen-hub { display: none; }
-#screen-home:not(.hidden),
-#screen-auth:not(.hidden),
-#screen-profile:not(.hidden),
-#screen-hub:not(.hidden) { display: block; }
