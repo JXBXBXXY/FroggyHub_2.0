@@ -216,6 +216,49 @@ else {
     handle(signupForm, 'signup');
   })();
 
+  // Ensure bubbles layer exists and populated, then kick visibility
+  (function ensureBubbles() {
+    const stage = document.querySelector('.fh-bubbles');
+    if (!stage) return;
+
+    // если уже отрисованы > 20 — ничего не делаем
+    if (stage.querySelectorAll('.fh-bubble').length > 20) {
+      // На всякий случай: снимем «невидимость», если она зависла
+      stage.querySelectorAll('.fh-bubble').forEach(n => n.classList.add('is-in'));
+      return;
+    }
+
+    const messages = [
+      'Кто возьмёт колу? 🥤','Буду с +1 🙂','Зайду за напитками 🛒',
+      'Я купил шарики 🎈','Забронировал столик 🍽️','Приеду на час раньше ⏱️',
+      'Давайте играть в мафию 😎','Кто возьмёт гитару? 🎸','Нужны свечи 🕯️',
+      'Принесу проектор 📽️','Я на машине 🚗','Возьму пледы 🧣',
+      'Давайте сделаем фото 📸','Где паркуемся? 🅿️','Я за пиццу 🍕',
+      'Кто возьмёт посуду? 🍽️','Я за салатом 🥗','Кто на десерт? 🧁',
+      'Поделитесь адресом 🗺️','Скиньте код 🔐','У кого карты? 🃏'
+    ];
+
+    // Сколько хотим сразу
+    const COUNT = 60;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < COUNT; i++) {
+      const b = document.createElement('div');
+      b.className = 'fh-bubble';
+      b.textContent = messages[Math.floor(Math.random() * messages.length)];
+      // временно за экран, чтобы не мигали
+      b.style.setProperty('--tx', '-9999px');
+      b.style.setProperty('--ty', '-9999px');
+      frag.appendChild(b);
+    }
+    stage.appendChild(frag);
+
+    // Дай браузеру вставить DOM, затем включи «видимость» — сразу,
+    // чтобы они не остались прозрачными
+    requestAnimationFrame(() => {
+      stage.querySelectorAll('.fh-bubble').forEach(n => n.classList.add('is-in'));
+    });
+  })();
+
   // ===== BUBBLES: grid + no-overlap + fade swap =====
   (function bubblesManager() {
     const stage = document.querySelector('.fh-bubbles');
