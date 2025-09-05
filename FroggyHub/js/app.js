@@ -159,11 +159,11 @@ function bindButton(id, handler) {
 }
 
 const bootstrap = async () => {
-  if (window.FH?.__booted) return;
-  window.FH = window.FH || {};
-  window.FH.__booted = true;
-
   const supabase = getSupabase();
+
+  show('home');
+  const authScreen = document.getElementById('screen-auth');
+  if (authScreen) authScreen.hidden = true;
 
   let session = null;
   try {
@@ -173,17 +173,19 @@ const bootstrap = async () => {
     ]);
   } catch (_) { /* ignore */ }
   currentSession = session ?? null;
+  if (!currentSession && authScreen) authScreen.hidden = false;
 
   supabase.auth.onAuthStateChange((_event, session) => {
     currentSession = session ?? null;
     if (currentSession) {
       document.documentElement.classList.remove('auth-required');
       document.documentElement.classList.add('auth-ok');
+      if (authScreen) authScreen.hidden = true;
       if (parseHash() === 'auth') go('home');
     } else {
       document.documentElement.classList.remove('auth-ok');
       document.documentElement.classList.add('auth-required');
-      go('auth');
+      if (authScreen) authScreen.hidden = false;
     }
   });
 
@@ -196,11 +198,8 @@ const bootstrap = async () => {
   }
 
   const initial = parseHash();
-  if (initial) (window.fhRouter ? window.fhRouter.go(initial) : go(initial));
-  else {
-    const target = currentSession ? 'home' : 'auth';
-    if (window.fhRouter) window.fhRouter.go(target); else go(target);
-  }
+  if (initial && currentSession) (window.fhRouter ? window.fhRouter.go(initial) : go(initial));
+  else if (currentSession) (window.fhRouter ? window.fhRouter.go('home') : go('home'));
 
   window.addEventListener('hashchange', () => go(parseHash()));
 
@@ -254,7 +253,6 @@ const bootstrap = async () => {
   });
 };
 
-window.FH.init = bootstrap;
 
 if(!localStorage.getItem(COOKIE_KEY)) $('#cookie-banner').hidden = false;
 
@@ -959,11 +957,13 @@ function applyValidationErrors(mode, errors){
 
 /* ---------- ПОЛЬЗОВАТЕЛИ / СЕССИЯ ---------- */
 const USERS_KEY = 'froggyhub_users_v1';
-const SESSION_KEY = 'froggyhub_session_email';
+const SESSION_KEY = 'fh:session';
 const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
 const saveUsers = () => localStorage.setItem(USERS_KEY, JSON.stringify(users));
-const setSession = (email) => localStorage.setItem(SESSION_KEY, email);
-const getSession = () => localStorage.getItem(SESSION_KEY);
+const setSavedSession = (data) => localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+const getSavedSession = () => {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
+};
 let currentUser = null;
 let lastSession = null;
 let rebindTried = false;
@@ -1359,34 +1359,6 @@ resetSetBtn?.addEventListener('click', async ()=>{
     resetSetBtn.disabled=false; resetSetBtn.textContent=orig;
   }
 });
-
-/* ---------- АВТОВХОД ---------- */
-(async function autoLogin() {
-  const sb = await ensureSupabase();
-  if(sb){
-    const { data } = await sb.auth.getSession();
-    const supUser = data.session?.user;
-    const emailSup = supUser?.email;
-    if(emailSup){
-      currentUser = supUser;
-      setSession(emailSup);
-      window.currentUserEmail = emailSup;
-      renderUserBadge({ nickname: getNickname(), email: emailSup });
-      show('#screen-menu');
-      return;
-    }
-  }
-  const email = getSession();
-  if (email && users[email]) {
-    window.currentUserEmail = email;
-    renderUserBadge({ nickname: getNickname(), email });
-    show('#screen-menu');
-  } else {
-    localStorage.removeItem(SESSION_KEY);
-    show('#screen-auth');
-    setAuthState('login');
-  }
-  })();
 
 /* ---------- COOKIE CONSENT ---------- */
 const COOKIE_CHOICE_KEY = 'cookie_choice';
@@ -2864,6 +2836,8 @@ function wireAuthForms(){
         const data = await apiLogin(nickname, password);
         if (data?.token){
           setToken(data.token);
+          setSavedSession({ user_id: data.user_id, nickname });
+          const auth = document.getElementById('screen-auth'); if (auth) auth.hidden = true;
           show('menu');        // ← показываем меню/лобби
           if (typeof loadLobby === 'function') loadLobby();
           window.fhRouter && window.fhRouter.go('home');
@@ -2899,6 +2873,8 @@ function wireAuthForms(){
           const lg = await apiLogin(nickname, password);
           if (lg?.token){
             setToken(lg.token);
+            setSavedSession({ user_id: lg.user_id, nickname });
+            const auth = document.getElementById('screen-auth'); if (auth) auth.hidden = true;
             show('menu');
             if (typeof loadLobby === 'function') loadLobby();
             window.fhRouter && window.fhRouter.go('home');
@@ -2933,50 +2909,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
 if (!document.body.dataset.screen) show('home');
 
-// === FroggyHub: render soft message-clouds background ===
-(function () {
-  const MESSAGES = [
-    "давайте сегодня тусовку?",
-    "в FroggyHub удобнее, чем создавать группы)",
-    "а я знаю что я возьму на день рождение другу)",
-    "приходи к 19:00 ✨",
-    "беру настолки!",
-  ];
+const BUBBLE_MESSAGES = [
+  "давайте сегодня тусовку?",
+  "в FroggyHub удобнее, чем создавать группы)",
+  "а я знаю что я возьму на день рождение другу)",
+  "приходи к 19:00 ✨",
+  "беру настолки!",
+];
 
-  function rand(min, max) { return Math.random() * (max - min) + min; }
-
-  function renderMessageClouds() {
-    const host = document.getElementById("fh-message-clouds");
-    if (!host) return;
-
-    const count = Math.min(12, Math.max(6, Math.round(window.innerWidth / 150)));
-    host.innerHTML = "";
-
-    for (let i = 0; i < count; i++) {
-      const cloud = document.createElement("div");
-      cloud.className = "fh-cloud";
-      cloud.textContent = MESSAGES[i % MESSAGES.length];
-
-      const top = rand(8, 78);     // проценты
-      const left = rand(6, 82);
-      const rot = rand(-10, 10);   // градусов
-      const op = rand(0.12, 0.22); // мягкая прозрачность
-
-      cloud.style.top = top + "%";
-      cloud.style.left = left + "%";
-      cloud.style.transform = `rotate(${rot}deg)`;
-      cloud.style.opacity = String(op);
-
-      host.appendChild(cloud);
+function layoutBubbles(bubbles) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const cols = Math.max(6, Math.floor(vw / 220));
+  const rows = Math.max(4, Math.floor(vh / 160));
+  const cells = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push({ r, c });
+  const frogBox = { x: vw*0.28, y: vh*0.15, w: vw*0.44, h: vh*0.42 };
+  const ctaBox  = { x: vw*0.05, y: vh*0.70, w: vw*0.90, h: vh*0.22 };
+  const cellW = vw / cols, cellH = vh / rows;
+  const rnd = arr => arr.sort(() => Math.random() - 0.5);
+  const taken = [];
+  function intersects(a, b) { return !(a.x+a.w<b.x || b.x+b.w<a.x || a.y+a.h<b.y || b.y+b.h<a.y); }
+  rnd(cells);
+  let i = 0;
+  for (const el of bubbles) {
+    while (i < cells.length) {
+      const { r, c } = cells[i++];
+      const base = { x: c*cellW, y: r*cellH, w: cellW, h: cellH };
+      const jitterX = (Math.random()-0.5) * cellW*0.35;
+      const jitterY = (Math.random()-0.5) * cellH*0.35;
+      const box = { x: base.x + cellW*0.5 + jitterX, y: base.y + cellH*0.5 + jitterY, w: 260, h: 52 };
+      const bb = { x: box.x-130, y: box.y-26, w: 260, h: 52 };
+      if (intersects(bb, frogBox) || intersects(bb, ctaBox) || taken.some(t => intersects(bb, t))) continue;
+      taken.push(bb);
+      el.style.transform = `translate(${bb.x}px, ${bb.y}px) rotate(${(Math.random()*16-8).toFixed(1)}deg)`;
+      el.style.opacity = '0.9';
+      break;
     }
   }
+}
 
-  // первичный рендер и легкий дебаунс на ресайз
-  let t;
-  function schedule() { clearTimeout(t); t = setTimeout(renderMessageClouds, 120); }
-  document.addEventListener("DOMContentLoaded", renderMessageClouds);
-  window.addEventListener("resize", schedule);
-})();
+function renderBubbles() {
+  const host = document.getElementById('fh-message-clouds');
+  if (!host) return;
+  const count = Math.min(12, Math.max(6, Math.round(window.innerWidth / 150)));
+  host.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'msg-cloud';
+    el.textContent = BUBBLE_MESSAGES[i % BUBBLE_MESSAGES.length];
+    host.appendChild(el);
+  }
+  layoutBubbles(host.querySelectorAll('.msg-cloud'));
+}
+
+let bubbleTimer;
+function relayoutBubbles() {
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => {
+    const host = document.getElementById('fh-message-clouds');
+    if (!host) return;
+    layoutBubbles(host.querySelectorAll('.msg-cloud'));
+  }, 180);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderBubbles();
+  window.addEventListener('resize', relayoutBubbles, { passive: true });
+});
 
 // === Fix: make "Настройки" button navigate to /settings ===
 (function () {
@@ -2996,62 +2995,6 @@ if (!document.body.dataset.screen) show('home');
       if (!(btn instanceof HTMLAnchorElement)) btn.style.cursor = "pointer";
     }
   });
-})();
-
-// === FroggyHub: render many floating message-clouds ===
-(function () {
-  const MESSAGES = [
-    "давайте сегодня тусовку?",
-    "в FroggyHub удобнее, чем создавать группы)",
-    "а я знаю что я возьму на день рождение другу)",
-    "приходи к 19:00 ✨",
-    "беру настолки!",
-    "кто возьмёт колу?",
-    "добавил плейлист 🎶",
-    "буду с +1 😉",
-    "кто захватит настолки?",
-    "хочу пиццу 🍕",
-    "друзья, до встречи 🐸",
-    "спойлер: будет торт 🎂",
-  ];
-
-  function rand(min, max) { return Math.random() * (max - min) + min; }
-
-  function renderMessageClouds() {
-    const host = document.getElementById("fh-message-clouds");
-    if (!host) return;
-
-    // Больше облачков: 18..36 (зависит от ширины)
-    const count = Math.min(36, Math.max(18, Math.round(window.innerWidth / 60)));
-    host.innerHTML = "";
-
-    for (let i = 0; i < count; i++) {
-      const cloud = document.createElement("div");
-      cloud.className = "fh-cloud";
-      cloud.textContent = MESSAGES[i % MESSAGES.length];
-
-      const top = rand(5, 90);
-      const left = rand(5, 90);
-      const rot = rand(-15, 15);
-      const op = rand(0.15, 0.28);
-      const dur = rand(5, 9);   // длительность анимации
-      const delay = rand(-dur, 0);
-
-      cloud.style.top = top + "%";
-      cloud.style.left = left + "%";
-      cloud.style.opacity = String(op);
-      cloud.style.setProperty("--rot", rot + "deg");
-      cloud.style.animationDuration = dur + "s";
-      cloud.style.animationDelay = delay + "s";
-
-      host.appendChild(cloud);
-    }
-  }
-
-  let t;
-  function schedule() { clearTimeout(t); t = setTimeout(renderMessageClouds, 120); }
-  document.addEventListener("DOMContentLoaded", renderMessageClouds);
-  window.addEventListener("resize", schedule);
 })();
 
 // === Fix: make "Настройки" navigate smoothly (no full reload) ===
@@ -3089,266 +3032,6 @@ if (!document.body.dataset.screen) show('home');
     }
   });
 })();
-/* ---------- FroggyHub bootstrap + bubbles layout/animation ---------- */
-(function () {
-  const $  = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const now = () => performance.now();
-
-  const _selectScreen =
-    window.selectScreen ||
-    function selectScreen(name) {
-      const targetId = `#screen-${name}`;
-      $$(".fh-screen").forEach((el) => (el.style.display = "none"));
-      const tgt = $(targetId);
-      if (tgt) tgt.style.display = "";
-      if (location.hash !== `#${name}`) {
-        history.replaceState(null, "", `#${name}`);
-      }
-    };
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const hashName = (location.hash || "").replace(/^#/, "");
-    if (!hashName) {
-      _selectScreen("home");
-    } else {
-      const hasScreen = !!document.getElementById(`screen-${hashName}`);
-      _selectScreen(hasScreen ? hashName : "home");
-    }
-
-    const bind = (sel, handler) => {
-      const el = $(sel);
-      if (el) el.addEventListener("click", handler, { passive: true });
-    };
-
-    bind('[data-action="open-menu"]', () => _selectScreen("home"));
-    bind('[data-action="create-event"]', () => _selectScreen("auth"));
-    bind('[data-action="join-event"]', () => _selectScreen("auth"));
-    bind('[data-action="login"]', () => _selectScreen("auth"));
-    bind('[data-action="signup"]', () => _selectScreen("auth"));
-    bind('[data-action="logout"]', () => {
-      try { window.localStorage.removeItem("fh_token"); } catch {}
-      _selectScreen("home");
-    });
-
-    initFloatingBubbles();
-  });
-
-  function initFloatingBubbles() {
-    const root =
-      document.getElementById("fh-clouds") ||
-      document.querySelector(".fh-clouds") ||
-      null;
-    if (!root) return;
-
-    const bubbles =
-      $$(".fh-cloud", root) || $$(".msg-cloud", root);
-    if (!bubbles.length) return;
-
-    const avoidRects = [];
-    const frog = document.getElementById("fh-frog");
-    const cta = document.getElementById("fh-cta");
-    if (frog) avoidRects.push(frog.getBoundingClientRect());
-    if (cta) avoidRects.push(cta.getBoundingClientRect());
-
-    root.style.position = "absolute";
-    root.style.inset = "0";
-    root.style.pointerEvents = "none";
-
-    const state = bubbles.map((el) => ({
-      el, x: 0, y: 0, w: 0, h: 0, vx: 0, vy: 0,
-    }));
-
-    function layout() {
-      const rect = root.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
-
-      const cell = Math.max(200, Math.min(260, Math.floor(W / 6)));
-      const cols = Math.max(3, Math.floor(W / cell));
-      const rows = Math.max(3, Math.floor(H / cell));
-      const cellW = W / cols;
-      const cellH = H / rows;
-
-      const placed = [];
-
-      state.forEach((s, i) => {
-        const el = s.el;
-        el.style.position = "absolute";
-        el.style.willChange = "transform";
-        el.style.transform = "translate3d(-10000px,-10000px,0)";
-      });
-
-      requestAnimationFrame(() => {
-        state.forEach((s) => {
-          const r = s.el.getBoundingClientRect();
-          s.w = r.width; s.h = r.height;
-        });
-
-        const margin = 16;
-        let idx = 0;
-
-        for (let r = 0; r < rows && idx < state.length; r++) {
-          for (let c = 0; c < cols && idx < state.length; c++) {
-            const s = state[idx];
-            const baseX = c * cellW;
-            const baseY = r * cellH;
-            const jitterX = (Math.random() * 0.5 + 0.25) * (cellW - s.w);
-            const jitterY = (Math.random() * 0.5 + 0.25) * (cellH - s.h);
-
-            let x = clamp(baseX + jitterX, margin, W - s.w - margin);
-            let y = clamp(baseY + jitterY, margin, H - s.h - margin);
-
-            const triesMax = 12;
-            let tries = 0;
-            const overlapsAvoid = () =>
-              avoidRects.some((ar) => isOverlapXYWH(x, y, s.w, s.h, ar));
-            const overlapsBubbles = () =>
-              placed.some((p) => isOverlap(s, { x, y, w: s.w, h: s.h }, p));
-
-            while ((overlapsAvoid() || overlapsBubbles()) && tries < triesMax) {
-              x = clamp(x + (Math.random() - 0.5) * 40, margin, W - s.w - margin);
-              y = clamp(y + (Math.random() - 0.5) * 40, margin, H - s.h - margin);
-              tries++;
-            }
-
-            s.x = x; s.y = y;
-            s.vx = (Math.random() - 0.5) * 0.05;
-            s.vy = (Math.random() - 0.5) * 0.05;
-
-            s.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-            placed.push({ x, y, w: s.w, h: s.h });
-
-            idx++;
-          }
-        }
-      });
-    }
-
-    function isOverlap(a, pos, b) {
-      return !(
-        pos.x + pos.w <= b.x ||
-        pos.x >= b.x + b.w ||
-        pos.y + pos.h <= b.y ||
-        pos.y >= b.y + b.h
-      );
-    }
-
-    function isOverlapXYWH(x, y, w, h, rect) {
-      const rx = rect.left, ry = rect.top, rw = rect.width, rh = rect.height;
-      return !(x + w <= rx || x >= rx + rw || y + h <= ry || y >= ry + rh);
-    }
-
-    let raf = 0;
-    let last = now();
-    function tick() {
-      const t = now();
-      const dt = (t - last) / 16.7;
-      last = t;
-
-      const rect = root.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
-      const margin = 12;
-
-      for (let i = 0; i < state.length; i++) {
-        const s = state[i];
-        s.vx += (Math.random() - 0.5) * 0.002;
-        s.vy += (Math.random() - 0.5) * 0.002;
-        s.vx = clamp(s.vx, -0.12, 0.12);
-        s.vy = clamp(s.vy, -0.12, 0.12);
-        s.x += s.vx * dt;
-        s.y += s.vy * dt;
-
-        if (s.x < margin) { s.x = margin; s.vx = Math.abs(s.vx); }
-        else if (s.x + s.w > W - margin) { s.x = W - margin - s.w; s.vx = -Math.abs(s.vx); }
-        if (s.y < margin) { s.y = margin; s.vy = Math.abs(s.vy); }
-        else if (s.y + s.h > H - margin) { s.y = H - margin - s.h; s.vy = -Math.abs(s.vy); }
-
-        for (const ar of avoidRects) {
-          const cx = clamp(s.x + s.w / 2, ar.left, ar.right);
-          const cy = clamp(s.y + s.h / 2, ar.top, ar.bottom);
-          const dx = s.x + s.w / 2 - cx;
-          const dy = s.y + s.h / 2 - cy;
-          const d2 = dx * dx + dy * dy;
-          if (d2 < 40000) {
-            s.vx += (dx / Math.max(80, Math.sqrt(d2))) * 0.06;
-            s.vy += (dy / Math.max(80, Math.sqrt(d2))) * 0.06;
-          }
-        }
-
-        s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
-      }
-
-      raf = requestAnimationFrame(tick);
-    }
-
-    const relayout = debounce(() => {
-      cancelAnimationFrame(raf);
-      layout();
-      last = now();
-      raf = requestAnimationFrame(tick);
-    }, 120);
-    window.addEventListener("resize", relayout, { passive: true });
-    window.addEventListener("orientationchange", relayout, { passive: true });
-
-    layout();
-    raf = requestAnimationFrame(tick);
-  }
-
-  function debounce(fn, ms) {
-    let id = 0;
-    return (...args) => {
-      clearTimeout(id);
-      id = setTimeout(() => fn.apply(null, args), ms);
-    };
-  }
-})();
-
-
-// --- FH bubbles placement constraints (append only) ---
-(function () {
-  const SAFE_ZONES = [
-    // center frog approx region (tune if needed)
-    { x: 0.25, y: 0.18, w: 0.5, h: 0.35 },
-    // CTA band near bottom
-    { x: 0.05, y: 0.72, w: 0.90, h: 0.18 },
-  ];
-
-  function rectsOverlap(a, b) {
-    return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
-  }
-
-  // given viewport size and bubble size, generate non-overlapping jittered grid positions
-  window.__fh_placeBubbles = function placeBubbles(count, vw, vh, bw, bh) {
-    const cells = Math.ceil(Math.sqrt(count));
-    const gx = vw / cells;
-    const gy = vh / cells;
-
-    const avoidRects = SAFE_ZONES.map(z => ({ x: vw*z.x, y: vh*z.y, w: vw*z.w, h: vh*z.h }));
-    const placed = [];
-
-    for (let i = 0; i < count * 3 && placed.length < count; i++) {
-      const cx = Math.floor(Math.random() * cells);
-      const cy = Math.floor(Math.random() * cells);
-      const jitterX = (Math.random() - 0.5) * gx * 0.6;
-      const jitterY = (Math.random() - 0.5) * gy * 0.6;
-
-      const x = Math.max(8, cx * gx + jitterX);
-      const y = Math.max(8, cy * gy + jitterY);
-      const rect = { x, y, w: bw, h: bh };
-
-      // avoid frog/CTA & previously placed
-      if (avoidRects.some(r => rectsOverlap(rect, r))) continue;
-      if (placed.some(r => rectsOverlap(rect, r))) continue;
-
-  placed.push(rect);
-}
-   return placed; // [{x,y,w,h}]
-  };
-})();
-
 // --- FH tiny router (append only) ---
 (function () {
   const $ = (s) => document.querySelector(s);
@@ -3452,7 +3135,10 @@ if (!document.body.dataset.screen) show('home');
   });
 })();
 
-window.addEventListener('DOMContentLoaded', () => {
-  // Avoid duplicate start in case of multiple events
-  queueMicrotask(bootstrap);
+document.addEventListener('DOMContentLoaded', () => {
+  window.FH = window.FH || {};
+  if (!window.FH.__booted) {
+    window.FH.__booted = true;
+    bootstrap();
+  }
 });
