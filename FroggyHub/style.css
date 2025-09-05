@@ -931,3 +931,34 @@ button:not([disabled]){ cursor:pointer; }
   .final-card{padding:16px}
 }
 
+/* --- Scroll control ------------------------------------------------------ */
+html, body {
+  height: 100%;
+}
+body.fh-scroll-locked {
+  overflow: hidden;
+}
+
+/* Разрешаем скролл только для экранов, которым это нужно */
+.screen.scrollable {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* --- Бабблы: слой под основным контентом, но над фоном ------------------- */
+.fh-bubbles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1; /* ниже экранов/оверлеев */
+}
+
+/* Стек: фоновый слой (1), экраны (2), оверлей авторизации (3) */
+.fh-content { position: relative; z-index: 2; }
+.auth-overlay { position: relative; z-index: 3; }
+
+/* Чтобы «смски» не залипали к краям */
+.fh-bubbles__grid {
+  position: absolute;
+  inset: 6vh 6vw; /* внутренние поля сверху/снизу/слева/справа */
+}
