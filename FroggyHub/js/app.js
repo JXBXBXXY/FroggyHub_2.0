@@ -1,66 +1,108 @@
-const SCREENS = ["home","auth","profile","settings"];
-export function showScreen(id) {
-  SCREENS.forEach(s => {
-    const el = document.getElementById(`screen-${s}`);
-    if (el) el.classList.toggle("visible", s === id);
-    if (el) el.setAttribute("aria-hidden", String(s !== id));
+import { supa, signInSmart, signUpWithNickname, getSession, signOut, onAuthChanged } from './api.js';
+
+// Вспомогалки выборки
+const qs = (s, r=document) => r.querySelector(s);
+const qa = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+const SCREENS = ['auth','home','profile','settings','create','join'];
+const SCREEN_IDS = Object.fromEntries(SCREENS.map(n=>[n, `#screen-${n}`]));
+
+/** Показ экрана + обновление hash */
+function showScreen(name){
+  const id = SCREEN_IDS[name] || name; // допускаем передачу '#screen-…'
+  qa('.screen').forEach(el=>{
+    const visible = ('#'+el.id) === id;
+    el.classList.toggle('visible', visible);
+    el.setAttribute('aria-hidden', String(!visible));
   });
-  if (id !== "auth") location.hash = `#${id}`;
+  // hash только для не-auth
+  const target = id.startsWith('#') ? id.slice(1) : id;
+  if (!target.includes('auth')) {
+    const newHash = '#'+(SCREENS.includes(target.replace('screen-','')) ? target.replace('screen-','') : target);
+    if (location.hash !== newHash) history.replaceState(null, '', newHash);
+  }
 }
 
-function bindTopNav() {
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest("[data-link]");
-    if (!a) return;
-    const to = a.getAttribute("data-link");
-    if (SCREENS.includes(to)) {
-      e.preventDefault();
-      showScreen(to);
-    }
-  });
-  window.addEventListener("hashchange", () => {
-    const id = (location.hash.replace("#","") || "home");
-    showScreen(SCREENS.includes(id) ? id : "home");
+/** Навигация по клику на элементы с [data-link] */
+function bindNav(){
+  document.addEventListener('click', (e)=>{
+    const a = e.target.closest('[data-link]');
+    if(!a) return;
+    e.preventDefault();
+    const to = a.getAttribute('data-link');
+    if (SCREENS.includes(to)) showScreen(to);
   });
 }
 
-import { getSession, signInWithNicknameOrEmail } from "./api.js";
-
-async function initAuthFlow() {
-  // Показать home сразу (фон, меню), затем проверить сессию и показать auth при необходимости
-  showScreen("home");
-  const session = await getSession();
-  if (!session) showScreen("auth");
-
-  const form = document.getElementById("auth-form");
-  if (form && !form.__bound) {
-    form.__bound = true;
-    form.addEventListener("submit", async (e) => {
+/** Привязка форм авторизации (id="auth-form") и регистрации (id="register-form") */
+function bindAuthForms(){
+  const loginForm = qs('#auth-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const fd = new FormData(form);
-      const login = fd.get("login")?.toString().trim();
-      const password = fd.get("password")?.toString();
-      form.querySelector("button[type=submit]")?.setAttribute("disabled","true");
-      try {
-        const sess = await signInWithNicknameOrEmail({ login, password });
-        if (sess) {
-          showScreen("home");
-        }
-      } catch (err) {
-        console.error("Auth failed", err);
-        form.querySelector("[data-error]")?.replaceChildren(document.createTextNode("Ошибка входа"));
-      } finally {
-        form.querySelector("button[type=submit]")?.removeAttribute("disabled");
+      const fd = new FormData(loginForm);
+      const login = fd.get('login');
+      const password = fd.get('password');
+      const errBox = loginForm.querySelector('.form-error');
+      try{
+        errBox && (errBox.textContent = '');
+        await signInSmart({ login, password });
+        showScreen('home');
+      }catch(err){
+        console.warn('[auth:login]', err);
+        errBox && (errBox.textContent = err?.message || 'Ошибка входа');
+        loginForm.classList.add('shake');
+        setTimeout(()=>loginForm.classList.remove('shake'), 600);
+      }
+    });
+  }
+
+  const regForm = qs('#register-form');
+  if (regForm){
+    regForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(regForm);
+      const nickname = fd.get('nickname');
+      const email = fd.get('email'); // можно пустым — сгенерим из никнейма
+      const password = fd.get('password');
+      const errBox = regForm.querySelector('.form-error');
+      try{
+        errBox && (errBox.textContent = '');
+        await signUpWithNickname({ nickname, email, password });
+        // после успешной регистрации пробуем залогинить:
+        await signInSmart({ login: email || nickname, password });
+        showScreen('home');
+      }catch(err){
+        console.warn('[auth:register]', err);
+        errBox && (errBox.textContent = err?.message || 'Ошибка регистрации');
+        regForm.classList.add('shake');
+        setTimeout(()=>regForm.classList.remove('shake'), 600);
       }
     });
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  bindTopNav();
-  initAuthFlow();
-  startBubbles(); // см. ниже
-});
+/** Инициализация приложения */
+async function bootstrap(){
+  bindNav();
+  bindAuthForms();
+  startBubbles();
+
+  // первичная отрисовка
+  const session = await getSession().catch(()=>null);
+  showScreen(session ? 'home' : 'auth');
+
+  // слушаем изменения авторизации
+  onAuthChanged((s)=>{
+    showScreen(s ? 'home' : 'auth');
+  });
+}
+
+// запускаемся один раз
+if (!window.__FH_BOOT__) {
+  window.__FH_BOOT__ = true;
+  bootstrap();
+}
 
 // CALM bubbles
 const messages = window.FH_MESSAGES || [
@@ -69,40 +111,43 @@ const messages = window.FH_MESSAGES || [
 ];
 
 function jitterGrid(cols=8, rows=6, margin=16) {
-  const w = innerWidth, h = innerHeight;
+  const w = innerWidth;
+  const style = getComputedStyle(document.documentElement);
+  const topGap = parseFloat(style.getPropertyValue('--fh-bubbles-top-gap'))||0;
+  const bottomGap = parseFloat(style.getPropertyValue('--fh-bubbles-bottom-gap'))||0;
+  const h = innerHeight - topGap - bottomGap;
   const cellW = Math.max(160, (w - margin*2) / cols);
   const cellH = Math.max(56,  (h - margin*2) / rows);
   const pts = [];
   for (let r=0; r<rows; r++) for (let c=0; c<cols; c++) {
     const x = margin + c*cellW + (Math.random()-0.5)*cellW*0.25;
-    const y = margin + r*cellH + (Math.random()-0.5)*cellH*0.25;
+    const y = topGap + margin + r*cellH + (Math.random()-0.5)*cellH*0.25;
     pts.push({x,y});
   }
   return {pts, cellW, cellH};
 }
 
 function createChip(msg) {
-  const el = document.createElement("div");
-  el.className = "fh-chip";
+  const el = document.createElement('div');
+  el.className = 'chip';
   el.textContent = msg;
-  el.style.position = "absolute";
-  el.style.padding = "6px 14px";
-  el.style.borderRadius = "999px";
-  el.style.background = "rgba(23, 65, 53, .85)";
-  el.style.boxShadow = "0 2px 10px rgba(0,0,0,.25)";
-  el.style.color = "var(--chip-fg, #e9ffe8)";
-  el.style.fontSize = "14px";
-  el.style.opacity = "0";
-  el.style.transition = "opacity .6s ease, transform .6s ease";
+  el.style.position = 'absolute';
+  el.style.padding = '6px 14px';
+  el.style.borderRadius = '999px';
+  el.style.background = 'rgba(23, 65, 53, .85)';
+  el.style.boxShadow = '0 2px 10px rgba(0,0,0,.25)';
+  el.style.color = 'var(--chip-fg, #e9ffe8)';
+  el.style.fontSize = '14px';
+  el.style.opacity = '0';
   return el;
 }
 
 let bubblesState = { slots: [], idx: 0, holder: null };
 function layoutChips() {
-  const holder = bubblesState.holder || document.querySelector(".fh-bubbles");
+  const holder = bubblesState.holder || document.querySelector('.fh-bubbles');
   if (!holder) return;
   holder.replaceChildren();
-  const { pts, cellW, cellH } = jitterGrid(9, 6, 24);
+  const { pts } = jitterGrid(9, 6, 24);
   bubblesState.slots = pts;
   bubblesState.holder = holder;
 
@@ -114,7 +159,7 @@ function layoutChips() {
     chip.style.left = `${p.x}px`;
     chip.style.top  = `${p.y}px`;
     holder.appendChild(chip);
-    requestAnimationFrame(()=> chip.style.opacity = "1");
+    requestAnimationFrame(()=> chip.style.opacity = '1');
   }
   // жизненный цикл
   cycleChips();
@@ -127,7 +172,7 @@ function cycleChips() {
   chips.forEach((chip, i) => {
     const delay = 800 + Math.random()*1800; // между волнами
     setTimeout(() => {
-      chip.style.opacity = "0";
+      chip.style.opacity = '0';
       chip.style.transform = `translate(${(Math.random()-0.5)*30}px, ${(Math.random()-0.5)*30}px)`;
       setTimeout(() => {
         // выбрать новый свободный слот
@@ -135,8 +180,8 @@ function cycleChips() {
         chip.textContent = messages[Math.floor(Math.random()*messages.length)];
         chip.style.left = `${p.x}px`;
         chip.style.top  = `${p.y}px`;
-        chip.style.transform = "translate(0,0)";
-        chip.style.opacity = "1";
+        chip.style.transform = 'translate(0,0)';
+        chip.style.opacity = '1';
       }, 600);
     }, 3000 + delay);
   });
@@ -146,9 +191,10 @@ function cycleChips() {
 
 function startBubbles() {
   layoutChips();
-  addEventListener("resize", () => {
+  addEventListener('resize', () => {
     // мягко переложить сетку при ресайзе
     clearTimeout(startBubbles.__t);
     startBubbles.__t = setTimeout(layoutChips, 200);
   });
 }
+
