@@ -178,21 +178,21 @@
     <div class="menu-deck">
       <div class="panel">
         <div class="menu-grid">
-          <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">
+          <button id="btn-create" class="btn btn-primary" data-link="create" data-go="app" data-mode="create">
             Создать событие
           </button>
 
           <form id="join-form" class="join-row" autocomplete="off">
             <input id="join-code" class="input" inputmode="numeric" maxlength="6"
                    placeholder="Введите 6-значный код">
-            <button id="join-btn" type="button" class="btn">Присоединиться</button>
+            <button id="btn-join" type="button" class="btn" data-link="join">Присоединиться</button>
           </form>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="screen-join-name" class="screen" hidden>
+  <section id="screen-join" class="screen">
     <div class="panel">
       <h2>Как к вам обращаться?</h2>
       <form id="form-join-name" class="row">
@@ -215,7 +215,7 @@
 
   <!-- ЭКРАНЫ СОЗДАНИЯ СОБЫТИЯ -->
 
-<section id="screen-create-conditions" class="screen" hidden>
+<section id="screen-create" class="screen">
   <div class="panel">
     <h2 id="create-title">Параметры встречи</h2>
     <form id="form-create-1" class="stack">
@@ -263,7 +263,7 @@
 </section>
 
   <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
-  <section id="screen-app" class="container" hidden>
+  <section id="screen-lobby" class="screen container">
     <div class="wrap" id="root" hidden>
       <section class="pond" id="pond">
         <div class="ripples" aria-hidden="true"></div>
@@ -504,7 +504,7 @@
   </section>
 
   <!-- ЭКРАН: ПРОФИЛЬ -->
-  <section id="screen-profile" class="screen" hidden>
+  <section id="screen-profile" class="screen">
     <div class="container">
       <div class="panel profile-card">
         <div class="profile-head">
@@ -529,6 +529,8 @@
       </div>
     </div>
   </section>
+
+  <section id="screen-settings" class="screen"></section>
 
   <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
   <dialog id="otpModal">

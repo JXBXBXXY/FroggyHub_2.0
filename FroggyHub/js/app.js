@@ -1,4 +1,80 @@
-import { supa } from './api.js';
+import { supa, getSession } from './api.js';
+
+const ROUTES = ['home','auth','lobby','create','join','profile','settings'];
+
+const qs = s => document.querySelector(s);
+
+function showScreen(name) {
+  // у экранов уже есть id вида #screen-*
+  document.querySelectorAll('.screen').forEach(el => {
+    el.classList.toggle('visible', el.id === `screen-${name}`);
+    el.setAttribute('aria-hidden', el.id === `screen-${name}` ? 'false':'true');
+  });
+}
+
+function go(name) { location.hash = `#${name}`; }
+
+async function currentSession() {
+  // используй существующий helper Supabase, если он есть.
+  // иначе безопасная заглушка:
+  try { return await getSession(); } catch { return null; }
+}
+
+async function handleRoute() {
+  let route = (location.hash.replace('#','') || 'home');
+  const hasRoute = ROUTES.includes(route);
+  if (!hasRoute) route = 'home';
+
+  const session = await currentSession();
+  // неавторизованных отправляем на auth, авторизованных с auth — домой
+  if (!session && route !== 'auth') route = 'auth';
+  if (session && route === 'auth') route = 'home';
+
+  showScreen(route);
+}
+
+// единая инициализация
+function bindNav() {
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-link]');
+    if (!a) return;
+    e.preventDefault();
+    const to = a.getAttribute('data-link');
+    if (ROUTES.includes(to)) go(to);
+  });
+
+  window.addEventListener('hashchange', handleRoute);
+}
+
+async function bindAuth() {
+  // логин
+  qs('#login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const nick = qs('#login-nick')?.value?.trim();
+      const pass = qs('#login-pass')?.value ?? '';
+      const ok = await window.FH?.login?.(nick, pass);
+      if (ok) go('home');
+    } catch {}
+  });
+
+  // регистрация (если есть форма)
+  qs('#signup-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const nick = qs('#signup-nick')?.value?.trim();
+      const pass = qs('#signup-pass')?.value ?? '';
+      const ok = await window.FH?.signup?.(nick, pass);
+      if (ok) go('home');
+    } catch {}
+  });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  bindNav();
+  await bindAuth();
+  handleRoute(); // стартовая отрисовка
+});
 
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨',
@@ -237,6 +313,32 @@ else {
     try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {}
   };
 
+  // методы авторизации для SPA
+  window.FH.getSession = async () => {
+    try { const { data } = await getSupabase().auth.getSession(); return data?.session || null; }
+    catch { return null; }
+  };
+  window.FH.login = async (nick, pass) => {
+    try {
+      const { data, error } = await getSupabase().auth.signInWithPassword({ email: `${nick}@local`, password: pass });
+      if (error) return false;
+      const session = data?.session;
+      if (session) setSavedSession({ user: session.user, access_token: session.access_token });
+      return !!session;
+    } catch { return false; }
+  };
+  window.FH.signup = async (nick, pass) => {
+    try {
+      const { error } = await getSupabase().auth.signUp({ email: `${nick}@local`, password: pass });
+      if (error) return false;
+      const { data, error: err2 } = await getSupabase().auth.signInWithPassword({ email: `${nick}@local`, password: pass });
+      if (err2) return false;
+      const session = data?.session;
+      if (session) setSavedSession({ user: session.user, access_token: session.access_token });
+      return !!session;
+    } catch { return false; }
+  };
+
   // --- Экраны
   const $auth = document.querySelector('#screen-auth');
   const $home = document.querySelector('#screen-home');
@@ -245,47 +347,29 @@ else {
 
   // --- Простенький роутер
   async function route() {
-    const hash = (location.hash || '#auth').toLowerCase();
-    const supa = getSupabase();
-    let session = getSavedSession();
-
-    // быстрая проверка
-    if (!session && supa?.auth) {
-      const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 1500);
-      try {
-        const { data } = await supa.auth.getSession({ signal: ctrl.signal });
-        session = data?.session || null;
-      } catch { /* таймаут/ошибка – игнор */ }
-      clearTimeout(t);
-      if (session) setSavedSession({ user: session.user, access_token: session.access_token });
-    }
-
-    const authed = !!session;
-
-    if (!authed) {
-      show($auth);
-      location.hash = '#auth';
-      return;
-    }
-
-    // авторизованы
-    show($home);
-    if (hash !== '#home') location.hash = '#home';
+    await handleRoute();
+    // legacy logic retained for reference
+    // const hash = (location.hash || '#auth').toLowerCase();
+    // const supa = getSupabase();
+    // let session = getSavedSession();
+    // ...
   }
 
   // --- Навигационные кнопки (делегирование)
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-link]');
-    if (!btn) return;
-    const to = btn.getAttribute('data-link');
-    if (to === 'home') location.hash = '#home';
-    else if (to === 'profile') location.hash = '#profile';   // сейчас просто якорь, UI можно расширять
-    else if (to === 'settings') location.hash = '#settings'; // якорь
-  });
+  // (перенесено в bindNav)
+  // document.addEventListener('click', (e) => {
+  //   const btn = e.target.closest('[data-link]');
+  //   if (!btn) return;
+  //   const to = btn.getAttribute('data-link');
+  //   if (to === 'home') location.hash = '#home';
+  //   else if (to === 'profile') location.hash = '#profile';   // сейчас просто якорь, UI можно расширять
+  //   else if (to === 'settings') location.hash = '#settings'; // якорь
+  // });
+  // bindNav() вызывается при загрузке документа
 
   // --- Обработчики форм логина/регистрации
-  (function bindAuth() {
+  // (оставлено для совместимости)
+  (function bindAuthLegacy() {
     const loginForm  = document.querySelector('#loginForm');
     const signupForm = document.querySelector('#signupForm');
     async function handle(form, kind) {
@@ -340,8 +424,8 @@ else {
     }, 200));
   })();
 
-  // --- Старт
-  document.addEventListener('DOMContentLoaded', route);
-  window.addEventListener('hashchange', route);
+  // --- Старт (обработка маршрута перенесена в верхний хелпер)
+  // document.addEventListener('DOMContentLoaded', route);
+  // window.addEventListener('hashchange', route);
 }
 
