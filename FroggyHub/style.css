@@ -40,24 +40,17 @@
 html,body{height:100%;}
 body{
   margin:0;
-  background:radial-gradient(120% 120% at 50% 30%, var(--bg-dark2), var(--bg-dark));
+  overflow:hidden;
+  background:#0f2a24;
   color:var(--text);
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
-
-/* Контейнер для фона с пузырями */
-.fh-bubbles {
+/* Контейнер фоновых сообщений — ВЕЗДЕ за экранами */
+#fh-message-clouds {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  overflow: hidden;
-}
-
-#screen-auth,
-#screen-home {
-  position: relative;
-  z-index: 1;
 }
 
 /* Состояния пузыря */
@@ -106,33 +99,35 @@ body{
   will-change: transform;
 }
 
-/* фоновые «смс-пузырьки» нового типа */
-.fh-bubbles{ z-index:0; }
-
-.fh-chip{
-  position:absolute; max-width: 36ch;
-  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 999px; padding: 8px 14px;
-  color: rgba(255,255,255,.92);
-  box-shadow: 0 6px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  will-change: transform, opacity;
-  transition: opacity .45s ease, transform .45s ease;
-  opacity: .9;
+/* Сам «чип» сообщения */
+.fh-chip {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 1rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  color: #e6f6ef;
+  backdrop-filter: blur(2px);
+  white-space: nowrap;
+  transform: translateZ(0);
 }
-.fh-chip.chip-enter{ opacity:0; transform: translateY(10px) scale(.98); }
-.fh-chip.chip-enter-active{ opacity:1; transform: translateY(0) scale(1); }
-.fh-chip.chip-leave{ opacity:1; }
-.fh-chip.chip-leave-active{ opacity:0; transform: translateY(12px) scale(.98); }
 
-@media (prefers-reduced-motion: reduce){
-  .fh-chip{ transition: opacity .25s ease; }
+/* На маленьких экранах делаем чипы компактнее */
+@media (max-width: 640px) {
+  .fh-chip { padding: .4rem .8rem; font-size: .9rem; }
 }
 
 /* Плавные появление/исчезновение экранов */
-.screen{ opacity:0; pointer-events:none; transition: opacity .35s ease; }
+.screen{
+  opacity:0;
+  pointer-events:none;
+  transition: opacity .35s ease;
+  position:relative;
+  z-index:10;
+}
 .screen.visible{ opacity:1; pointer-events:auto; }
 
 /* Карточка авторизации/регистрации */
@@ -151,7 +146,7 @@ body{
 /* стеклянная карточка авторизации */
 #screen-auth .auth-card{
   position:relative;
-  z-index:2;
+  z-index:20;
   background: rgba(20, 45, 35, 0.45);
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
@@ -968,42 +963,13 @@ button:not([disabled]){ cursor:pointer; }
   display: none !important;
 }
 
-/* ambient chips always behind screens */
-#fh-message-clouds {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* screens sit above chips */
-.screen {
-  position: relative;
-  z-index: 10;
-}
-
-/* full screen auth page over chips */
-#screen-auth {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 10;
-  /* лёгкая «стеклянная» подложка */
-  backdrop-filter: saturate(120%) blur(2px);
-}
-
-.auth-card {
-  width: min(720px, 92vw);
-  background: rgba(12, 27, 22, 0.55);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 20px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
-}
-
-
 /* layers */
-.auth-wrap, .auth-card { position: relative; z-index: 30; }
+.auth-card,
+.auth-card-wrap,
+#auth-overlay {
+  position: relative;
+  z-index: 20;
+}
 
 /* remove blur on auth overlay */
 #screen-auth,
@@ -1015,6 +981,10 @@ button:not([disabled]){ cursor:pointer; }
   -webkit-backdrop-filter: none !important;
   background: transparent !important;
 }
-/* scroll lock except wishlist */
-html, body { height: 100%; overflow: hidden; }
-body.allow-scroll { overflow: auto; }
+/* Базовая фиксация скролла: по умолчанию скролла НЕТ */
+html, body { height: 100%; }
+body.allow-scroll { overflow: hidden; }
+#screen-wishlist {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
