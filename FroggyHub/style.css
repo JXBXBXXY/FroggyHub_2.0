@@ -50,14 +50,14 @@ body{
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
   overflow: hidden;
 }
 
 #screen-auth,
 #screen-home {
   position: relative;
-  z-index: 2;
+  z-index: 1;
 }
 
 /* Состояния пузыря */
@@ -106,9 +106,34 @@ body{
   will-change: transform;
 }
 
-/* При скрытии контейнера экрана */
-.screen{display:none;opacity:0;transition:opacity .25s ease}
-.screen.visible{display:block;opacity:1}
+/* фоновые «смс-пузырьки» нового типа */
+.fh-bubbles{ z-index:0; }
+
+.fh-chip{
+  position:absolute; max-width: 36ch;
+  background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.08));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px; padding: 8px 14px;
+  color: rgba(255,255,255,.92);
+  box-shadow: 0 6px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  will-change: transform, opacity;
+  transition: opacity .45s ease, transform .45s ease;
+  opacity: .9;
+}
+.fh-chip.chip-enter{ opacity:0; transform: translateY(10px) scale(.98); }
+.fh-chip.chip-enter-active{ opacity:1; transform: translateY(0) scale(1); }
+.fh-chip.chip-leave{ opacity:1; }
+.fh-chip.chip-leave-active{ opacity:0; transform: translateY(12px) scale(.98); }
+
+@media (prefers-reduced-motion: reduce){
+  .fh-chip{ transition: opacity .25s ease; }
+}
+
+/* Плавные появление/исчезновение экранов */
+.screen{ opacity:0; pointer-events:none; transition: opacity .35s ease; }
+.screen.visible{ opacity:1; pointer-events:auto; }
 
 /* Карточка авторизации/регистрации */
 #screen-auth .card,
@@ -121,6 +146,24 @@ body{
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* стеклянная карточка авторизации */
+#screen-auth .auth-card{
+  position:relative;
+  z-index:2;
+  background: rgba(20, 45, 35, 0.45);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+  border-radius: 18px;
+}
+/* стартовый экран — положение карточки чуть ниже центра */
+#screen-auth .auth-card-wrap{
+  display:grid; place-items:center;
+  min-height: calc(100dvh - 96px);
+  transform: translateY(18px);
 }
 
 .container{max-width:1100px;margin:32px auto;padding:0 20px}
