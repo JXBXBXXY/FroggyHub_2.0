@@ -1,14 +1,35 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-// ---- SAFE SUPABASE FACTORY (do not remove/rename) ----
+// ---- SAFE SUPABASE FACTORY (guards placeholders/invalid URL) ----
 export const supa = (() => {
-  const url = window?.ENV?.PUBLIC_SUPABASE_URL ?? "";
-  const key = window?.ENV?.PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const rawUrl = window?.ENV?.PUBLIC_SUPABASE_URL ?? "";
+  const rawKey = window?.ENV?.PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-  if (!url || !key) {
-    console.warn("[supa] creds are missing, returning null client", { url, hasKey: !!key });
+  // Плейсхолдеры Netlify/пустые строки считаем «нет кредов»
+  const isPlaceholder = (v) =>
+    !v || /^\$?PUBLIC_SUPABASE_/i.test(String(v));
+
+  if (isPlaceholder(rawUrl) || isPlaceholder(rawKey)) {
+    console.warn("[supa] creds are placeholders/missing, skip init", {
+      url: rawUrl,
+      hasKey: !!rawKey,
+    });
     return null;
   }
+
+  const url = String(rawUrl).trim();
+  const key = String(rawKey).trim();
+
+  // Валидация URL — если кривой, не инициализируем
+  try {
+    // бросит исключение, если url невалидный
+    // eslint-disable-next-line no-new
+    new URL(url);
+  } catch {
+    console.warn("[supa] invalid URL, skip init", { url });
+    return null;
+  }
+
   try {
     return createClient(url, key, {
       auth: { persistSession: true, autoRefreshToken: true },
@@ -18,7 +39,7 @@ export const supa = (() => {
     return null;
   }
 })();
-// -------------------------------------------------------
+// -----------------------------------------------------------------
 
 export const getSession = () => {
   if (!supa) {

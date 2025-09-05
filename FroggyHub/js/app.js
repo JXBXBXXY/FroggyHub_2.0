@@ -283,6 +283,10 @@ else {
   // --- Простенький роутер
   async function route() {
     const supa = getSupabase();
+    if (!supa) {
+      console.warn("[auth] Supabase is not configured");
+      return null;
+    }
     let session = getSavedSession();
 
     // быстрая проверка
@@ -332,6 +336,10 @@ else {
 
         try {
           const supa = getSupabase();
+          if (!supa) {
+            console.warn("[auth] Supabase is not configured");
+            return null;
+          }
           let ok = false, session = null;
 
           if (kind === 'login') {
