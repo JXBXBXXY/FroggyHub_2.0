@@ -98,8 +98,10 @@
 </head>
 <body class="scene-intro">
   <div class="fh-bg" aria-hidden="true"></div>
-  <div class="fh-bubbles" aria-hidden="true"></div>
-  <div class="fh-content">
+  <div class="fh-bubbles">
+    <div class="fh-bubbles__grid" id="fh-bubbles"></div>
+  </div>
+  <div class="fh-content" id="fh-content">
   <!-- Шапка -->
   <nav class="topbar">
     <div class="topbar-left">
@@ -254,7 +256,7 @@
   </div>
 </section>
 
-<section id="screen-wishlist" class="screen" hidden>
+<section id="screen-wishlist" class="screen scrollable" role="main" aria-hidden="true">
   <div class="panel">
     <h2>Wishlist</h2>
     <form id="form-wish-add" class="row">

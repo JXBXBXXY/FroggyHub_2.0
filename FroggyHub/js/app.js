@@ -5,23 +5,21 @@ const qs = (s, r=document) => r.querySelector(s);
 const qa = (s, r=document) => Array.from(r.querySelectorAll(s));
 
 const SCREENS = ['auth','home','profile','settings','create','join'];
-const SCREEN_IDS = Object.fromEntries(SCREENS.map(n=>[n, `#screen-${n}`]));
-
 /** Показ экрана + обновление hash */
-function showScreen(name){
-  const id = SCREEN_IDS[name] || name; // допускаем передачу '#screen-…'
-  qa('.screen').forEach(el=>{
-    const visible = ('#'+el.id) === id;
-    el.classList.toggle('visible', visible);
-    el.setAttribute('aria-hidden', String(!visible));
+function showScreen(name) {
+  const slug = (name || "").toString().replace(/^#/, "").replace(/^screen-/, "");
+  document.querySelectorAll(".screen").forEach(el => {
+    const visible = el.id === `screen-${slug}`;
+    el.classList.toggle("visible", visible);
+    el.setAttribute("aria-hidden", String(!visible));
+    if (visible) applySmartScroll(el);
   });
-  // hash только для не-auth
-  const target = id.startsWith('#') ? id.slice(1) : id;
-  if (!target.includes('auth')) {
-    const newHash = '#'+(SCREENS.includes(target.replace('screen-','')) ? target.replace('screen-','') : target);
-    if (location.hash !== newHash) history.replaceState(null, '', newHash);
+  if (!slug.includes("auth")) {
+    const newHash = "#" + (SCREENS.includes(slug) ? slug : slug);
+    if (location.hash !== newHash) history.replaceState(null, "", newHash);
   }
 }
+
 
 /** Навигация по клику на элементы с [data-link] */
 function bindNav(){
@@ -86,7 +84,6 @@ function bindAuthForms(){
 async function bootstrap(){
   bindNav();
   bindAuthForms();
-  startBubbles();
 
   // первичная отрисовка
   const session = await getSession().catch(()=>null);
@@ -104,97 +101,113 @@ if (!window.__FH_BOOT__) {
   bootstrap();
 }
 
-// CALM bubbles
-const messages = window.FH_MESSAGES || [
-  "Друзья, до встречи 🌿","Я за пивом 🍺","Я приду в 9 🕘","Поставлю чайник 🫖","Заберу пиццу по пути 🍕",
-  "Кто возьмет колу? 🥤","Добавил плейлист 🎶","Буду +1 🙂","Я за печеньем 🍪","Кто на метро 🚇"
-];
+// ---------------- BUBBLES: state & phrases ----------------
+const FH_BUBBLE_MESSAGES = (window.FH_BUBBLE_MESSAGES || [
+  'Друзья, до встречи 🌿', 'Я за пивом 🍺', 'Кто возьмет колу? 🥤', 'Принесу проектор 📽️',
+  'Буду позже 🙈', 'Я приду к 19:00 ✨', 'Добавил плейлист 🎶', 'Закажем такси? 🚕'
+]);
 
-function jitterGrid(cols=8, rows=6, margin=16) {
-  const w = innerWidth;
-  const style = getComputedStyle(document.documentElement);
-  const topGap = parseFloat(style.getPropertyValue('--fh-bubbles-top-gap'))||0;
-  const bottomGap = parseFloat(style.getPropertyValue('--fh-bubbles-bottom-gap'))||0;
-  const h = innerHeight - topGap - bottomGap;
-  const cellW = Math.max(160, (w - margin*2) / cols);
-  const cellH = Math.max(56,  (h - margin*2) / rows);
-  const pts = [];
-  for (let r=0; r<rows; r++) for (let c=0; c<cols; c++) {
-    const x = margin + c*cellW + (Math.random()-0.5)*cellW*0.25;
-    const y = topGap + margin + r*cellH + (Math.random()-0.5)*cellH*0.25;
-    pts.push({x,y});
-  }
-  return {pts, cellW, cellH};
-}
+let bubbleNodes = [];      // чтобы не было ReferenceError
+let bubbleGridEl = null;
 
-function createChip(msg) {
-  const el = document.createElement('div');
-  el.className = 'chip';
-  el.textContent = msg;
-  el.style.position = 'absolute';
-  el.style.padding = '6px 14px';
-  el.style.borderRadius = '999px';
-  el.style.background = 'rgba(23, 65, 53, .85)';
-  el.style.boxShadow = '0 2px 10px rgba(0,0,0,.25)';
-  el.style.color = 'var(--chip-fg, #e9ffe8)';
-  el.style.fontSize = '14px';
-  el.style.opacity = '0';
-  return el;
-}
-
-let bubblesState = { slots: [], idx: 0, holder: null };
+// Равномерная сетка + лёгкий джиттер, без касаний и наложений
 function layoutChips() {
-  const holder = bubblesState.holder || document.querySelector('.fh-bubbles');
-  if (!holder) return;
-  holder.replaceChildren();
-  const { pts } = jitterGrid(9, 6, 24);
-  bubblesState.slots = pts;
-  bubblesState.holder = holder;
+  if (!bubbleGridEl) return;
 
-  const N = Math.min(pts.length, 28);
-  for (let i=0; i<N; i++) {
-    const msg = messages[(i + Math.floor(Math.random()*messages.length)) % messages.length];
-    const chip = createChip(msg);
-    const p = pts[i];
-    chip.style.left = `${p.x}px`;
-    chip.style.top  = `${p.y}px`;
-    holder.appendChild(chip);
-    requestAnimationFrame(()=> chip.style.opacity = '1');
-  }
-  // жизненный цикл
-  cycleChips();
-}
+  const W = bubbleGridEl.clientWidth;
+  const H = bubbleGridEl.clientHeight;
+  if (W === 0 || H === 0) return;
 
-function cycleChips() {
-  const holder = bubblesState.holder;
-  if (!holder) return;
-  const chips = [...holder.children];
-  chips.forEach((chip, i) => {
-    const delay = 800 + Math.random()*1800; // между волнами
-    setTimeout(() => {
-      chip.style.opacity = '0';
-      chip.style.transform = `translate(${(Math.random()-0.5)*30}px, ${(Math.random()-0.5)*30}px)`;
-      setTimeout(() => {
-        // выбрать новый свободный слот
-        const p = bubblesState.slots[(i + 3 + Math.floor(Math.random()*7)) % bubblesState.slots.length];
-        chip.textContent = messages[Math.floor(Math.random()*messages.length)];
-        chip.style.left = `${p.x}px`;
-        chip.style.top  = `${p.y}px`;
-        chip.style.transform = 'translate(0,0)';
-        chip.style.opacity = '1';
-      }, 600);
-    }, 3000 + delay);
+  // параметры сетки
+  const cols = Math.max(6, Math.floor(W / 180));
+  const rows = Math.max(5, Math.floor(H / 120));
+  const cellW = W / cols;
+  const cellH = H / rows;
+
+  // кладём каждый пузырь в свою ячейку
+  bubbleNodes.forEach((node, i) => {
+    const c = i % cols;
+    const r = Math.floor(i / cols) % rows;
+
+    // джиттер в пределах 20% клетки
+    const jx = (Math.random() - 0.5) * 0.4 * cellW;
+    const jy = (Math.random() - 0.5) * 0.4 * cellH;
+
+    const x = Math.round(c * cellW + cellW / 2 + jx);
+    const y = Math.round(r * cellH + cellH / 2 + jy);
+
+    node.style.transform = `translate(${x}px, ${y}px)`;
   });
-  // перезапуск цикла раз в 6–8 секунд
-  setTimeout(cycleChips, 6000 + Math.random()*2000);
 }
 
 function startBubbles() {
+  bubbleGridEl = document.getElementById('fh-bubbles');
+  if (!bubbleGridEl) return; // тихо выходим, если контейнера нет
+
+  // Создаём/обновляем набор «смсок»
+  if (bubbleNodes.length === 0) {
+    const pool = [...FH_BUBBLE_MESSAGES];
+    const count = Math.min(pool.length, 28); // умеренное количество
+    for (let i = 0; i < count; i++) {
+      const chip = document.createElement('div');
+      chip.className = 'chip chip--ghost'; // используй ваш стиль «пузыря»
+      chip.textContent = pool[i % pool.length];
+      chip.style.position = 'absolute';
+      chip.style.willChange = 'transform, opacity';
+      bubbleGridEl.appendChild(chip);
+      bubbleNodes.push(chip);
+    }
+  }
+
   layoutChips();
-  addEventListener('resize', () => {
-    // мягко переложить сетку при ресайзе
-    clearTimeout(startBubbles.__t);
-    startBubbles.__t = setTimeout(layoutChips, 200);
+
+  // мягкая жизнь пузырей: цикличное затухание и смена текста/ячейки
+  setInterval(() => {
+    if (bubbleNodes.length === 0) return;
+    const idx = Math.floor(Math.random() * bubbleNodes.length);
+    const node = bubbleNodes[idx];
+    node.style.transition = 'opacity .45s ease';
+    node.style.opacity = '0';
+    setTimeout(() => {
+      node.textContent = FH_BUBBLE_MESSAGES[Math.floor(Math.random() * FH_BUBBLE_MESSAGES.length)];
+      node.style.opacity = '1';
+      // чуточку перетасуем сетку
+      layoutChips();
+    }, 480);
+  }, 1600);
+
+  window.addEventListener('resize', () => {
+    // дебаунс можно не усложнять
+    layoutChips();
   });
 }
 
+// ---------------- SCROLL CONTROL ----------------
+function setScrollLocked(locked) {
+  document.body.classList.toggle('fh-scroll-locked', !!locked);
+}
+
+// Включаем скролл, если контент выше окна, либо экран явно помечен .scrollable
+function applySmartScroll(screenEl) {
+  if (!screenEl) return;
+  const isExplicit = screenEl.classList.contains('scrollable');
+  if (isExplicit) {
+    setScrollLocked(false);
+    return;
+  }
+  // измеряем
+  const needsScroll = screenEl.scrollHeight > window.innerHeight + 8;
+  setScrollLocked(!needsScroll);
+}
+
+// ---------------- BOOTSTRAP ----------------
+document.addEventListener('DOMContentLoaded', () => {
+  try { startBubbles(); } catch (e) { console.warn('[bubbles]', e); }
+
+  // При первой отрисовке тоже заблокируем скролл
+  const initial = document.querySelector('.screen.visible');
+  applySmartScroll(initial);
+
+  // Если где-то в коде уже есть bootstrap — не дублировать, просто
+  // вставь вызовы applySmartScroll в его «после переключения экрана»
+});
