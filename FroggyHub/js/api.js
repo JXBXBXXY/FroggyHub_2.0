@@ -1,23 +1,60 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = 'https://smamhlfzserjkdfhthwhdv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4';
+// ---- SAFE SUPABASE FACTORY (do not remove/rename) ----
+export const supa = (() => {
+  const url = window?.ENV?.PUBLIC_SUPABASE_URL ?? "";
+  const key = window?.ENV?.PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-export const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-    storageKey: 'fh.auth',
-  },
-});
+  if (!url || !key) {
+    console.warn("[supa] creds are missing, returning null client", { url, hasKey: !!key });
+    return null;
+  }
+  try {
+    return createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true },
+    });
+  } catch (e) {
+    console.error("[supa] init error", e);
+    return null;
+  }
+})();
+// -------------------------------------------------------
 
-export const getSession = () => supa.auth.getSession().then((r) => r.data.session);
-export const onAuthState = (cb) => supa.auth.onAuthStateChange((_evt, session) => cb(session));
-export const signIn = (email, password) => supa.auth.signInWithPassword({ email, password });
-export const signUp = (email, password) => supa.auth.signUp({ email, password });
-export const signOut = () => supa.auth.signOut();
+export const getSession = () => {
+  if (!supa) {
+    console.warn("[auth] Supabase is not configured");
+    return null;
+  }
+  return supa.auth.getSession().then((r) => r.data.session);
+};
+export const onAuthState = (cb) => {
+  if (!supa) {
+    console.warn("[auth] Supabase is not configured");
+    return null;
+  }
+  return supa.auth.onAuthStateChange((_evt, session) => cb(session));
+};
+export const signIn = (email, password) => {
+  if (!supa) {
+    console.warn("[auth] Supabase is not configured");
+    return null;
+  }
+  return supa.auth.signInWithPassword({ email, password });
+};
+export const signUp = (email, password) => {
+  if (!supa) {
+    console.warn("[auth] Supabase is not configured");
+    return null;
+  }
+  return supa.auth.signUp({ email, password });
+};
+export const signOut = () => {
+  if (!supa) {
+    console.warn("[auth] Supabase is not configured");
+    return null;
+  }
+  return supa.auth.signOut();
+};
 export async function getProfile() {
   const { data } = await supa.from('profiles').select('*').single();
   return data;
@@ -62,4 +99,11 @@ export function logout() {
   clearToken();
   location.href = '/';
 }
+
+/* QA:
+fetch(`${window.ENV.PUBLIC_SUPABASE_URL}/auth/v1/health`, {
+  headers: { apikey: window.ENV.PUBLIC_SUPABASE_ANON_KEY }
+}).then(r => r.text()).then(console.log).catch(console.error);
+// Должен вернуться JSON с GoTrue, без CORS/host not found.
+*/
 
