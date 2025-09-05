@@ -920,98 +920,89 @@ button:not([disabled]){ cursor:pointer; }
 }
 
 
-/* ==== Ambient Message Bubbles ==== */
+/* ===== Ambient Message Clouds (chips) ===== */
 :root{
-  --bubble-gap-x: 20px;
-  --bubble-gap-y: 18px;
-  --bubble-top-gap: 72px;      /* отступ от верхней кромки, чтобы не упираться в топбар */
-  --bubble-bottom-gap: 64px;   /* отступ снизу */
-  --bubble-opacity: 0.92;
-  --bubble-blur: 0px;          /* фон у пузырей без блюра (чтобы не спорить с карточкой) */
-
-  --chip-fg:        #eaf5f0;          /* цвет текста */
-  --chip-bg-1:      rgba(255,255,255,0.06); /* общий фон */
-  --chip-bg-2:      rgba(255,255,255,0.10); /* блик сверху */
-  --chip-stroke:    rgba(255,255,255,0.09); /* внешняя обводка */
-  --chip-innerLine: rgba(0,0,0,0.22);       /* тонкая внутренняя линия */
-  --chip-shadow:    rgba(0,0,0,0.36);       /* основная тень */
-  --chip-shadow-spread: 22px;               /* рассеяние тени */
-  --chip-font: 14.5px;                      /* комфортный кегль */
+  --cloud-max: 520px;   /* максимальная ширина «смски» */
+  --cloud-min: 220px;   /* минимальная ширина «смски» */
+  --cloud-gap-x: 28px;  /* горизонтальный зазор между столбцами */
+  --cloud-gap-y: 18px;  /* вертикальный зазор между чипами */
+  --cloud-radius: 24px;
+  --cloud-pad-y: 10px;
+  --cloud-pad-x: 18px;
+  --cloud-shadow: 0 10px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.05);
+  --cloud-bg: rgba(18, 37, 32, .88); /* слегка темнее, чем фон */
+  --cloud-stroke: rgba(255,255,255,.06);
+  --cloud-blur: 8px;
 }
+
+/* Контейнер слоя с чипами — позади всех экранов */
 #fh-message-clouds{
-  position: fixed;
-  inset: 0;
-  z-index: 0;                  /* ниже экранов */
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.fh-chip{
   position: absolute;
-  padding: 10px 16px;
-  border-radius: 999px;
-  color: var(--chip-fg);
-  font-size: var(--chip-font);
-  line-height: 1;
+  inset: 0;
+  z-index: 0; /* экраны поверх */
+  pointer-events: none;
+  padding: 72px 64px;
+  /* «мейсонри» на CSS колонках: чипы равномерно рассеиваются */
+  column-gap: var(--cloud-gap-x);
+  column-fill: balance;
+  /* количество колонок адаптивно */
+  column-count: 3;
+}
+
+@media (max-width: 1200px){
+  #fh-message-clouds{ column-count: 2; padding: 56px 40px; }
+}
+@media (max-width: 720px){
+  #fh-message-clouds{ column-count: 1; padding: 40px 20px; }
+}
+
+/* Сам чип */
+.fh-chip{
+  display: inline-block; /* важно для колонок */
+  break-inside: avoid;   /* не рвём чипы между колонками */
+  margin: 0 0 var(--cloud-gap-y);
+  max-width: var(--cloud-max);
+  min-width: var(--cloud-min);
+  padding: var(--cloud-pad-y) var(--cloud-pad-x);
+  border-radius: var(--cloud-radius);
+  backdrop-filter: blur(var(--cloud-blur));
+  -webkit-backdrop-filter: blur(var(--cloud-blur));
+  background: linear-gradient(180deg, var(--cloud-bg), rgba(12, 28, 24, .85));
+  box-shadow: var(--cloud-shadow);
+  border: 1px solid var(--cloud-stroke);
+  color: rgba(255,255,255,.85);
+  line-height: 1.25;
+  font-size: 15px;
   letter-spacing: .2px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-
-  background:
-    linear-gradient(180deg, var(--chip-bg-2), var(--chip-bg-1)) padding-box,
-    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04)) border-box;
-  border: 1px solid var(--chip-stroke);
-  box-shadow:
-    0 16px var(--chip-shadow-spread) var(--chip-shadow),
-    0 1px 0 rgba(255,255,255,0.07) inset,
-    0 0 0 1px var(--chip-innerLine) inset;
-  backdrop-filter: blur(2px) saturate(110%) brightness(1.02);
-  -webkit-backdrop-filter: blur(2px) saturate(110%) brightness(1.02);
-
-  opacity:0;
-  transform: translate3d(0, 8px, 0) scale(.995);
-  transition:
-    opacity .55s ease,
-    transform .55s cubic-bezier(.2,.65,.2,1);
-  will-change: transform, opacity;
+  transform: translateZ(0); /* сглаживание */
+  opacity: .92;
+  transition: opacity .5s ease, transform .5s ease;
 }
 
-.fh-chip::before{
-  content:"";
-  position:absolute; inset:0;
-  border-radius:inherit;
-  background: linear-gradient( to bottom,
-    rgba(255,255,255,0.30) 0%,
-    rgba(255,255,255,0.12) 14%,
-    rgba(255,255,255,0.00) 40%
-  );
-  mix-blend-mode:soft-light;
-  pointer-events:none;
+/* мягкое появление/перемешивание */
+.fh-chip.is-fading-out{ opacity: 0; transform: translateY(6px) scale(.98); }
+.fh-chip.is-fading-in { opacity: .92; transform: translateY(0)   scale(1);  }
+
+/* Чипы никогда не перекрываются экраном авторизации: экран выше слоёв */
+.screen.container, .screen{ position: relative; z-index: 1; }
+
+/* ===== Управление прокруткой ===== */
+html, body{ height:100%; }
+body{ overflow: hidden; } /* по умолчанию НЕТ скролла */
+body.allow-scroll{ overflow: auto; } /* включаем только там, где нужно */
+
+/* Небольшой лифт карточки авторизации, чтобы «силуэты» чипов были видны */
+#screen-auth .card, .auth-card{
+  backdrop-filter: blur(12px) saturate(105%);
+  -webkit-backdrop-filter: blur(12px) saturate(105%);
+  background: linear-gradient(180deg, rgba(18,34,30,.72), rgba(10,22,18,.78));
+  box-shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
 }
 
-.fh-chip.show{
-  opacity:.92;
-  transform: translate3d(0,0,0) scale(1);
+/* Стандартизируем входы, чтобы не «гуляли» по высоте */
+input, .input{
+  height: 48px;
+  border-radius: 14px;
+  padding: 0 14px;
 }
 
-/* эмодзи слегка опускаем, чтобы вписались по базовой линии */
-.fh-chip .e,
-.fh-chip .emoji{
-  display:inline-block;
-  transform: translateY(1px);
-}
-
-/* компактные варианты длиной фразы — чуть меньше паддинги */
-.fh-chip[data-size="sm"]{ padding: 8px 14px; font-size: 13.8px; }
-.fh-chip[data-size="lg"]{ padding: 11px 18px; }
-/* лёгкое «дыхание», но только если не reduced-motion */
-@media (prefers-reduced-motion: no-preference){
-  .fh-chip.show{
-    animation: chipFloat 6s ease-in-out infinite alternate;
-    animation-delay: calc(var(--seed, 0) * 1s);
-  }
-  @keyframes chipFloat{
-    to { transform: translate3d(0,-2px,0) scale(1.003); }
-  }
-}
