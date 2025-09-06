@@ -8,17 +8,22 @@
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
-<body>
-  <div id="mini-profile" style="position:absolute;top:10px;right:10px;text-align:right;">
-    Ник: <span id="mp-nick"></span>, Создан: <span id="mp-created"></span>
-    <button id="hub-logout" data-logout class="btn btn--ghost btn--sm">Выйти</button>
-  </div>
-  <main class="container" role="main">
+  <body>
+    <nav class="topbar">
+      <a class="logo" href="./">FroggyHub</a>
+      <div class="topbar-right">
+        <a class="btn btn--chip" data-authed href="./hub.html">Меню</a>
+        <a class="btn btn--chip" data-authed href="./profile.html">Профиль</a>
+        <a class="btn btn--chip" data-authed id="btn-logout" href="#">Выйти</a>
+        <a class="btn btn--chip" data-guest  href="./login.html">Войти</a>
+      </div>
+    </nav>
+    <main class="container" role="main">
     <div class="card" style="max-width:760px;margin:40px auto">
       <h1>Хаб</h1>
       <div class="grid">
         <div class="card inner">
-          <a class="btn btn--primary" href="/event-edit.html" data-action="create">Создать событие</a>
+            <a class="btn btn--primary" href="./event-edit.html" data-action="create">Создать событие</a>
         </div>
         <div class="card inner">
           <h3>Войти в ивент</h3>

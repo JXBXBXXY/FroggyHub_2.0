@@ -37,15 +37,15 @@
 </head>
 <body>
 
-  <!-- Топ-бар -->
-  <header class="topbar">
-    <a href="#" class="logo fh-logo" data-link="home">FroggyHub</a>
-    <div class="topbar-right">
-      <a href="#" class="btn btn--chip" data-link="menu">Меню</a>
-      <a href="#" class="btn btn--chip" data-link="profile">Профиль</a>
-      <button id="btnLogout" class="btn btn--chip">Выйти</button>
-    </div>
-  </header>
+    <nav class="topbar">
+      <a class="logo" href="./">FroggyHub</a>
+      <div class="topbar-right">
+        <a class="btn btn--chip" data-authed href="./hub.html">Меню</a>
+        <a class="btn btn--chip" data-authed href="./profile.html">Профиль</a>
+        <a class="btn btn--chip" data-authed id="btn-logout" href="#">Выйти</a>
+        <a class="btn btn--chip" data-guest  href="./login.html">Войти</a>
+      </div>
+    </nav>
 
   <!-- Фоновые “смски” -->
   <div id="fh-message-clouds" aria-hidden="true"></div>

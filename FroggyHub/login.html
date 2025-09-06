@@ -9,20 +9,52 @@
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-  <div class="container" role="main">
-    <div class="card" style="max-width:480px;margin:40px auto">
-      <h1>Вход</h1>
-      <form id="login-form" class="grid" novalidate onsubmit="handleLogin(event)">
-        <label>Никнейм
-          <input id="login-nickname" type="text" autocomplete="username" required />
-        </label>
-        <label>Пароль
-          <input id="login-password" type="password" autocomplete="current-password" required />
-        </label>
-        <button class="btn btn--primary" type="submit">Войти</button>
-      </form>
+  <nav class="topbar">
+    <a class="logo" href="./">FroggyHub</a>
+    <div class="topbar-right">
+      <a class="btn btn--chip" data-authed href="./hub.html">Меню</a>
+      <a class="btn btn--chip" data-authed href="./profile.html">Профиль</a>
+      <a class="btn btn--chip" data-authed id="btn-logout" href="#">Выйти</a>
+      <a class="btn btn--chip" data-guest  href="./login.html">Войти</a>
     </div>
-  </div>
+  </nav>
+  <main class="container" role="main">
+    <div class="auth-card auth-card-wrap">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="login"  role="tab">Вход</button>
+        <button class="tab"         data-tab="signup" role="tab">Регистрация</button>
+        <button class="tab"         data-tab="reset"  role="tab">Сброс</button>
+      </div>
+
+      <section data-pane="login">
+        <form id="formLogin" class="stack">
+          <input id="loginLogin"    autocomplete="username" placeholder="Email или ник" required>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Пароль" required>
+          <button class="btn btn--primary">Войти</button>
+          <p id="loginErr" class="error" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section data-pane="signup" hidden>
+        <form id="formSignup" class="stack">
+          <input id="suNickname" required placeholder="Никнейм">
+          <input id="suEmail"    type="email" required placeholder="Email">
+          <input id="suPass"     type="password" required placeholder="Пароль">
+          <button class="btn btn--primary">Создать аккаунт</button>
+          <p id="signupErr" class="error" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section data-pane="reset" hidden>
+        <form id="formReset" class="stack">
+          <input id="rpEmail" type="email" required placeholder="Email">
+          <button class="btn btn--primary">Отправить ссылку</button>
+          <p id="resetOk" class="hint"></p>
+          <p id="resetErr" class="error" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+  </main>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>

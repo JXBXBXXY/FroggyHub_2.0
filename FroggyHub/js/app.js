@@ -1,164 +1,89 @@
-// FroggyHub/js/app.js
-import {
-  supa, getSession, onAuthState,
-  signIn, signUpWithNickname, resetPassword,
-  signOut, getProfile
-} from './api.js';
+import { getSession, signOut, signIn, signUpWithNickname, resetPassword } from './api.js';
 
-// ====== простая система экранов ======
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('visible');
+/* --- auth gate --- */
+function setAuthed(on){
+  document.body.classList.toggle('authed', !!on);
+  document.body.classList.toggle('guest', !on);
+}
+async function gate(){
+  try{
+    const sess = await getSession();
+    setAuthed(!!sess);
+
+    const here = (location.pathname.split('/').pop() || '').toLowerCase();
+    const isLogin = here === '' || here === 'index.html' || here === 'login.html';
+
+    if (!sess && !isLogin) location.href = './login.html';
+    if (sess && isLogin)  location.href = './lobby.html';
+  }catch(e){
+    setAuthed(false);
+  }
 }
 
-// data-link навигация (между разделами одной страницы)
-const linkMap = {
-  home: 'screen-home',
-  menu: 'screen-home',
-  auth: 'screen-auth',
-  profile: 'screen-profile',
-  hub: 'screen-home',
-  settings: 'screen-home'
-};
-document.addEventListener('click', (e) => {
-  const a = e.target.closest('[data-link]');
+/* logout */
+document.addEventListener('click', (e)=>{
+  const a = e.target.closest('#btn-logout');
   if (!a) return;
   e.preventDefault();
-  const key = a.getAttribute('data-link');
-  const target = linkMap[key] || key;
-  showScreen(target);
+  signOut()?.finally(()=>location.href='./');
 });
 
-// ====== auth UI ======
-function wireAuthTabs() {
-  const tabs = document.querySelectorAll('[data-auth-tab]');
-  const panes = {
-    login: document.getElementById('paneLogin'),
-    signup: document.getElementById('paneSignup'),
-    reset: document.getElementById('paneReset')
-  };
-  tabs.forEach(t => {
-    t.addEventListener('click', () => {
-      tabs.forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      const key = t.getAttribute('data-auth-tab');
-      Object.entries(panes).forEach(([k, el]) => el?.classList.toggle('is-hidden', k !== key));
-    });
-  });
-}
+/* --- tabs on login page --- */
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-tab]');
+  if (!btn) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t===btn));
+  const key = btn.dataset.tab;
+  document.querySelectorAll('[data-pane]').forEach(p=>p.hidden = (p.dataset.pane !== key));
+});
 
-function wireAuthForms() {
-  // login
-  const fLogin = document.getElementById('formLogin');
-  fLogin?.addEventListener('submit', async (e) => {
+/* --- forms --- */
+document.addEventListener('submit', async (e)=>{
+  // Login
+  if (e.target.id === 'formLogin'){
     e.preventDefault();
-    const login = fLogin.login.value.trim();
-    const password = fLogin.password.value;
-    try {
-      await signIn({ login, password });
-      await afterAuthSuccess();
-    } catch (err) {
-      showFieldError(fLogin, err);
-    }
-  });
-
-  // signup
-  const fSignup = document.getElementById('formSignup');
-  fSignup?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nickname = fSignup.nickname.value.trim();
-    const email = fSignup.email.value.trim();
-    const password = fSignup.password.value;
-    try {
-      await signUpWithNickname({ nickname, email, password });
-      await afterAuthSuccess();
-    } catch (err) {
-      showFieldError(fSignup, err);
-    }
-  });
-
-  // reset
-  const fReset = document.getElementById('formReset');
-  fReset?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = fReset.email.value.trim();
-    try {
-      await resetPassword(email);
-      fReset.querySelector('.form-success')?.classList.remove('is-hidden');
-    } catch (err) {
-      showFieldError(fReset, err);
-    }
-  });
-
-  // logout (в хэдэре)
-  document.getElementById('btnLogout')?.addEventListener('click', async () => {
-    await signOut();
-    showScreen('screen-auth');
-  });
-}
-
-function showFieldError(form, err) {
-  const box = form.querySelector('.form-error');
-  if (box) {
-    box.textContent = err?.message || 'Ошибка';
-    box.classList.remove('is-hidden');
-  } else {
-    alert(err?.message || 'Ошибка');
-  }
-}
-
-async function afterAuthSuccess() {
-  const p = await getProfile().catch(() => null);
-  renderProfile(p);
-  showScreen('screen-home');
-}
-
-// ====== профиль ======
-function renderProfile(p) {
-  const nick = document.getElementById('profNick');
-  const created = document.getElementById('profCreated');
-  nick && (nick.textContent = p?.nickname || '—');
-  created && (created.textContent = p?.created_at ? new Date(p.created_at).toLocaleString() : '—');
-}
-
-// ====== старт приложения ======
-async function boot() {
-  wireAuthTabs();
-  wireAuthForms();
-  placeMessageCloudsBehind();
-
-  // если supa не настроен — показываем auth-экран (пустая форма), но без реального сабмита
-  const session = await getSession();
-  if (session) {
-    // профиль и меню
-    try {
-      const p = await getProfile().catch(() => null);
-      renderProfile(p);
-    } catch {}
-    showScreen('screen-home');
-  } else {
-    showScreen('screen-auth');
+    const login = document.getElementById('loginLogin').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const out = document.getElementById('loginErr'); out.textContent='';
+    try{
+      const { error } = await signIn({ login, password });
+      if (error) throw error;
+      location.href='./lobby.html';
+    }catch(err){ out.textContent = err.message || 'Не удалось войти'; }
   }
 
-  // реакция на смену авторизации
-  onAuthState(async (sess) => {
-    if (sess) {
-      const p = await getProfile().catch(() => null);
-      renderProfile(p);
-      showScreen('screen-home');
-    } else {
-      showScreen('screen-auth');
-    }
-  });
-}
+  // Signup
+  if (e.target.id === 'formSignup'){
+    e.preventDefault();
+    const nickname = document.getElementById('suNickname').value.trim();
+    const email    = document.getElementById('suEmail').value.trim();
+    const password = document.getElementById('suPass').value;
+    const out = document.getElementById('signupErr'); out.textContent='';
+    try{
+      const { error } = await signUpWithNickname({ nickname, email, password });
+      if (error) throw error;
+      location.href='./lobby.html';
+    }catch(err){ out.textContent = err.message || 'Регистрация не удалась'; }
+  }
 
-document.addEventListener('DOMContentLoaded', boot);
+  // Reset
+  if (e.target.id === 'formReset'){
+    e.preventDefault();
+    const email = document.getElementById('rpEmail').value.trim();
+    const ok = document.getElementById('resetOk'); const err = document.getElementById('resetErr');
+    ok.textContent = err.textContent = '';
+    try{
+      const { error } = await resetPassword(email);
+      if (error) throw error;
+      ok.textContent = 'Письмо отправлено ✉️';
+    }catch(ex){ err.textContent = ex.message || 'Не удалось отправить письмо'; }
+  }
+});
 
-// ====== фоновые чипы (смски) — всегда позади и не перехватывают клики ======
+/* --- message chips --- */
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Буду позже 🙈',
-  'Добавил плейлист 🎶','Я за хлебом 🍞','Кто за лимонадом? 🍋','Увидимся у входа 🚪',
+  'Добавил плейлист 🎶','Я за хлебом 🍞','Кто за лимнадом? 🍋','Увидимся у входа 🚪',
   'Зайду за напитками 🍻','Давайте фильм посмотрим 🎬','Встречаемся у метро 🚉'
 ];
 
@@ -186,3 +111,8 @@ function placeMessageCloudsBehind() {
     root.appendChild(el);
   });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  gate();
+  placeMessageCloudsBehind();
+});

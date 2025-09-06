@@ -10,7 +10,7 @@
   <style>
     .fh-bg {
       position: fixed; inset: 0; z-index: 0;
-      background: #0b241b url("/assets/froggy_glass_bg.jpeg") center 45% / cover no-repeat;
+      background: #0b241b url("./assets/froggy_glass_bg.jpeg") center 45% / cover no-repeat;
     }
     @media (min-width: 640px) {
       .fh-bg { background-position: center; }
@@ -25,14 +25,15 @@
   <div class="fh-bg" aria-hidden="true"></div>
   <div id="fh-message-clouds" aria-hidden="true"></div>
   <div class="fh-content">
-    <header class="fh-header">
-      <a class="fh-logo" href="/">FroggyHub</a>
-      <nav class="topbar">
-        <a href="/" class="btn btn--ghost btn--sm">Меню</a>
-        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-        <button id="logoutBtn" data-logout class="btn btn--ghost btn--sm">Выйти</button>
-      </nav>
-    </header>
+    <nav class="topbar">
+      <a class="logo" href="./">FroggyHub</a>
+      <div class="topbar-right">
+        <a class="btn btn--chip" data-authed href="./hub.html">Меню</a>
+        <a class="btn btn--chip" data-authed href="./profile.html">Профиль</a>
+        <a class="btn btn--chip" data-authed id="btn-logout" href="#">Выйти</a>
+        <a class="btn btn--chip" data-guest  href="./login.html">Войти</a>
+      </div>
+    </nav>
 
   <main class="lobby-grid">
     <!-- Левая колонка: лягушка + счётчик -->
@@ -75,7 +76,7 @@
       </div>
 
       <div class="actions">
-        <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
+        <a class="btn btn--ghost" href="./index.html">Вернуться в меню</a>
       </div>
     </section>
   </main>
