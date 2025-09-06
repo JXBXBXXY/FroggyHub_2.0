@@ -7,24 +7,25 @@ const URL = (ENV.PUBLIC_SUPABASE_URL || '').trim();
 const KEY = (ENV.PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
 function looksLikePlaceholder(s) {
-  return !s || /PUBLIC_SUPABASE_/i.test(s) || s.endsWith('/');
+  return !s || /PUBLIC_SUPABASE_/i.test(s) || s === '' || s.endsWith('/');
 }
 
 let _supa = null;
 export const supa = (() => {
   if (_supa) return _supa;
-  if (looksLikePlaceholder(URL) || looksLikePlaceholder(KEY)) {
-    console.warn('[supa] creds are placeholders/missing, skip init', {
-      URL,
-      KEY: KEY ? KEY.slice(0, 6) + '…' : ''
-    });
+  if (looksLikePlaceholder(URL) || looksLikePlaceholder(KEY) || !window.supabase?.createClient) {
+    console.warn('[supa] creds are placeholders/missing, skip init', { URL, KEY: KEY && KEY.slice(0,6)+'…' });
+    const banner = document.getElementById('sessionBanner') || document.createElement('div');
+    banner.id = 'sessionBanner';
+    banner.role = 'status';
+    banner.textContent = 'Supabase не настроен. Проверьте /env.js';
+    banner.style.cssText = 'position:fixed;left:1rem;bottom:1rem;padding:.5rem .75rem;background:#243b3b;color:#d5f5f5;border-radius:.5rem;z-index:9999';
+    document.body.appendChild(banner);
     return null;
   }
-  _supa = window.supabase?.createClient
-    ? window.supabase.createClient(URL, KEY, {
-        auth: { persistSession: true, autoRefreshToken: true }
-      })
-    : null;
+  _supa = window.supabase.createClient(URL, KEY, {
+    auth: { persistSession: true, autoRefreshToken: true }
+  });
   return _supa;
 })();
 
