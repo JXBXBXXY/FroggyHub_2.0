@@ -4,25 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FroggyHub</title>
-
-  <!-- Стили -->
   <link rel="stylesheet" href="./style.css" />
-
-  <!-- Supabase CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- ENV (Netlify вставит PUBLIC_SUPABASE_URL и PUBLIC_SUPABASE_ANON_KEY) -->
-  <script>
-    window.ENV = window.ENV || {
-      PUBLIC_SUPABASE_URL: "PUBLIC_SUPABASE_URL",
-      PUBLIC_SUPABASE_ANON_KEY: "PUBLIC_SUPABASE_ANON_KEY"
-    };
-  </script>
 </head>
 <body class="guest">
-  <!-- ===== Topbar ===== -->
   <header class="topbar">
-    <a href="#" class="logo">FroggyHub</a>
+    <a href="#" class="logo" data-link="home">FroggyHub</a>
     <div class="topbar-right">
       <button class="guest-only" data-link="login">Войти</button>
       <button class="authed-only" data-link="menu">Меню</button>
@@ -31,81 +17,40 @@
     </div>
   </header>
 
-  <!-- ===== Screens ===== -->
   <main class="fh-content">
-
-    <!-- Экран авторизации -->
-    <section id="screen-auth" class="screen visible">
-      <div class="auth-card-wrap">
-        <div class="auth-card">
-          <div class="tabs">
-            <div class="tab is-active" data-tab="login">Вход</div>
-            <div class="tab" data-tab="signup">Регистрация</div>
-            <div class="tab" data-tab="reset">Сброс</div>
-          </div>
-
-          <div id="paneLogin" class="auth-pane visible">
-            <input id="loginLogin" type="text" placeholder="Email или ник" required />
-            <input id="loginPassword" type="password" placeholder="Пароль" required />
-            <button id="btnLogin" class="btn btn--primary w-full">Войти</button>
-            <div id="loginError" class="form-error"></div>
-          </div>
-
-          <div id="paneSignup" class="auth-pane">
-            <input id="signupNickname" type="text" placeholder="Никнейм" required />
-            <input id="signupEmail" type="email" placeholder="Email" required />
-            <input id="signupPassword" type="password" placeholder="Пароль" required />
-            <button id="btnSignup" class="btn btn--primary w-full">Зарегистрироваться</button>
-            <div id="signupError" class="form-error"></div>
-          </div>
-
-          <div id="paneReset" class="auth-pane">
-            <input id="resetEmail" type="email" placeholder="Email" required />
-            <button id="btnReset" class="btn btn--primary w-full">Сбросить пароль</button>
-            <div id="resetError" class="form-error"></div>
-          </div>
+    <section class="auth-card-wrap">
+      <div class="auth-card">
+        <div class="tabs">
+          <div class="tab is-active" data-tab="login">Вход</div>
+          <div class="tab" data-tab="signup">Регистрация</div>
+          <div class="tab" data-tab="reset">Сброс</div>
         </div>
-      </div>
-    </section>
 
-    <!-- Экран лобби -->
-    <section id="screen-lobby" class="screen">
-      <div class="container">
-        <div class="menu-grid">
-          <button data-link="event-edit" class="btn btn--primary">Создать событие</button>
-          <div class="join-row">
-            <input id="joinCode" type="text" maxlength="6" placeholder="Введите 6-значный код" />
-            <button id="btnJoin" class="btn btn--secondary">Присоединиться</button>
-          </div>
+        <div id="paneLogin" class="auth-pane visible">
+          <input id="loginLogin" type="text" placeholder="Email или ник" required />
+          <input id="loginPassword" type="password" placeholder="Пароль" required />
+          <button id="btnLogin" class="btn btn--primary w-full">Войти</button>
+          <div id="loginError" class="form-error"></div>
         </div>
-      </div>
-    </section>
 
-    <!-- Экран профиля -->
-    <section id="screen-profile" class="screen">
-      <div class="container">
-        <div class="card">
-          <h2>Профиль</h2>
-          <div>Ник: <span id="profile-nickname"></span></div>
-          <div>Email: <span id="profile-email"></span></div>
-          <div>Создан: <span id="profile-created"></span></div>
+        <div id="paneSignup" class="auth-pane">
+          <input id="signupNickname" type="text" placeholder="Никнейм" required />
+          <input id="signupEmail" type="email" placeholder="Email" required />
+          <input id="signupPassword" type="password" placeholder="Пароль" required />
+          <button id="btnSignup" class="btn btn--primary w-full">Зарегистрироваться</button>
+          <div id="signupError" class="form-error"></div>
         </div>
-      </div>
-    </section>
 
-    <!-- Экран хаба -->
-    <section id="screen-hub" class="screen">
-      <div class="container">
-        <h2>Мои события</h2>
-        <div id="my-events" class="event-grid"></div>
+        <div id="paneReset" class="auth-pane">
+          <input id="resetEmail" type="email" placeholder="Email" required />
+          <button id="btnReset" class="btn btn--primary w-full">Сбросить пароль</button>
+          <div id="resetError" class="form-error"></div>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- ===== Background messages ===== -->
-  <div id="fh-message-clouds"></div>
-
-  <!-- Скрипты -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
+

@@ -1,98 +1,35 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Лобби — FroggyHub</title>
   <link rel="stylesheet" href="./style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
-  <style>
-    .fh-bg {
-      position: fixed; inset: 0; z-index: 0;
-      background: #0b241b url("/assets/froggy_glass_bg.jpeg") center 45% / cover no-repeat;
-    }
-    @media (min-width: 640px) {
-      .fh-bg { background-position: center; }
-    }
-    .fh-bg::after { content:""; position:absolute; inset:0; background: rgba(11,36,27,.55); }
-    #fh-message-clouds { position: fixed; inset: 0; z-index: 0; pointer-events:none; }
-    .fh-content { position: relative; z-index: 20; min-height: 100svh; padding-inline: 1rem; }
-    #fh-cta { position: relative; z-index: 30; }
-  </style>
 </head>
-<body data-page="lobby">
-  <div class="fh-bg" aria-hidden="true"></div>
-  <div id="fh-message-clouds" aria-hidden="true"></div>
-  <div class="fh-content">
-    <header class="fh-header">
-      <a class="fh-logo" href="/">FroggyHub</a>
-      <nav class="topbar">
-        <a href="/" class="btn btn--ghost btn--sm">Меню</a>
-        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-        <button id="logoutBtn" data-logout class="btn btn--ghost btn--sm">Выйти</button>
-      </nav>
-    </header>
+<body class="guest">
+  <header class="topbar">
+    <a href="#" class="logo" data-link="home">FroggyHub</a>
+    <div class="topbar-right">
+      <button class="guest-only" data-link="login">Войти</button>
+      <button class="authed-only" data-link="menu">Меню</button>
+      <button class="authed-only" data-link="profile">Профиль</button>
+      <button class="authed-only" data-action="logout">Выйти</button>
+    </div>
+  </header>
 
-  <main class="lobby-grid">
-    <!-- Левая колонка: лягушка + счётчик -->
-    <section id="lobby-left" class="lobby-left">
-      <div class="frog-hero"></div>
-      <div class="countdown">
-        <div class="countdown-big" data-countdown-big>00:00</div>
-        <div class="countdown-small" data-countdown-small>1 января</div>
-      </div>
-    </section>
-
-    <!-- Правая колонка: финальная панель события -->
-    <section id="lobby-right" class="lobby-right card">
-      <h2 data-title>Событие</h2>
-      <div class="event-grid">
-        <div class="codeRow"><span id="eventCodeText">Код: <strong id="eventCode" data-code>—</strong></span> <button id="copyInviteBtn" class="btn btn--ghost btn--sm" data-owner-only>Скопировать приглашение</button></div>
-        <div><strong>Когда:</strong> <span data-when></span></div>
-        <div><strong>Адрес:</strong> <span data-address>—</span></div>
-        <div><strong>Дресс-код:</strong> <span data-dress>—</span></div>
-        <div><strong>Что взять:</strong> <span data-bring>—</span></div>
-        <div><strong>Комментарий:</strong> <span data-notes>—</span></div>
-      </div>
-
-      <h3>Wishlist</h3>
-      <ul class="list" data-wishlist></ul>
-
-      <div class="guests-columns">
-        <div>
-          <h4>Идут</h4>
-          <ul class="list" data-guest-yes></ul>
-        </div>
-        <div>
-          <h4>Не идут</h4>
-          <ul class="list" data-guest-no></ul>
-        </div>
-        <div>
-          <h4>Может быть</h4>
-          <ul class="list" data-guest-maybe></ul>
+  <main class="fh-content">
+    <div class="container">
+      <div class="menu-grid">
+        <button data-link="event-edit" class="btn btn--primary">Создать событие</button>
+        <div class="join-row">
+          <input id="joinCode" type="text" maxlength="6" placeholder="Введите 6-значный код" />
+          <button id="btnJoin" class="btn btn--secondary">Присоединиться</button>
         </div>
       </div>
-
-      <div class="actions">
-        <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
-      </div>
-    </section>
+    </div>
   </main>
-  <div id="cookieCard" class="card" style="display:none">
-    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
-      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
-    </svg>
-    <div class="cookieHeading">Cookies</div>
-    <div class="cookieDescription">
-      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
-    </div>
-    <div class="buttonContainer">
-      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
-    </div>
-  </div>
-</div>
+
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
+

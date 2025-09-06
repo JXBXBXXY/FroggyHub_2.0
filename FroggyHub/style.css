@@ -1030,3 +1030,17 @@ html, body {
 /* фоновые чипы по умолчанию невидимы, пока не расставим координаты */
 #fh-message-clouds .fh-chip { visibility: hidden; }
 #fh-message-clouds .fh-chip.is-placed { visibility: visible; }
+
+/* --- auth gate visibility --- */
+body.guest .authed-only { display: none !important; }
+body.authed .guest-only { display: none !important; }
+
+/* --- message chips layer (behind UI) --- */
+#fh-message-clouds {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#fh-message-clouds .fh-chip { position: absolute; }

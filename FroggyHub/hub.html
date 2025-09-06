@@ -3,52 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Хаб</title>
+  <title>Хаб — FroggyHub</title>
   <link rel="stylesheet" href="./style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
-<body>
-  <div id="mini-profile" style="position:absolute;top:10px;right:10px;text-align:right;">
-    Ник: <span id="mp-nick"></span>, Создан: <span id="mp-created"></span>
-    <button id="hub-logout" data-logout class="btn btn--ghost btn--sm">Выйти</button>
-  </div>
-  <main class="container" role="main">
-    <div class="card" style="max-width:760px;margin:40px auto">
-      <h1>Хаб</h1>
-      <div class="grid">
-        <div class="card inner">
-          <a class="btn btn--primary" href="/event-edit.html" data-action="create">Создать событие</a>
-        </div>
-        <div class="card inner">
-          <h3>Войти в ивент</h3>
-          <div class="row2">
-            <input data-input="join-code" placeholder="Код или ссылка" />
-            <button class="btn btn--primary" data-action="join">Присоединиться</button>
-          </div>
-        </div>
-      </div>
-      <section>
-        <h2>Мои ивенты</h2>
-        <ul id="my-events"></ul>
-      </section>
+<body class="guest">
+  <header class="topbar">
+    <a href="#" class="logo" data-link="home">FroggyHub</a>
+    <div class="topbar-right">
+      <button class="guest-only" data-link="login">Войти</button>
+      <button class="authed-only" data-link="menu">Меню</button>
+      <button class="authed-only" data-link="profile">Профиль</button>
+      <button class="authed-only" data-action="logout">Выйти</button>
+    </div>
+  </header>
+
+  <main class="fh-content">
+    <div class="container">
+      <h2>Мои события</h2>
+      <div id="my-events" class="event-grid"></div>
     </div>
   </main>
-  <div id="cookieCard" class="card" style="display:none">
-    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
-      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
-    </svg>
-    <div class="cookieHeading">Cookies</div>
-    <div class="cookieDescription">
-      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
-    </div>
-    <div class="buttonContainer">
-      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
-    </div>
-  </div>
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-  <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
+
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
+
