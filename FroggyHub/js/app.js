@@ -1,4 +1,27 @@
-import { supa, signIn, signUpWithNickname, signOut, getSession, onAuthState, joinEvent } from './api.js';
+import { supa, getSession, onAuthState, signIn, signUpWithNickname, signOut, getProfile, joinEvent } from './api.js';
+
+const LINKS = {
+  home: '/FroggyHub/index.html',
+  menu: '/FroggyHub/lobby.html',
+  profile: '/FroggyHub/profile.html',
+};
+
+function setAuthState(isAuthed) {
+  document.body.classList.toggle('authed', !!isAuthed);
+  document.body.classList.toggle('guest', !isAuthed);
+  for (const el of document.querySelectorAll('[data-auth-only]')) el.hidden = !isAuthed;
+  for (const el of document.querySelectorAll('[data-guest-only]')) el.hidden = !!isAuthed;
+}
+
+function wireNav() {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-link]');
+    if (!btn) return;
+    const key = btn.getAttribute('data-link');
+    const href = LINKS[key];
+    if (href) { e.preventDefault(); location.href = href; }
+  });
+}
 
 let fhCloudsRoot;
 function ensureCloudsRoot() {
@@ -8,6 +31,7 @@ function ensureCloudsRoot() {
   fhCloudsRoot.id = 'fh-message-clouds';
   fhCloudsRoot.setAttribute('aria-hidden', 'true');
   fhCloudsRoot.style.pointerEvents = 'none';
+  fhCloudsRoot.style.zIndex = '0';
   document.body.prepend(fhCloudsRoot);
   return fhCloudsRoot;
 }
@@ -104,108 +128,73 @@ addEventListener('resize', ()=> chips.forEach(c=>{
   c.el.style.transform=`translate3d(${c.x}px,${c.y}px,0)`;
 }), {passive:true});
 
-// ===== Navigation by data-link =====
-const NAV = {
-  home: 'index.html',
-  login: 'login.html',
-  menu: 'lobby.html',
-  hub: 'hub.html',
-  profile: 'profile.html',
-  'event-edit': 'event-edit.html',
-  analytics: 'event-analytics.html'
-};
-document.addEventListener('click', (e) => {
-  const a = e.target.closest('[data-link]');
-  if (!a) return;
-  const key = a.getAttribute('data-link');
-  const href = NAV[key];
-  if (href) {
+async function boot() {
+  wireNav();
+  try { ensureCloudsRoot(); spawnChips(); } catch {}
+
+  const session = await getSession();
+  setAuthState(!!session);
+  onAuthState((sess) => setAuthState(!!sess));
+
+  const tabs = document.querySelectorAll('.auth-tabs .tab');
+  const panes = document.querySelectorAll('.auth-pane');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.toggle('is-active', x === t));
+    const key = t.dataset.tab;
+    panes.forEach(p => p.classList.toggle('is-hidden', p.dataset.pane !== key));
+  }));
+
+  const fLogin = document.getElementById('formLogin');
+  if (fLogin) fLogin.addEventListener('submit', async (e) => {
     e.preventDefault();
-    location.href = href;
-  }
-});
+    const login = document.getElementById('loginNickname')?.value?.trim();
+    const password = document.getElementById('loginPassword')?.value ?? '';
+    await signIn({ login, password });
+    location.href = LINKS.menu;
+  });
 
-// ===== Auth handlers =====
-const tabs = document.querySelectorAll('.auth-tabs .tab');
-const panes = document.querySelectorAll('.auth-pane[data-guest-only]');
-tabs.forEach(t => t.addEventListener('click', () => {
-  tabs.forEach(x => x.classList.toggle('is-active', x === t));
-  const key = t.dataset.tab;
-  panes.forEach(p => p.classList.toggle('is-hidden', p.dataset.pane !== key));
-}));
-
-document.getElementById('formLogin')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const nickname = document.getElementById('loginNickname').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  try {
-    const { data, error } = await signIn({ login: nickname, password });
-    if (error) throw error;
-    location.href = './lobby.html';
-  } catch (err) {
-    console.warn('[login]', err);
-  }
-});
-
-document.getElementById('formSignup')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const nickname = document.getElementById('signupNickname').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value;
-  try {
-    const { data, error } = await signUpWithNickname({ nickname, email, password });
-    if (error) throw error;
-    document.querySelector('.auth-tabs .tab[data-tab="login"]')?.click();
-  } catch (err) {
-    console.warn('[signup]', err);
-  }
-});
-
-document.addEventListener('click', (e) => {
-  if (e.target?.dataset?.action === 'logout') {
+  const fSignup = document.getElementById('formSignup');
+  if (fSignup) fSignup.addEventListener('submit', async (e) => {
     e.preventDefault();
-    signOut()?.finally(() => location.href = 'index.html');
-  }
-});
+    const nickname = document.getElementById('signupNickname')?.value?.trim();
+    const email    = document.getElementById('signupEmail')?.value?.trim();
+    const password = document.getElementById('signupPassword')?.value ?? '';
+    await signUpWithNickname({ nickname, email, password });
+    location.href = LINKS.menu;
+  });
 
-document.addEventListener('click', async (e) => {
-  if (e.target?.id !== 'btnJoin') return;
-  const code = document.querySelector('#joinCode')?.value?.trim();
-  if (!code || code.length < 6) return alert('Введите 6-значный код');
-  try {
-    const res = await joinEvent({ code });
-    if (res?.success && res?.url) {
-      location.href = res.url;
-    } else {
-      alert(res?.error || 'Не удалось присоединиться');
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="logout"]');
+    if (!btn) return;
+    await signOut();
+    location.href = LINKS.home;
+  });
+
+  document.addEventListener('click', async (e) => {
+    if (e.target?.id !== 'btnJoin') return;
+    const code = document.querySelector('#joinCode')?.value?.trim();
+    if (!code || code.length < 6) return alert('Введите 6-значный код');
+    try {
+      const res = await joinEvent({ code });
+      if (res?.success && res?.url) {
+        location.href = res.url;
+      } else {
+        alert(res?.error || 'Не удалось присоединиться');
+      }
+    } catch (err) {
+      alert(err.message || 'Ошибка');
     }
-  } catch (err) {
-    alert(err.message || 'Ошибка');
-  }
-});
+  });
 
-function handleAuth(session) {
-  const authed = !!session;
-  document.body.classList.toggle('authed', authed);
-  document.body.classList.toggle('guest', !authed);
-  const page = location.pathname.split('/').pop();
-  const guestPages = ['index.html','login.html',''];
-  if (authed && guestPages.includes(page)) {
-    location.href = 'lobby.html';
-  } else if (!authed && !guestPages.includes(page)) {
-    location.href = 'index.html';
+  if (location.pathname.endsWith('/profile.html')) {
+    const p = await getProfile();
+    if (p) {
+      document.getElementById('profile-nickname')?.replaceChildren(document.createTextNode(p.nickname ?? '—'));
+      document.getElementById('profile-email')?.replaceChildren(document.createTextNode(p.email ?? '—'));
+      document.getElementById('profile-created')?.replaceChildren(document.createTextNode(p.created_at?.slice(0,10) ?? '—'));
+    }
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  try { spawnChips(); } catch {}
-  try {
-    const session = await getSession();
-    handleAuth(session);
-  } catch {
-    handleAuth(null);
-  }
-});
+document.addEventListener('DOMContentLoaded', boot);
 
-
-onAuthState?.(handleAuth);

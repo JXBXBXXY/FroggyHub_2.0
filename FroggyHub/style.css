@@ -1043,6 +1043,9 @@ html, body {
 }
 #fh-message-clouds .fh-chip { position: absolute; }
 
+.topbar,.screen,.card,.panel,.menu-deck,.auth-card,.auth-card-wrap,
+input,select,textarea,button{ position:relative; z-index:10; }
+
 body.guest [data-auth-only] { display:none !important; }
 body.authed [data-guest-only] { display:none !important; }
 
