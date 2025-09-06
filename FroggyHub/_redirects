@@ -1,1 +1,4 @@
-/*    /index.html   200
+/style.css      /style.css      200
+/env.js         /env.js         200
+/js/*           /js/:splat      200
+/*              /index.html     200
