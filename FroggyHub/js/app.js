@@ -23,12 +23,13 @@ const FH = {
   MAX: 20, MARGIN: 20, PLACE_TRIES: 40, MIN_DIST: 120,
   MIN_V: .045, MAX_V: .09, JITTER: .00012, KICK: .12
 };
-let chips = [], animId = 0;
+let chips = [], animId = 0, chipsSpawned = false;
 function rand(a,b){return Math.random()*(b-a)+a}
 function clamp(v,a,b){return Math.min(Math.max(v,a),b)}
 function spawnChips(){
+  if (chipsSpawned) return;
+  chipsSpawned = true;
   const root = ensureCloudsRoot();
-  if (chips.length) return startFloat();
   const pool = [...FH_MESSAGES];
   for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0; [pool[i],pool[j]]=[pool[j],pool[i]]}
   const list = pool.slice(0,FH.MAX);
@@ -210,19 +211,28 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+function handleAuth(session) {
+  const authed = !!session;
+  document.body.classList.toggle('authed', authed);
+  document.body.classList.toggle('guest', !authed);
+  const page = location.pathname.split('/').pop();
+  const guestPages = ['index.html','login.html',''];
+  if (authed && guestPages.includes(page)) {
+    location.href = 'lobby.html';
+  } else if (!authed && !guestPages.includes(page)) {
+    location.href = 'index.html';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  try { ensureCloudsRoot(); spawnChips(); } catch {}
+  try { spawnChips(); } catch {}
   try {
     const session = await getSession();
-    document.body.classList.toggle('authed', !!session);
-    document.body.classList.toggle('guest', !session);
+    handleAuth(session);
   } catch {
-    document.body.classList.add('guest');
+    handleAuth(null);
   }
 });
 
-onAuthState?.((session) => {
-  document.body.classList.toggle('authed', !!session);
-  document.body.classList.toggle('guest', !session);
-});
 
+onAuthState?.(handleAuth);

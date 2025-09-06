@@ -4,21 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Аналитика события</title>
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
-<body class="guest">
-  <header class="topbar">
+<body class="authed">
+  <header class="topbar" data-auth-only>
     <a href="#" class="logo" data-link="home">FroggyHub</a>
     <div class="topbar-right">
-      <button class="guest-only" data-link="login">Войти</button>
-      <button class="authed-only" data-link="menu">Меню</button>
-      <button class="authed-only" data-link="profile">Профиль</button>
-      <button class="authed-only" data-action="logout">Выйти</button>
+      <button data-link="menu">Меню</button>
+      <button data-link="profile">Профиль</button>
+      <button data-action="logout">Выйти</button>
     </div>
   </header>
-  <main class="container" role="main">
+  <main class="container" role="main" data-auth-only>
     <div class="card" id="eventHead">
       <div class="hero">
         <div class="hero-text">
@@ -68,7 +66,7 @@
 
     <p id="error" class="error" role="status" aria-live="polite"></p>
   </main>
-  <div id="cookieCard" class="card" style="display:none">
+  <div id="cookieCard" class="card" style="display:none" data-auth-only>
     <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
       <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
     </svg>
@@ -81,7 +79,7 @@
       <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
     </div>
   </div>
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden data-auth-only></div>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>

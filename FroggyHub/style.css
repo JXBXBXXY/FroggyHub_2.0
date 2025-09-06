@@ -1032,8 +1032,6 @@ html, body {
 #fh-message-clouds .fh-chip.is-placed { visibility: visible; }
 
 /* --- auth gate visibility --- */
-body.guest .authed-only { display: none !important; }
-body.authed .guest-only { display: none !important; }
 
 /* --- message chips layer (behind UI) --- */
 #fh-message-clouds {
@@ -1044,3 +1042,7 @@ body.authed .guest-only { display: none !important; }
   overflow: hidden;
 }
 #fh-message-clouds .fh-chip { position: absolute; }
+
+body.guest [data-auth-only] { display:none !important; }
+body.authed [data-guest-only] { display:none !important; }
+
