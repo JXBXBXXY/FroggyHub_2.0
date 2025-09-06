@@ -265,3 +265,128 @@ window.addEventListener('resize', () => {
 
 function mountBackgroundOnce(){ try{ spawnChips(); }catch(e){ console.warn('[chips]',e); } }
 document.addEventListener('DOMContentLoaded', mountBackgroundOnce);
+/* === NAVIGATION HANDLERS (data-link) === */
+(function setupDataLinkNavigation(){
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-link]');
+    if (!el) return;
+
+    const key = el.getAttribute('data-link');
+    // Карта страниц в проекте (используй существующие html)
+    const map = {
+      home: 'index.html',
+      menu: 'lobby.html',      // меню/лобби
+      lobby: 'lobby.html',
+      profile: 'profile.html',
+      hub: 'hub.html',
+      // при необходимости дополни: edit, analytics и т.п.
+      edit: 'event-edit.html',
+      analytics: 'event-analytics.html'
+    };
+
+    const url = map[key] || 'index.html';
+    e.preventDefault();
+    window.location.href = url;
+  }, { passive: false });
+})();
+
+/* === AUTH HANDLERS for login.html ===
+   На странице login.html формы вызывают handleLogin/handleSignup/handleReset.
+   Экспортируем их в window, используя api.js (supa, signIn, signUpWithNickname, resetPassword).
+*/
+(function setupAuthHandlers(){
+  function qs(scope, sel){ return (scope || document).querySelector(sel); }
+
+  async function uiBusy(btn, busy = true) {
+    if (!btn) return;
+    if (busy) { btn.setAttribute('disabled','disabled'); btn.classList.add('is-busy'); }
+    else { btn.removeAttribute('disabled'); btn.classList.remove('is-busy'); }
+  }
+
+  function showFormError(ctx, msg) {
+    const box = ctx && qs(ctx, '.form-error');
+    if (box) box.textContent = msg || '';
+  }
+
+  // LOGIN
+  window.handleLogin = async function handleLogin(ev){
+    if (ev) ev.preventDefault();
+    const form = ev?.target?.closest('form') || document;
+    const email = qs(form, 'input[type="email"]')?.value?.trim() || '';
+    const password = qs(form, 'input[type="password"]')?.value || '';
+    const btn = ev?.submitter || qs(form, 'button[type="submit"]');
+
+    showFormError(form, '');
+    await uiBusy(btn, true);
+    try {
+      const { error } = await signIn(email, password);
+      if (error) throw error;
+      // успех → в лобби
+      window.location.href = 'lobby.html';
+    } catch (e) {
+      showFormError(form, e?.message || 'Ошибка входа');
+    } finally {
+      await uiBusy(btn, false);
+    }
+  };
+
+  // SIGNUP (ник + почта + пароль)
+  window.handleSignup = async function handleSignup(ev){
+    if (ev) ev.preventDefault();
+    const form = ev?.target?.closest('form') || document;
+    const nickname = qs(form, 'input[name="nickname"], input[placeholder*="ник"], input[placeholder*="Ник"]')?.value?.trim() || '';
+    const email = qs(form, 'input[type="email"]')?.value?.trim() || '';
+    const password = qs(form, 'input[type="password"]')?.value || '';
+    const btn = ev?.submitter || qs(form, 'button[type="submit"]');
+
+    showFormError(form, '');
+    await uiBusy(btn, true);
+    try {
+      const { error } = await signUpWithNickname({ email, password, nickname });
+      if (error) throw error;
+      // после регистрации можно сразу вести в лобби
+      window.location.href = 'lobby.html';
+    } catch (e) {
+      showFormError(form, e?.message || 'Ошибка регистрации');
+    } finally {
+      await uiBusy(btn, false);
+    }
+  };
+
+  // RESET PASSWORD
+  window.handleReset = async function handleReset(ev){
+    if (ev) ev.preventDefault();
+    const form = ev?.target?.closest('form') || document;
+    const email = qs(form, 'input[type="email"]')?.value?.trim() || '';
+    const btn = ev?.submitter || qs(form, 'button[type="submit"]');
+
+    showFormError(form, '');
+    await uiBusy(btn, true);
+    try {
+      const { error } = await resetPassword(email);
+      if (error) throw error;
+      showFormError(form, 'Ссылка для сброса отправлена на почту.');
+    } catch (e) {
+      showFormError(form, e?.message || 'Ошибка при сбросе пароля');
+    } finally {
+      await uiBusy(btn, false);
+    }
+  };
+})();
+
+/* === CLOUDS SAFETY: убедимся, что контейнер есть и чипы видимы === */
+(function ensureMessageCloudsLayer(){
+  // если наш фон уже существует — ничего не делаем
+  let root = document.getElementById('fh-message-clouds');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'fh-message-clouds';
+    document.body.appendChild(root);
+  }
+
+  // Если в CSS чипы скрыты до расстановки, убедимся что при спауне
+  // мы добавляем им класс .is-placed. Если spawnChips уже реализован — ок.
+  // Здесь лёгкая страховка: показать уже существующие чипы.
+  root.querySelectorAll('.fh-chip').forEach(el => el.classList.add('is-placed'));
+})();
+
