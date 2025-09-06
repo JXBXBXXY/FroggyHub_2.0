@@ -107,15 +107,13 @@ const FH_MESSAGES = [
 ];
 // === ПЛАВАЮЩИЕ ЧИПЫ (anti-stick вер.) ===
 const MAX_CHIPS = 20;
-// ... при создании:
-if (cloud.children.length >= MAX_CHIPS) cloud.removeChild(cloud.firstElementChild);
-const FH_PLACE_TRIES = 40;   // попыток поставить без наложений
-const FH_MIN_DIST = 120;     // мин. дистанция между центрами чипов
-const FH_MARGIN = 20;        // отступ от краёв
-const FH_MIN_SPEED = 0.045;  // px/ms, минимальная скорость
-const FH_MAX_SPEED = 0.09;   // px/ms, ограничение сверху
-const FH_JITTER = 0.00012;   // случайное ускорение на тик
-const FH_CORNER_KICK = 0.12; // импульс при «залипании» в углу
+const FH_PLACE_TRIES = 40;
+const FH_MIN_DIST = 120;
+const FH_MARGIN = 20;
+const FH_MIN_SPEED = 0.045;
+const FH_MAX_SPEED = 0.09;
+const FH_JITTER = 0.00012;
+const FH_CORNER_KICK = 0.12;
 
 let fhCloudsRoot = null;
 let fhChips = [];
@@ -139,32 +137,28 @@ function spawnChips() {
 
   const pool = Array.isArray(FH_MESSAGES) ? [...FH_MESSAGES] : [];
   if (!pool.length) return;
-  //.shuffle
   for (let i = pool.length - 1; i > 0; i--) {
     const j = (Math.random() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const list = pool.slice(0, FH_MAX_CHIPS);
+  const list = pool.slice(0, MAX_CHIPS);
 
   const W = window.innerWidth;
   const H = window.innerHeight;
 
   function canPlace(cx, cy, w, h) {
-    // границы
     if (cx - w/2 < FH_MARGIN || cy - h/2 < FH_MARGIN) return false;
     if (cx + w/2 > W - FH_MARGIN || cy + h/2 > H - FH_MARGIN) return false;
-    // дистанция до уже поставленных
     for (const c of fhChips) {
-      const dx = (cx) - (c.x + c.w/2);
-      const dy = (cy) - (c.y + c.h/2);
+      const dx = cx - (c.x + c.w/2);
+      const dy = cy - (c.y + c.h/2);
       if (dx*dx + dy*dy < FH_MIN_DIST*FH_MIN_DIST) return false;
     }
     return true;
   }
 
   function nonZeroVelocity() {
-    // случайное направление, но с минимальной длиной
-    let angle = rand(0, Math.PI * 2);
-    let speed = rand(FH_MIN_SPEED, FH_MAX_SPEED);
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(FH_MIN_SPEED, FH_MAX_SPEED);
     return { vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed };
   }
 
@@ -174,12 +168,10 @@ function spawnChips() {
     el.textContent = msg;
     root.appendChild(el);
 
-    // измерение
     const r = el.getBoundingClientRect();
     const w = r.width  || 140;
     const h = r.height || 40;
 
-    // размещение с анти-склейкой
     let placed = false, x = FH_MARGIN, y = FH_MARGIN;
     for (let t = 0; t < FH_PLACE_TRIES && !placed; t++) {
       const cx = rand(FH_MARGIN + w/2, W - FH_MARGIN - w/2);
@@ -189,14 +181,15 @@ function spawnChips() {
       }
     }
     if (!placed) {
-      // fallback: поставить куда получится с отступом
       x = clamp(rand(FH_MARGIN, W - w - FH_MARGIN), FH_MARGIN, W - w - FH_MARGIN);
       y = clamp(rand(FH_MARGIN, H - h - FH_MARGIN), FH_MARGIN, H - h - FH_MARGIN);
     }
 
     const { vx, vy } = nonZeroVelocity();
     fhChips.push({ el, x, y, vx, vy, w, h, stuck: 0 });
+
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    el.classList.add('is-placed'); // делаем видимым
   });
 
   startFloat();
@@ -211,14 +204,11 @@ function startFloat() {
     const W = window.innerWidth, H = window.innerHeight;
 
     for (const c of fhChips) {
-      // лёгкий джиттер (как шум), чтобы не синхронизировались
       c.vx += rand(-FH_JITTER, FH_JITTER) * dt;
       c.vy += rand(-FH_JITTER, FH_JITTER) * dt;
 
-      // ограничение скорости
       const sp = Math.hypot(c.vx, c.vy);
       if (sp < FH_MIN_SPEED) {
-        // подталкивание в случайную сторону
         const a = rand(0, Math.PI*2);
         c.vx = Math.cos(a) * FH_MIN_SPEED;
         c.vy = Math.sin(a) * FH_MIN_SPEED;
@@ -227,27 +217,24 @@ function startFloat() {
         c.vy = (c.vy / sp) * FH_MAX_SPEED;
       }
 
-      // новая позиция
       c.x += c.vx * dt;
       c.y += c.vy * dt;
 
-      // отражения от границ + маленький случайный импульс
-      if (c.x < FH_MARGIN)                    { c.x = FH_MARGIN;                    c.vx = Math.abs(c.vx) + rand(0, FH_JITTER*150); }
-      if (c.y < FH_MARGIN)                    { c.y = FH_MARGIN;                    c.vy = Math.abs(c.vy) + rand(0, FH_JITTER*150); }
-      if (c.x > W - c.w - FH_MARGIN)          { c.x = W - c.w - FH_MARGIN;          c.vx = -Math.abs(c.vx) - rand(0, FH_JITTER*150); }
-      if (c.y > H - c.h - FH_MARGIN)          { c.y = H - c.h - FH_MARGIN;          c.vy = -Math.abs(c.vy) - rand(0, FH_JITTER*150); }
+      if (c.x < FH_MARGIN)                   { c.x = FH_MARGIN;                   c.vx = Math.abs(c.vx) + rand(0, FH_JITTER*150); }
+      if (c.y < FH_MARGIN)                   { c.y = FH_MARGIN;                   c.vy = Math.abs(c.vy) + rand(0, FH_JITTER*150); }
+      if (c.x > W - c.w - FH_MARGIN)         { c.x = W - c.w - FH_MARGIN;         c.vx = -Math.abs(c.vx) - rand(0, FH_JITTER*150); }
+      if (c.y > H - c.h - FH_MARGIN)         { c.y = H - c.h - FH_MARGIN;         c.vy = -Math.abs(c.vy) - rand(0, FH_JITTER*150); }
 
-      // corner-kick: если слишком близко к углу дольше пары кадров — выстрелить наружу
       const nearLeft   = c.x <= FH_MARGIN + 1;
       const nearRight  = c.x >= W - c.w - FH_MARGIN - 1;
       const nearTop    = c.y <= FH_MARGIN + 1;
       const nearBottom = c.y >= H - c.h - FH_MARGIN - 1;
       if ((nearLeft || nearRight) && (nearTop || nearBottom)) {
         c.stuck += dt;
-        if (c.stuck > 100) { // >0.1 сек. в углу
-          const ax = nearLeft ? FH_CORNER_KICK : -FH_CORNER_KICK;
-          const ay = nearTop  ? FH_CORNER_KICK : -FH_CORNER_KICK;
-          c.vx += ax; c.vy += ay; c.stuck = 0;
+        if (c.stuck > 100) {
+          c.vx += (nearLeft ? FH_CORNER_KICK : -FH_CORNER_KICK);
+          c.vy += (nearTop  ? FH_CORNER_KICK : -FH_CORNER_KICK);
+          c.stuck = 0;
         }
       } else {
         c.stuck = Math.max(0, c.stuck - dt);
@@ -278,7 +265,3 @@ window.addEventListener('resize', () => {
 
 function mountBackgroundOnce(){ try{ spawnChips(); }catch(e){ console.warn('[chips]',e); } }
 document.addEventListener('DOMContentLoaded', mountBackgroundOnce);
-// пример: внутри функции, которая позиционирует чип
-chip.style.left = `${x}px`;
-chip.style.top  = `${y}px`;
-chip.classList.add('is-placed'); // ← покажем только после расстановки
