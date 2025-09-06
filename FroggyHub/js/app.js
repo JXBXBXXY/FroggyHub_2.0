@@ -6,10 +6,16 @@ import {
 } from './api.js';
 
 /* ------------------ Утилиты ------------------ */
-const LINKS = { home: '/index.html', menu: '/lobby.html', profile: '/profile.html' };
-const qs = (s, r = document) => r.querySelector(s);
+const LINKS = {
+  home: '/index.html',
+  menu: '/lobby.html',
+  profile: '/profile.html',
+  settings: '/profile.html',      // временно, пока нет отдельной страницы
+  'event-edit': '/event-edit.html'
+};
+const qs  = (s, r = document) => r.querySelector(s);
 const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
-const path = () => location.pathname.replace(/\/+$/, '/');
+const path   = () => location.pathname.replace(/\/+$/, '/');
 const params = () => Object.fromEntries(new URLSearchParams(location.search).entries());
 const isPage = (name) => path().endsWith(`/${name}`);
 
@@ -20,13 +26,9 @@ function setAuthState(isAuthed) {
   qsa('[data-guest-only]').forEach(el => el.hidden = !!isAuthed);
 }
 function goto(href) { location.href = href; }
-
-function copy(text) {
-  try { navigator.clipboard?.writeText(text); } catch {}
-}
+function copy(text) { try { navigator.clipboard?.writeText(text); } catch {} }
 
 /* ------------------ Floating chips (фон) ------------------ */
-// короче: фоновые «смс», не мешают кликам
 const FH_MESSAGES = [
   "Я приду к 19:00 ✨","Я возьму пиццу 🍕","Кто возьмёт колу? 🥤",
   "Ребят, постучите в дверь 🚪","Буду позже 🙈","Добавил плейлист 🎶",
@@ -70,7 +72,7 @@ function updateChips(){
   for (const c of chips){
     c.x+=c.vx; c.y+=c.vy;
     if (c.x<=m||c.x+c.w>=vw-m){ c.vx*=-1; c.x=Math.max(m,Math.min(c.x,vw-c.w-m)); }
-    if (c.y<=m||c.y+c.h>=vh-m){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-m)); }
+    if (c.y<=м||c.y+c.h>=vh-м){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-м)); }
     c.el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
   }
   for (let i=0;i<chips.length;i++)for(let j=i+1;j<chips.length;j++){
@@ -140,13 +142,13 @@ document.addEventListener('click', async (e)=>{
 
 /* ------------------ Guard + page boot ------------------ */
 async function boot() {
-  const allow = ['/','/index.html'];
   const session = await getSession();
   const authed = !!session;
   setAuthState(authed);
 
-  const p = path();
-  if (!authed && !allow.includes(p)) { goto(LINKS.home); return; }
+  // редиректы, чтобы не было «пустой страницы»
+  if (authed && (path() === '/' || path().endsWith('/index.html'))) { goto(LINKS.menu); return; }
+  if (!authed && !(path() === '/' || path().endsWith('/index.html'))) { goto(LINKS.home); return; }
 
   // роуты страниц
   if (isPage('lobby.html')) await initLobby();
@@ -154,23 +156,19 @@ async function boot() {
   if (isPage('event-analytics.html')) await initEventAnalytics();
   if (isPage('profile.html')) await initProfile();
 
-  onAuthState((is)=> setAuthState(is));
+  onAuthState((sess) => setAuthState(!!sess));
 }
 document.addEventListener('DOMContentLoaded', boot);
 
 /* ------------------ Lobby (создать / присоединиться) ------------------ */
 async function initLobby(){
-  // «Создать событие» — у тебя уже кнопка с data-link="event-edit" ведёт на страницу.
-  // «Присоединиться» (по коду) — уже привязано в старом коде, продублируем для надёжности:
   document.addEventListener('click', async (e)=>{
     if (e.target?.id !== 'btnJoin') return;
     const code = qs('#joinCode')?.value?.trim();
     if (!code || code.length < 6) return alert('Введите 6-значный код');
     try {
-      // 1) пробуем Netlify-функцию, если настроена
       const res = await joinEvent({ code });
       if (res?.success && res?.url) { goto(res.url); return; }
-      // 2) фоллбек напрямую в Supabase: открываем страницу события по коду
       goto(`/event-analytics.html?code=${encodeURIComponent(code)}&guest=1`);
     } catch (err) {
       alert(err.message || 'Не удалось присоединиться');
@@ -179,7 +177,6 @@ async function initLobby(){
 }
 
 /* ------------------ Создание/редактирование события ------------------ */
-// простая генерация кода события
 function genCode(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<6;i++) s+=a[(Math.random()*a.length)|0]; return s; }
 
 async function initEventEdit(){
@@ -201,15 +198,11 @@ async function initEventEdit(){
       notes: qs('#editNotes')?.value || '',
       dress: qs('#editDress')?.value || '',
       bring: qs('#editBring')?.value || '',
-      owner_id: sess.user.id,
+      host_user_id: sess.user.id,   // <— ВАЖНО
     };
 
-    // создаём или находим код
     let code = genCode();
 
-    // 1) если есть Netlify-функция event-create — можно вызвать её:
-    // try { const r=await nf('event-create',{method:'POST',body:JSON.stringify(payload)}); ... }
-    // но чтобы не зависеть — делаем напрямую в Supabase:
     const { data, error } = await supa
       .from('events')
       .insert([{ ...payload, code }])
@@ -218,7 +211,6 @@ async function initEventEdit(){
 
     if (error) return alert(error.message||'Не удалось создать событие');
 
-    // редирект на страницу события (владелец)
     goto(`/event-analytics.html?code=${encodeURIComponent(data.code)}&owner=1`);
   });
 }
@@ -230,34 +222,25 @@ async function initEventAnalytics(){
   const code = p.code?.trim();
   if (!code) { qs('#error')?.replaceChildren(document.createTextNode('Код события не указан')); return; }
 
-  // грузим событие по коду
   const { data: ev, error } = await supa.from('events').select('*').eq('code', code).single();
   if (error || !ev) { qs('#error')?.replaceChildren(document.createTextNode('Событие не найдено')); return; }
 
-  // заполняем шапку
   qs('#eventTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
   qs('#eventDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
   qs('#eventTime')?.replaceChildren(document.createTextNode(ev.time || '—'));
   qs('#eventAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
 
-  // режим владельца vs гостя
   const sess = await getSession();
-  const isOwner = !!(sess?.user?.id && ev.owner_id === sess.user.id) || p.owner === '1';
-  // Прячем/показываем элементы
+  const isOwner = !!(sess?.user?.id && ev.host_user_id === sess.user.id) || p.owner === '1'; // <— ВАЖНО
   qs('#editEventBtn')?.classList.toggle('hidden', !isOwner);
 
-  // Подтягиваем rsvp и wishlist (минимальный рендер без UI-редактирования)
   renderRSVP(ev.id);
   renderWishlist(ev.id);
 
-  // Домой
   qs('#backBtn')?.addEventListener('click', ()=> goto(LINKS.menu));
-  // Редактировать (возврат на форму)
   qs('#editEventBtn')?.addEventListener('click', ()=> goto(`/event-edit.html?code=${encodeURIComponent(code)}`));
 
-  // Показ кода события владельцу (в виде «чипа» в title можно не добавлять в DOM — просто копируем в буфер)
   if (isOwner) {
-    // Подсказка: нажал заголовок — код в буфер
     qs('#eventTitle')?.addEventListener('click', ()=>{ copy(code); toast('Код скопирован'); });
   }
 }
@@ -273,7 +256,6 @@ async function renderRSVP(event_id){
     li.textContent = `${r.nickname || 'Гость'} — ${statusEmoji(r.status)}`;
     list.appendChild(li);
   });
-  // счётчики
   const yes = (data||[]).filter(x=>x.status==='yes').length;
   const maybe = (data||[]).filter(x=>x.status==='maybe').length;
   const no = (data||[]).filter(x=>x.status==='no').length;
@@ -308,13 +290,11 @@ async function initProfile(){
   const uid = sess.user.id;
   const today = new Date().toISOString().slice(0,10);
 
-  // мои (owner)
   const { data: mine } = await supa.from('events')
     .select('id,title,date,code')
-    .eq('owner_id', uid)
+    .eq('host_user_id', uid)  // <— ВАЖНО
     .order('date', { ascending: true });
 
-  // где я гость (по rsvp)
   const { data: guestIn } = await supa.from('rsvps')
     .select('event_id,events(id,title,date,code)')
     .eq('user_id', uid)
@@ -329,7 +309,7 @@ async function initProfile(){
     const d=document.createElement('div'); const hh=document.createElement('h3'); hh.textContent=title; d.appendChild(hh);
     const ul=document.createElement('ul');
     (items||[]).forEach(ev=>{
-      const e = ev.events || ev; // нормализуем
+      const e = ev.events || ev;
       const li=document.createElement('li');
       const a=document.createElement('a');
       a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}`;
