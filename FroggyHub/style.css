@@ -1050,10 +1050,18 @@ body.guest [data-auth-only] { display:none !important; }
 body.authed [data-guest-only] { display:none !important; }
 
 /* --- auth panes --- */
-.auth-tabs { display: inline-flex; gap: .5rem; margin-bottom: 1rem; }
-.auth-tabs .tab { padding: .5rem 1rem; border-radius: .75rem; }
-.auth-tabs .tab.is-active { background: rgba(60,140,110,.35); }
+.auth-tabs { display:inline-flex; gap:.5rem; margin-bottom:1rem; }
+.auth-tabs .tab { padding:.5rem 1rem; border-radius:.75rem; }
+.tab.is-active { background: rgba(60,140,110,.35); }
 
-.auth-pane { display: grid; gap: .75rem; max-width: 420px; margin: 0 auto; }
-.auth-pane.is-hidden { display: none; }
+.auth-pane { display:none; }
+.auth-pane.visible { display:block; }
+.auth-pane form { display:grid; gap:.75rem; max-width:420px; margin:0 auto; }
+
+.error[role="alert"] { margin-top:1rem; color:var(--danger); }
+
+.btn:focus-visible, input:focus-visible, .tab:focus-visible {
+  outline:2px solid rgba(255,255,255,.6);
+  outline-offset:2px;
+}
 

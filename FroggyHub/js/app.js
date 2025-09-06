@@ -6,6 +6,52 @@ const LINKS = {
   profile: '/FroggyHub/profile.html',
 };
 
+const elTabs   = document.querySelectorAll('[data-auth-tab]');
+const panes    = document.querySelectorAll('.auth-pane[data-pane]');
+const formLogin  = document.getElementById('form-login');
+const formSignup = document.getElementById('form-signup');
+const errBox   = document.getElementById('auth-error');
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-auth-tab]');
+  if (!t) return;
+  const target = t.getAttribute('data-auth-tab');
+  for (const b of elTabs) b.classList.toggle('is-active', b === t);
+  for (const p of panes) {
+    const on = p.dataset.pane === target;
+    p.hidden = !on;
+    p.classList.toggle('visible', on);
+  }
+  if (errBox) { errBox.textContent = ''; errBox.hidden = true; }
+});
+
+formLogin?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nickname = (formLogin.nickname.value || '').trim();
+  const password = formLogin.password.value;
+  try {
+    const r = await signIn({ login: nickname, password });
+    if (!r) throw new Error('Не удалось войти');
+    location.href = '/FroggyHub/lobby.html';
+  } catch (err) {
+    if (errBox) { errBox.textContent = err.message || 'Ошибка входа'; errBox.hidden = false; }
+  }
+});
+
+formSignup?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nickname = (formSignup.nickname.value || '').trim();
+  const email    = (formSignup.email.value || '').trim();
+  const password = formSignup.password.value;
+  try {
+    const r = await signUpWithNickname({ nickname, email, password });
+    if (r?.error) throw r.error;
+    location.href = '/FroggyHub/lobby.html';
+  } catch (err) {
+    if (errBox) { errBox.textContent = err.message || 'Ошибка регистрации'; errBox.hidden = false; }
+  }
+});
+
 function setAuthState(isAuthed) {
   document.body.classList.toggle('authed', !!isAuthed);
   document.body.classList.toggle('guest', !isAuthed);
@@ -47,7 +93,7 @@ const FH = {
   MAX: 20, MARGIN: 20, PLACE_TRIES: 40, MIN_DIST: 120,
   MIN_V: .045, MAX_V: .09, JITTER: .00012, KICK: .12
 };
-let chips = [], animId = 0, chipsSpawned = false;
+let chips = [], rafId = 0, chipsSpawned = false;
 function rand(a,b){return Math.random()*(b-a)+a}
 function clamp(v,a,b){return Math.min(Math.max(v,a),b)}
 function spawnChips(){
@@ -92,7 +138,7 @@ function spawnChips(){
   startFloat();
 }
 function startFloat(){
-  cancelAnimationFrame(animId);
+  cancelAnimationFrame(rafId);
   let last=performance.now();
   function tick(now){
     const dt=now-last; last=now;
@@ -118,15 +164,22 @@ function startFloat(){
 
       c.el.style.transform=`translate3d(${c.x}px,${c.y}px,0)`;
     }
-    animId=requestAnimationFrame(tick);
+    rafId=requestAnimationFrame(tick);
   }
-  animId=requestAnimationFrame(tick);
+  rafId=requestAnimationFrame(tick);
 }
-addEventListener('resize', ()=> chips.forEach(c=>{
-  c.x = clamp(c.x, FH.MARGIN, innerWidth - c.w - FH.MARGIN);
-  c.y = clamp(c.y, FH.MARGIN, innerHeight - c.h - FH.MARGIN);
-  c.el.style.transform=`translate3d(${c.x}px,${c.y}px,0)`;
-}), {passive:true});
+
+let rzT;
+window.addEventListener('resize', () => {
+  clearTimeout(rzT);
+  rzT = setTimeout(() => {
+    for (const c of chips) {
+      c.x = clamp(c.x, FH.MARGIN, innerWidth - c.w - FH.MARGIN);
+      c.y = clamp(c.y, FH.MARGIN, innerHeight - c.h - FH.MARGIN);
+      c.el.style.transform = `translate3d(${c.x}px,${c.y}px,0)`;
+    }
+  }, 200);
+}, { passive: true });
 
 async function boot() {
   wireNav();
@@ -134,34 +187,11 @@ async function boot() {
 
   const session = await getSession();
   setAuthState(!!session);
+  if (!session && !location.pathname.endsWith('/index.html')) {
+    location.href = LINKS.home;
+    return;
+  }
   onAuthState((sess) => setAuthState(!!sess));
-
-  const tabs = document.querySelectorAll('.auth-tabs .tab');
-  const panes = document.querySelectorAll('.auth-pane');
-  tabs.forEach(t => t.addEventListener('click', () => {
-    tabs.forEach(x => x.classList.toggle('is-active', x === t));
-    const key = t.dataset.tab;
-    panes.forEach(p => p.classList.toggle('is-hidden', p.dataset.pane !== key));
-  }));
-
-  const fLogin = document.getElementById('formLogin');
-  if (fLogin) fLogin.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const login = document.getElementById('loginNickname')?.value?.trim();
-    const password = document.getElementById('loginPassword')?.value ?? '';
-    await signIn({ login, password });
-    location.href = LINKS.menu;
-  });
-
-  const fSignup = document.getElementById('formSignup');
-  if (fSignup) fSignup.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nickname = document.getElementById('signupNickname')?.value?.trim();
-    const email    = document.getElementById('signupEmail')?.value?.trim();
-    const password = document.getElementById('signupPassword')?.value ?? '';
-    await signUpWithNickname({ nickname, email, password });
-    location.href = LINKS.menu;
-  });
 
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action="logout"]');

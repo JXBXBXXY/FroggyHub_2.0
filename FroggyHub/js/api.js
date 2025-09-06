@@ -7,7 +7,10 @@ const URL = (ENV.PUBLIC_SUPABASE_URL || '').trim();
 const KEY = (ENV.PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
 function looksLikePlaceholder(s) {
-  return !s || /supabase\.co\/?$/i.test(s) || /PUBLIC_SUPABASE_/i.test(s);
+  if (!s) return true;
+  if (/PUBLIC_SUPABASE_/i.test(s)) return true;
+  if (/^https?:/i.test(s)) return !/supabase\.co\/?$/i.test(s);
+  return false;
 }
 
 let _supa = null;
@@ -71,7 +74,7 @@ export async function resetPassword(email) {
 }
 
 export const signOut = async () => {
-  if (!supa) return;
+  if (!supa) throw new Error('Supabase is not configured');
   await supa.auth.signOut();
 };
 

@@ -18,27 +18,33 @@
 
   <main class="auth-card" data-guest-only>
     <nav class="auth-tabs" data-guest-only>
-      <button type="button" class="tab is-active" data-tab="login">Вход</button>
-      <button type="button" class="tab" data-tab="signup">Регистрация</button>
+      <button type="button" class="tab is-active" data-auth-tab="login">Вход</button>
+      <button type="button" class="tab" data-auth-tab="signup">Регистрация</button>
     </nav>
 
-    <form id="formLogin" class="auth-pane" data-pane="login" data-guest-only>
-      <label for="loginNickname">Никнейм</label>
-      <input id="loginNickname" name="nickname" autocomplete="username" required />
-      <label for="loginPassword">Пароль</label>
-      <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
-      <button id="btnLogin" class="btn btn--primary" type="submit">Войти</button>
-    </form>
+    <section id="pane-login" class="auth-pane visible" data-pane="login">
+      <form id="form-login" novalidate>
+        <label for="loginNickname">Никнейм</label>
+        <input id="loginNickname" name="nickname" autocomplete="username" required />
+        <label for="loginPassword">Пароль</label>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+        <button id="btnLogin" class="btn btn--primary" type="submit">Войти</button>
+      </form>
+    </section>
 
-    <form id="formSignup" class="auth-pane is-hidden" data-pane="signup" data-guest-only>
-      <label for="signupNickname">Никнейм</label>
-      <input id="signupNickname" name="nickname" required />
-      <label for="signupEmail">Email</label>
-      <input id="signupEmail" name="email" type="email" autocomplete="email" required />
-      <label for="signupPassword">Пароль</label>
-      <input id="signupPassword" name="password" type="password" autocomplete="new-password" required />
-      <button id="btnSignup" class="btn btn--primary" type="submit">Зарегистрироваться</button>
-    </form>
+    <section id="pane-signup" class="auth-pane" data-pane="signup" hidden>
+      <form id="form-signup" novalidate>
+        <label for="signupNickname">Никнейм</label>
+        <input id="signupNickname" name="nickname" required />
+        <label for="signupEmail">Email</label>
+        <input id="signupEmail" name="email" type="email" autocomplete="email" required />
+        <label for="signupPassword">Пароль</label>
+        <input id="signupPassword" name="password" type="password" autocomplete="new-password" required />
+        <button id="btnSignup" class="btn btn--primary" type="submit">Зарегистрироваться</button>
+      </form>
+    </section>
+
+    <p id="auth-error" class="error" role="alert" aria-live="polite" hidden></p>
   </main>
 
   <!-- Supabase client -->
