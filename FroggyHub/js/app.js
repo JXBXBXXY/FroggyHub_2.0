@@ -105,11 +105,22 @@ const FH_MESSAGES = [
   'Захвачу набор для рисования 🎨',
   'Кто принесёт настольные игры? 🎲'
 ];
-// === ПЛАВАЮЩИЕ ЧИПЫ ===
-const FH_MAX_CHIPS = 20;          // не больше 20, чтобы не фризило
+// === ПЛАВАЮЩИЕ ЧИПЫ (anti-stick вер.) ===
+const FH_MAX_CHIPS = 20;
+const FH_PLACE_TRIES = 40;   // попыток поставить без наложений
+const FH_MIN_DIST = 120;     // мин. дистанция между центрами чипов
+const FH_MARGIN = 20;        // отступ от краёв
+const FH_MIN_SPEED = 0.045;  // px/ms, минимальная скорость
+const FH_MAX_SPEED = 0.09;   // px/ms, ограничение сверху
+const FH_JITTER = 0.00012;   // случайное ускорение на тик
+const FH_CORNER_KICK = 0.12; // импульс при «залипании» в углу
+
 let fhCloudsRoot = null;
-let fhChips = [];                 // [{el, x, y, vx, vy, w, h}...]
+let fhChips = [];
 let fhAnimId = 0;
+
+const rand  = (min, max) => Math.random() * (max - min) + min;
+const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 
 function ensureCloudsRoot() {
   if (fhCloudsRoot && document.body.contains(fhCloudsRoot)) return fhCloudsRoot;
@@ -120,41 +131,69 @@ function ensureCloudsRoot() {
   return fhCloudsRoot;
 }
 
-function rand(min, max) { return Math.random() * (max - min) + min; }
-
 function spawnChips() {
   const root = ensureCloudsRoot();
-
-  // если уже заспавнили — просто перезапустим анимацию
   if (fhChips.length) { startFloat(); return; }
 
   const pool = Array.isArray(FH_MESSAGES) ? [...FH_MESSAGES] : [];
   if (!pool.length) return;
-
-  // перемешаем и ограничим
+  //.shuffle
   for (let i = pool.length - 1; i > 0; i--) {
-    const j = (Math.random() * (i + 1)) | 0;
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    const j = (Math.random() * (i + 1)) | 0; [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   const list = pool.slice(0, FH_MAX_CHIPS);
 
-  // создаём DOM-узлы
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+
+  function canPlace(cx, cy, w, h) {
+    // границы
+    if (cx - w/2 < FH_MARGIN || cy - h/2 < FH_MARGIN) return false;
+    if (cx + w/2 > W - FH_MARGIN || cy + h/2 > H - FH_MARGIN) return false;
+    // дистанция до уже поставленных
+    for (const c of fhChips) {
+      const dx = (cx) - (c.x + c.w/2);
+      const dy = (cy) - (c.y + c.h/2);
+      if (dx*dx + dy*dy < FH_MIN_DIST*FH_MIN_DIST) return false;
+    }
+    return true;
+  }
+
+  function nonZeroVelocity() {
+    // случайное направление, но с минимальной длиной
+    let angle = rand(0, Math.PI * 2);
+    let speed = rand(FH_MIN_SPEED, FH_MAX_SPEED);
+    return { vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed };
+  }
+
   list.forEach(msg => {
     const el = document.createElement('div');
     el.className = 'fh-chip';
     el.textContent = msg;
     root.appendChild(el);
 
-    // первичное измерение
-    const { width:w = 140, height:h = 40 } = el.getBoundingClientRect();
+    // измерение
+    const r = el.getBoundingClientRect();
+    const w = r.width  || 140;
+    const h = r.height || 40;
 
-    // стартовая позиция (не у самых краёв) и скорость
-    const x = rand(20, window.innerWidth  - w - 20);
-    const y = rand(20, window.innerHeight - h - 20);
-    const vx = rand(-0.05, 0.05);  // px/мс
-    const vy = rand(-0.04, 0.04);
+    // размещение с анти-склейкой
+    let placed = false, x = FH_MARGIN, y = FH_MARGIN;
+    for (let t = 0; t < FH_PLACE_TRIES && !placed; t++) {
+      const cx = rand(FH_MARGIN + w/2, W - FH_MARGIN - w/2);
+      const cy = rand(FH_MARGIN + h/2, H - FH_MARGIN - h/2);
+      if (canPlace(cx, cy, w, h)) {
+        x = cx - w/2; y = cy - h/2; placed = true;
+      }
+    }
+    if (!placed) {
+      // fallback: поставить куда получится с отступом
+      x = clamp(rand(FH_MARGIN, W - w - FH_MARGIN), FH_MARGIN, W - w - FH_MARGIN);
+      y = clamp(rand(FH_MARGIN, H - h - FH_MARGIN), FH_MARGIN, H - h - FH_MARGIN);
+    }
 
-    fhChips.push({ el, x, y, vx, vy, w, h });
+    const { vx, vy } = nonZeroVelocity();
+    fhChips.push({ el, x, y, vx, vy, w, h, stuck: 0 });
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   });
 
@@ -162,26 +201,55 @@ function spawnChips() {
 }
 
 function startFloat() {
-  stopFloat(); // на всякий
+  stopFloat();
   let last = performance.now();
 
   function tick(now) {
-    const dt = now - last;       // мс
-    last = now;
-
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const dt = now - last; last = now;
+    const W = window.innerWidth, H = window.innerHeight;
 
     for (const c of fhChips) {
-      // обновляем позицию
+      // лёгкий джиттер (как шум), чтобы не синхронизировались
+      c.vx += rand(-FH_JITTER, FH_JITTER) * dt;
+      c.vy += rand(-FH_JITTER, FH_JITTER) * dt;
+
+      // ограничение скорости
+      const sp = Math.hypot(c.vx, c.vy);
+      if (sp < FH_MIN_SPEED) {
+        // подталкивание в случайную сторону
+        const a = rand(0, Math.PI*2);
+        c.vx = Math.cos(a) * FH_MIN_SPEED;
+        c.vy = Math.sin(a) * FH_MIN_SPEED;
+      } else if (sp > FH_MAX_SPEED) {
+        c.vx = (c.vx / sp) * FH_MAX_SPEED;
+        c.vy = (c.vy / sp) * FH_MAX_SPEED;
+      }
+
+      // новая позиция
       c.x += c.vx * dt;
       c.y += c.vy * dt;
 
-      // «отталкивание» от краёв
-      if (c.x < 10)                   { c.x = 10;                   c.vx *= -1; }
-      if (c.y < 10)                   { c.y = 10;                   c.vy *= -1; }
-      if (c.x > W - c.w - 10)         { c.x = W - c.w - 10;         c.vx *= -1; }
-      if (c.y > H - c.h - 10)         { c.y = H - c.h - 10;         c.vy *= -1; }
+      // отражения от границ + маленький случайный импульс
+      if (c.x < FH_MARGIN)                    { c.x = FH_MARGIN;                    c.vx = Math.abs(c.vx) + rand(0, FH_JITTER*150); }
+      if (c.y < FH_MARGIN)                    { c.y = FH_MARGIN;                    c.vy = Math.abs(c.vy) + rand(0, FH_JITTER*150); }
+      if (c.x > W - c.w - FH_MARGIN)          { c.x = W - c.w - FH_MARGIN;          c.vx = -Math.abs(c.vx) - rand(0, FH_JITTER*150); }
+      if (c.y > H - c.h - FH_MARGIN)          { c.y = H - c.h - FH_MARGIN;          c.vy = -Math.abs(c.vy) - rand(0, FH_JITTER*150); }
+
+      // corner-kick: если слишком близко к углу дольше пары кадров — выстрелить наружу
+      const nearLeft   = c.x <= FH_MARGIN + 1;
+      const nearRight  = c.x >= W - c.w - FH_MARGIN - 1;
+      const nearTop    = c.y <= FH_MARGIN + 1;
+      const nearBottom = c.y >= H - c.h - FH_MARGIN - 1;
+      if ((nearLeft || nearRight) && (nearTop || nearBottom)) {
+        c.stuck += dt;
+        if (c.stuck > 100) { // >0.1 сек. в углу
+          const ax = nearLeft ? FH_CORNER_KICK : -FH_CORNER_KICK;
+          const ay = nearTop  ? FH_CORNER_KICK : -FH_CORNER_KICK;
+          c.vx += ax; c.vy += ay; c.stuck = 0;
+        }
+      } else {
+        c.stuck = Math.max(0, c.stuck - dt);
+      }
 
       c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
     }
@@ -197,105 +265,14 @@ function stopFloat() {
   fhAnimId = 0;
 }
 
-// При ресайзе подправим границы, не пересоздавая DOM
 window.addEventListener('resize', () => {
-  const W = window.innerWidth;
-  const H = window.innerHeight;
+  const W = window.innerWidth, H = window.innerHeight;
   fhChips.forEach(c => {
-    c.x = Math.min(Math.max(10, c.x), W - c.w - 10);
-    c.y = Math.min(Math.max(10, c.y), H - c.h - 10);
+    c.x = clamp(c.x, FH_MARGIN, W - c.w - FH_MARGIN);
+    c.y = clamp(c.y, FH_MARGIN, H - c.h - FH_MARGIN);
     c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
   });
 }, { passive:true });
 
-// Вызови это один раз при старте приложения и при смене экрана:
-function mountBackgroundOnce() {
-  try { spawnChips(); } catch(e){ console.warn('[chips]', e); }
-}
+function mountBackgroundOnce(){ try{ spawnChips(); }catch(e){ console.warn('[chips]',e); } }
 document.addEventListener('DOMContentLoaded', mountBackgroundOnce);
-
-const SCREENS = ['auth','home','profile','settings','create','join','wishlist','final'];
-
-function showScreen(name) {
-  SCREENS.forEach(id => {
-    const el = document.getElementById(`screen-${id}`);
-    if (!el) return;
-    const visible = (id === name);
-    el.classList.toggle('visible', visible);
-    el.setAttribute('aria-hidden', String(!visible));
-  });
-  mountBackgroundOnce();
-}
-
-function routeFromHash() {
-  const raw = (location.hash || '#home').replace('#', '');
-  const name = SCREENS.includes(raw) ? raw : 'home';
-  showScreen(name);
-}
-
-window.addEventListener('hashchange', routeFromHash);
-document.addEventListener('DOMContentLoaded', routeFromHash);
-
-document.addEventListener('click', (e) => {
-  const a = e.target.closest('[data-link]');
-  if (!a) return;
-  e.preventDefault();
-  const dest = a.getAttribute('data-link');
-  if (SCREENS.includes(dest)) {
-    location.hash = `#${dest}`;
-  }
-});
-
-function bindAuthForms() {
-  const loginForm = document.getElementById('auth-form');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(loginForm);
-      const login = (fd.get('login') || '').toString().trim();
-      const password = (fd.get('password') || '').toString().trim();
-      if (!login || !password) return;
-      try {
-        await signIn({ login, password });
-        location.hash = '#home';
-      } catch (err) {
-        console.warn('[auth:login]', err?.message || err);
-      }
-    });
-  }
-
-  const regForm = document.getElementById('register-form');
-  if (regForm) {
-    regForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(regForm);
-      const nickname = (fd.get('nickname') || '').toString().trim();
-      const email = (fd.get('email') || '').toString().trim();
-      const password = (fd.get('password') || '').toString().trim();
-      if (!nickname || !email || !password) return;
-      try {
-        await signUpWithNickname({ nickname, email, password });
-        location.hash = '#home';
-      } catch (err) {
-        console.warn('[auth:register]', err?.message || err);
-      }
-    });
-  }
-
-  const forgot = document.querySelector('[data-action="forgot"]');
-  if (forgot) {
-    forgot.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const email = prompt('Введите e-mail для сброса:');
-      if (!email) return;
-      try {
-        await resetPassword(email);
-        alert('Если такой e-mail существует, письмо отправлено.');
-      } catch (err) {
-        console.warn('[auth:reset]', err?.message || err);
-      }
-    });
-  }
-}
-
-document.addEventListener('DOMContentLoaded', bindAuthForms);
