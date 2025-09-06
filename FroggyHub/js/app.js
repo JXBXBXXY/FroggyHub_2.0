@@ -1,293 +1,356 @@
-import { supa, getSession, onAuthState, signIn, signUpWithNickname, signOut, getProfile, joinEvent } from './api.js';
+// app.js — навигация + «скелет» потоков Owner/Guest
+import {
+  supa, getSession, onAuthState,
+  signIn, signUpWithNickname, signOut,
+  getProfile, joinEvent
+} from './api.js';
 
-const LINKS = {
-  home: '/index.html',
-  menu: '/lobby.html',
-  profile: '/profile.html',
-};
-
-const elTabs   = document.querySelectorAll('[data-auth-tab]');
-const panes    = document.querySelectorAll('.auth-pane[data-pane]');
-const formLogin  = document.getElementById('form-login');
-const formSignup = document.getElementById('form-signup');
-const errBox   = document.getElementById('auth-error');
-
-function showAuthError(msg) {
-  if (!errBox) return;
-  errBox.textContent = msg || 'Ошибка';
-  errBox.hidden = false;
-}
-
-document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-auth-tab]');
-  if (!t) return;
-  const target = t.getAttribute('data-auth-tab');
-  for (const b of elTabs) b.classList.toggle('is-active', b === t);
-  for (const p of panes) {
-    const on = p.dataset.pane === target;
-    p.hidden = !on;
-    p.classList.toggle('visible', on);
-  }
-  if (errBox) { errBox.textContent = ''; errBox.hidden = true; }
-});
-
-formLogin?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const nickname = (formLogin.nickname.value || '').trim();
-  const password = formLogin.password.value;
-  try {
-    const r = await signIn({ login: nickname, password });
-    if (!r) throw new Error('Не удалось войти');
-    location.href = LINKS.menu;
-  } catch (err) {
-    console.error('login error:', err);
-    showAuthError(err?.message || 'Ошибка входа');
-  }
-});
-
-formSignup?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const nickname = (formSignup.nickname.value || '').trim();
-  const email    = (formSignup.email.value || '').trim();
-  const password = formSignup.password.value;
-  try {
-    const r = await signUpWithNickname({ nickname, email, password });
-    // signUpWithNickname должен:
-    // 1) вызвать supabase.auth.signUp({ email, password })
-    // 2) выставить nickname в public.profiles (update по id)
-    // 3) вернуть { user, error } или бросить
-    if (r?.error) throw r.error;
-    location.href = LINKS.menu;
-  } catch (err) {
-    console.error('signup error:', err);
-    showAuthError(err?.message || 'Ошибка регистрации');
-  }
-});
+/* ------------------ Утилиты ------------------ */
+const LINKS = { home: '/index.html', menu: '/lobby.html', profile: '/profile.html' };
+const qs = (s, r = document) => r.querySelector(s);
+const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
+const path = () => location.pathname.replace(/\/+$/, '/');
+const params = () => Object.fromEntries(new URLSearchParams(location.search).entries());
+const isPage = (name) => path().endsWith(`/${name}`);
 
 function setAuthState(isAuthed) {
   document.body.classList.toggle('authed', !!isAuthed);
   document.body.classList.toggle('guest', !isAuthed);
-  for (const el of document.querySelectorAll('[data-auth-only]')) el.hidden = !isAuthed;
-  for (const el of document.querySelectorAll('[data-guest-only]')) el.hidden = !!isAuthed;
+  qsa('[data-auth-only]').forEach(el => el.hidden = !isAuthed);
+  qsa('[data-guest-only]').forEach(el => el.hidden = !!isAuthed);
+}
+function goto(href) { location.href = href; }
+
+function copy(text) {
+  try { navigator.clipboard?.writeText(text); } catch {}
 }
 
-function wireNav() {
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-link]');
-    if (!btn) return;
-    const key = btn.getAttribute('data-link');
-    const href = LINKS[key];
-    if (href) { e.preventDefault(); location.href = href; }
-  });
-}
-
-// === Floating Message Chips ===
+/* ------------------ Floating chips (фон) ------------------ */
+// короче: фоновые «смс», не мешают кликам
 const FH_MESSAGES = [
-  "Я приду к 19:00 ✨", "Я возьму пиццу 🍕", "Кто возьмёт колу? 🥤",
-  "Ребят, постучите в дверь 🚪", "Буду позже 🙈", "Добавил плейлист 🎶",
-  "Кто возьмет настолки? 🎲", "Буду через 15 минут ⏳", "Я за пивом 🍺",
-  "Буду online 💻", "Встречаемся у метро 🚉", "Я за мороженым 🍦",
-  "Принесу колонку 📢", "Сделаем фото 📸", "Не забудьте зарядки 🔌",
-  "Привезу попкорн 🍿", "Подготовлю викторину ❓", "Нужен штопор?",
-  "Устроим караоке", "Кто возьмет тарелки?", "Заберу пиццу по пути",
-  "Я за салатом", "Буду с +1", "Берите тёплые вещи", "Давайте играть в мафию",
-  "Принесу проектор", "У меня есть проектор", "Привезу настольный футбол",
-  "Привезу фрукты", "Кто за лимонадом?", "Друзья, до встречи",
-  "У кого есть карты?", "Привезу геймпад", "Я за хлопьями",
-  "Я возьму сок", "Приеду на час раньше", "Кто возьмёт кофе?",
-  "Где паркуемся? 🅿️"
+  "Я приду к 19:00 ✨","Я возьму пиццу 🍕","Кто возьмёт колу? 🥤",
+  "Ребят, постучите в дверь 🚪","Буду позже 🙈","Добавил плейлист 🎶",
+  "Кто возьмет настолки? 🎲","Буду через 15 минут ⏳","Я за пивом 🍺",
+  "Буду online 💻","Встречаемся у метро 🚉","Я за мороженым 🍦",
+  "Принесу колонку 📢","Сделаем фото 📸","Не забудьте зарядки 🔌",
+  "Привезу попкорн 🍿","Подготовлю викторину ❓","Нужен штопор?",
+  "Устроим караоке","Кто возьмет тарелки?","Заберу пиццу по пути",
+  "Я за салатом","Буду с +1","Берите тёплые вещи","Давайте играть в мафию",
+  "Принесу проектор","У меня есть проектор","Привезу настольный футбол",
+  "Привезу фрукты","Кто за лимонадом?","Друзья, до встречи",
+  "У кого есть карты?","Привезу геймпад","Я за хлопьями",
+  "Я возьму сок","Приеду на час раньше","Кто возьмёт кофе?","Где паркуемся? 🅿️"
 ];
-
-let fhCloudsRoot = null;
-let chips = [];
-let rafId = 0;
-let vw = 0;
-let vh = 0;
+let fhRoot=null, chips=[], rafId=0, vw=0, vh=0;
 const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-
-function ensureCloudsRoot() {
-  if (!fhCloudsRoot) {
-    fhCloudsRoot = document.getElementById('fh-message-clouds');
-    if (!fhCloudsRoot) {
-      fhCloudsRoot = document.createElement('div');
-      fhCloudsRoot.id = 'fh-message-clouds';
-      fhCloudsRoot.setAttribute('aria-hidden', 'true');
-      fhCloudsRoot.style.pointerEvents = 'none';
-      document.body.prepend(fhCloudsRoot);
-    }
-  }
-  return fhCloudsRoot;
+const rnd=(a,b)=>Math.random()*(b-a)+a;
+function ensureFH(){
+  if (!fhRoot){
+    fhRoot = document.getElementById('fh-message-clouds') || (()=> {
+      const d=document.createElement('div'); d.id='fh-message-clouds'; d.setAttribute('aria-hidden','true');
+      d.style.pointerEvents='none'; document.body.prepend(d); return d;
+    })();
+  } return fhRoot;
 }
-
-function rand(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-function spawnChips(count = null) {
-  const root = ensureCloudsRoot();
-  if (!root) return;
-  chips = [];
-  root.innerHTML = '';
-
-  vw = window.innerWidth;
-  vh = window.innerHeight;
-
-  const targetCount = count !== null ? count : Math.min(
-    FH_MESSAGES.length,
-    vw < 420 ? 10 : vw < 768 ? 16 : 24
-  );
-
-  const shuffled = [...FH_MESSAGES].sort(() => Math.random() - 0.5).slice(0, targetCount);
-
-  shuffled.forEach(text => {
-    const el = document.createElement('div');
-    el.className = 'fh-chip';
-    el.textContent = text;
-    root.appendChild(el);
-
-    const rect = el.getBoundingClientRect();
-    const chip = {
-      el,
-      w: rect.width,
-      h: rect.height,
-      x: rand(20, vw - rect.width - 20),
-      y: rand(20, vh - rect.height - 20),
-      vx: rand(-0.08, 0.08),
-      vy: rand(-0.08, 0.08)
-    };
-
-    chips.push(chip);
-    el.style.transform = `translate3d(${chip.x}px, ${chip.y}px, 0)`;
+function spawnChips(count=null){
+  const root=ensureFH(); if (!root) return;
+  root.innerHTML=''; chips=[];
+  vw=innerWidth; vh=innerHeight;
+  const n = count ?? Math.min(FH_MESSAGES.length, vw<420?10:vw<768?16:24);
+  const arr = [...FH_MESSAGES].sort(()=>Math.random()-0.5).slice(0,n);
+  arr.forEach(t=>{
+    const el=document.createElement('div'); el.className='fh-chip'; el.textContent=t; root.appendChild(el);
+    const r=el.getBoundingClientRect();
+    const c={el, w:r.width||140, h:r.height||40, x:rnd(20,vw-160), y:rnd(20,vh-60), vx:rnd(-.08,.08), vy:rnd(-.08,.08)};
+    chips.push(c); el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
   });
 }
-
-function updateChips() {
-  const borderMargin = 20;
-
-  chips.forEach(chip => {
-    chip.x += chip.vx;
-    chip.y += chip.vy;
-
-    if (chip.x <= borderMargin || chip.x + chip.w >= vw - borderMargin) {
-      chip.vx *= -1;
-      chip.x = Math.max(borderMargin, Math.min(chip.x, vw - chip.w - borderMargin));
+function updateChips(){
+  const m=20;
+  for (const c of chips){
+    c.x+=c.vx; c.y+=c.vy;
+    if (c.x<=m||c.x+c.w>=vw-m){ c.vx*=-1; c.x=Math.max(m,Math.min(c.x,vw-c.w-m)); }
+    if (c.y<=m||c.y+c.h>=vh-m){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-m)); }
+    c.el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
+  }
+  for (let i=0;i<chips.length;i++)for(let j=i+1;j<chips.length;j++){
+    const a=chips[i], b=chips[j];
+    if (a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y){
+      [a.vx,b.vx]=[b.vx,a.vx]; [a.vy,b.vy]=[b.vy,a.vy];
     }
+  }
+}
+function tick(){ updateChips(); rafId=requestAnimationFrame(tick); }
+function startFH(){ cancelAnimationFrame(rafId); if (REDUCED_MOTION) return; spawnChips(); rafId=requestAnimationFrame(tick); }
+addEventListener('resize',()=>{ clearTimeout(startFH._t); startFH._t=setTimeout(()=>spawnChips(chips.length),250); });
+document.addEventListener('visibilitychange',()=> document.hidden?cancelAnimationFrame(rafId):startFH());
+document.addEventListener('DOMContentLoaded',()=> setTimeout(startFH,100));
 
-    if (chip.y <= borderMargin || chip.y + chip.h >= vh - borderMargin) {
-      chip.vy *= -1;
-      chip.y = Math.max(borderMargin, Math.min(chip.y, vh - chip.h - borderMargin));
-    }
-
-    chip.el.style.transform = `translate3d(${chip.x}px, ${chip.y}px, 0)`;
+/* ------------------ Auth вкладки (index.html) ------------------ */
+(function wireAuthTabs(){
+  const tabs = qsa('[data-auth-tab]'); const panes = qsa('.auth-pane[data-pane]'); const err = qs('#auth-error');
+  document.addEventListener('click',(e)=>{
+    const t=e.target.closest('[data-auth-tab]'); if (!t) return;
+    const key=t.getAttribute('data-auth-tab');
+    tabs.forEach(b=>b.classList.toggle('is-active', b===t));
+    panes.forEach(p=>{ const on=p.dataset.pane===key; p.hidden=!on; p.classList.toggle('visible', on); });
+    if (err){ err.textContent=''; err.hidden=true; }
   });
 
-  for (let i = 0; i < chips.length; i++) {
-    for (let j = i + 1; j < chips.length; j++) {
-      const a = chips[i];
-      const b = chips[j];
+  const fLogin = qs('#form-login');
+  const fSignup = qs('#form-signup');
 
-      if (a.x < b.x + b.w && a.x + a.w > b.x &&
-          a.y < b.y + b.h && a.y + a.h > b.y) {
-        [a.vx, b.vx] = [b.vx, a.vx];
-        [a.vy, b.vy] = [b.vy, a.vy];
-      }
-    }
-  }
-}
+  fLogin?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const nickname = (fLogin.nickname.value||'').trim();
+    const password = fLogin.password.value;
+    try{
+      const r = await signIn({ login:nickname, password });
+      if (!r) throw new Error('Не удалось войти');
+      goto(LINKS.menu);
+    }catch(er){ if (err){ err.textContent=er.message||'Ошибка входа'; err.hidden=false; } }
+  });
 
-function animate() {
-  updateChips();
-  rafId = requestAnimationFrame(animate);
-}
+  fSignup?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const nickname = (fSignup.nickname.value||'').trim();
+    const email    = (fSignup.email.value||'').trim();
+    const password = fSignup.password.value;
+    try{
+      const r = await signUpWithNickname({ nickname, email, password });
+      if (r?.error) throw r.error;
+      goto(LINKS.menu);
+    }catch(er){ if (err){ err.textContent=er.message||'Ошибка регистрации'; err.hidden=false; } }
+  });
+})();
 
-function startChips() {
-  stopChips();
-  if (REDUCED_MOTION) return;
-  spawnChips();
-  rafId = requestAnimationFrame(animate);
-}
-
-function stopChips() {
-  if (rafId) {
-    cancelAnimationFrame(rafId);
-    rafId = 0;
-  }
-}
-
-let resizeTimeout;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimeout);
-  resizeTimeout = setTimeout(() => {
-    vw = window.innerWidth;
-    vh = window.innerHeight;
-    spawnChips(chips.length);
-  }, 250);
+/* ------------------ Навигация верхних кнопок ------------------ */
+document.addEventListener('click',(e)=>{
+  const b=e.target.closest('[data-link]'); if (!b) return;
+  e.preventDefault();
+  const to = LINKS[b.getAttribute('data-link')];
+  if (to) goto(to);
 });
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopChips();
-  } else {
-    startChips();
-  }
+/* ------------------ Logout ------------------ */
+document.addEventListener('click', async (e)=>{
+  const b=e.target.closest('[data-action="logout"]'); if (!b) return;
+  await signOut(); goto(LINKS.home);
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(startChips, 100);
-});
-
-window.FloatingChips = { start: startChips, stop: stopChips };
-
+/* ------------------ Guard + page boot ------------------ */
 async function boot() {
-  wireNav();
-
+  const allow = ['/','/index.html'];
   const session = await getSession();
-  setAuthState(!!session);
+  const authed = !!session;
+  setAuthState(authed);
 
-  // если уже авторизован и зашёл на index — ведём в лобби
-  if (session && location.pathname.endsWith('/index.html')) {
-    location.href = LINKS.menu;
-    return;
-  }
+  const p = path();
+  if (!authed && !allow.includes(p)) { goto(LINKS.home); return; }
 
-  if (!session && !location.pathname.endsWith('/index.html')) {
-    location.href = LINKS.home;
-    return;
-  }
+  // роуты страниц
+  if (isPage('lobby.html')) await initLobby();
+  if (isPage('event-edit.html')) await initEventEdit();
+  if (isPage('event-analytics.html')) await initEventAnalytics();
+  if (isPage('profile.html')) await initProfile();
 
-  onAuthState((sess) => setAuthState(!!sess));
+  onAuthState((is)=> setAuthState(is));
+}
+document.addEventListener('DOMContentLoaded', boot);
 
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-action="logout"]');
-    if (!btn) return;
-    await signOut();
-    location.href = LINKS.home;
-  });
-
-  document.addEventListener('click', async (e) => {
+/* ------------------ Lobby (создать / присоединиться) ------------------ */
+async function initLobby(){
+  // «Создать событие» — у тебя уже кнопка с data-link="event-edit" ведёт на страницу.
+  // «Присоединиться» (по коду) — уже привязано в старом коде, продублируем для надёжности:
+  document.addEventListener('click', async (e)=>{
     if (e.target?.id !== 'btnJoin') return;
-    const code = document.querySelector('#joinCode')?.value?.trim();
+    const code = qs('#joinCode')?.value?.trim();
     if (!code || code.length < 6) return alert('Введите 6-значный код');
     try {
+      // 1) пробуем Netlify-функцию, если настроена
       const res = await joinEvent({ code });
-      if (res?.success && res?.url) {
-        location.href = res.url;
-      } else {
-        alert(res?.error || 'Не удалось присоединиться');
-      }
+      if (res?.success && res?.url) { goto(res.url); return; }
+      // 2) фоллбек напрямую в Supabase: открываем страницу события по коду
+      goto(`/event-analytics.html?code=${encodeURIComponent(code)}&guest=1`);
     } catch (err) {
-      alert(err.message || 'Ошибка');
+      alert(err.message || 'Не удалось присоединиться');
     }
   });
+}
 
-  if (location.pathname.endsWith('/profile.html')) {
-    const p = await getProfile();
-    if (p) {
-      document.getElementById('profile-nickname')?.replaceChildren(document.createTextNode(p.nickname ?? '—'));
-      document.getElementById('profile-email')?.replaceChildren(document.createTextNode(p.email ?? '—'));
-      document.getElementById('profile-created')?.replaceChildren(document.createTextNode(p.created_at?.slice(0,10) ?? '—'));
-    }
+/* ------------------ Создание/редактирование события ------------------ */
+// простая генерация кода события
+function genCode(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<6;i++) s+=a[(Math.random()*a.length)|0]; return s; }
+
+async function initEventEdit(){
+  const f = qs('#editForm');
+  if (!f) return;
+
+  f.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if (!supa) return alert('Auth не инициализирован');
+
+    const sess = await getSession();
+    if (!sess?.user?.id) return alert('Нужна авторизация');
+
+    const payload = {
+      title: qs('#editTitle')?.value?.trim() || 'Событие',
+      date: qs('#editDate')?.value || null,
+      time: qs('#editTime')?.value || null,
+      address: qs('#editAddress')?.value || '',
+      notes: qs('#editNotes')?.value || '',
+      dress: qs('#editDress')?.value || '',
+      bring: qs('#editBring')?.value || '',
+      owner_id: sess.user.id,
+    };
+
+    // создаём или находим код
+    let code = genCode();
+
+    // 1) если есть Netlify-функция event-create — можно вызвать её:
+    // try { const r=await nf('event-create',{method:'POST',body:JSON.stringify(payload)}); ... }
+    // но чтобы не зависеть — делаем напрямую в Supabase:
+    const { data, error } = await supa
+      .from('events')
+      .insert([{ ...payload, code }])
+      .select('*')
+      .single();
+
+    if (error) return alert(error.message||'Не удалось создать событие');
+
+    // редирект на страницу события (владелец)
+    goto(`/event-analytics.html?code=${encodeURIComponent(data.code)}&owner=1`);
+  });
+}
+
+/* ------------------ Страница события (аналитика/гость) ------------------ */
+async function initEventAnalytics(){
+  if (!supa) return;
+  const p = params();
+  const code = p.code?.trim();
+  if (!code) { qs('#error')?.replaceChildren(document.createTextNode('Код события не указан')); return; }
+
+  // грузим событие по коду
+  const { data: ev, error } = await supa.from('events').select('*').eq('code', code).single();
+  if (error || !ev) { qs('#error')?.replaceChildren(document.createTextNode('Событие не найдено')); return; }
+
+  // заполняем шапку
+  qs('#eventTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
+  qs('#eventDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
+  qs('#eventTime')?.replaceChildren(document.createTextNode(ev.time || '—'));
+  qs('#eventAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
+
+  // режим владельца vs гостя
+  const sess = await getSession();
+  const isOwner = !!(sess?.user?.id && ev.owner_id === sess.user.id) || p.owner === '1';
+  // Прячем/показываем элементы
+  qs('#editEventBtn')?.classList.toggle('hidden', !isOwner);
+
+  // Подтягиваем rsvp и wishlist (минимальный рендер без UI-редактирования)
+  renderRSVP(ev.id);
+  renderWishlist(ev.id);
+
+  // Домой
+  qs('#backBtn')?.addEventListener('click', ()=> goto(LINKS.menu));
+  // Редактировать (возврат на форму)
+  qs('#editEventBtn')?.addEventListener('click', ()=> goto(`/event-edit.html?code=${encodeURIComponent(code)}`));
+
+  // Показ кода события владельцу (в виде «чипа» в title можно не добавлять в DOM — просто копируем в буфер)
+  if (isOwner) {
+    // Подсказка: нажал заголовок — код в буфер
+    qs('#eventTitle')?.addEventListener('click', ()=>{ copy(code); toast('Код скопирован'); });
   }
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+/* Минимальный список гостей (только чтение для скелета) */
+async function renderRSVP(event_id){
+  const list = qs('#visitorsList'); if (!list) return;
+  const { data } = await supa.from('rsvps').select('nickname,status').eq('event_id', event_id);
+  list.innerHTML = '';
+  (data||[]).forEach(r=>{
+    const li=document.createElement('li');
+    li.className='ea-item';
+    li.textContent = `${r.nickname || 'Гость'} — ${statusEmoji(r.status)}`;
+    list.appendChild(li);
+  });
+  // счётчики
+  const yes = (data||[]).filter(x=>x.status==='yes').length;
+  const maybe = (data||[]).filter(x=>x.status==='maybe').length;
+  const no = (data||[]).filter(x=>x.status==='no').length;
+  qs('#rsvpYesCount') && (qs('#rsvpYesCount').textContent = String(yes));
+  qs('#rsvpMaybeCount') && (qs('#rsvpMaybeCount').textContent = String(maybe));
+  qs('#rsvpNoCount') && (qs('#rsvpNoCount').textContent = String(no));
+}
+function statusEmoji(s){ return s==='yes'?'🟢 Иду':s==='maybe'?'🟡 Возможно':'🔴 Не иду'; }
+
+/* Минимальный wishlist (только чтение для скелета) */
+async function renderWishlist(event_id){
+  const list = qs('#wishlistList'); if (!list) return;
+  const { data } = await supa.from('gifts').select('title,taken_by').eq('event_id', event_id);
+  list.innerHTML='';
+  (data||[]).forEach(g=>{
+    const li=document.createElement('li');
+    li.className='wl-item';
+    li.textContent = g.title || 'Подарок';
+    if (g.taken_by) li.textContent += ' — 🔒 занято';
+    list.appendChild(li);
+  });
+  const free = (data||[]).filter(x=>!x.taken_by).length;
+  const taken = (data||[]).filter(x=>x.taken_by).length;
+  qs('#giftFreeCount') && (qs('#giftFreeCount').textContent = String(free));
+  qs('#giftTakenCount') && (qs('#giftTakenCount').textContent = String(taken));
+}
+
+/* ------------------ Профиль: актуальные / прошедшие ------------------ */
+async function initProfile(){
+  if (!supa) return;
+  const sess = await getSession(); if (!sess?.user?.id) return;
+  const uid = sess.user.id;
+  const today = new Date().toISOString().slice(0,10);
+
+  // мои (owner)
+  const { data: mine } = await supa.from('events')
+    .select('id,title,date,code')
+    .eq('owner_id', uid)
+    .order('date', { ascending: true });
+
+  // где я гость (по rsvp)
+  const { data: guestIn } = await supa.from('rsvps')
+    .select('event_id,events(id,title,date,code)')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: false });
+
+  const container = qs('.container'); if (!container) return;
+  const card=document.createElement('div'); card.className='card';
+  const h2=document.createElement('h2'); h2.textContent='Мои события';
+  card.appendChild(h2);
+
+  function sect(title, items){
+    const d=document.createElement('div'); const hh=document.createElement('h3'); hh.textContent=title; d.appendChild(hh);
+    const ul=document.createElement('ul');
+    (items||[]).forEach(ev=>{
+      const e = ev.events || ev; // нормализуем
+      const li=document.createElement('li');
+      const a=document.createElement('a');
+      a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}`;
+      a.textContent=`${e.title} — ${e.date||'—'}`;
+      li.appendChild(a); ul.appendChild(li);
+    });
+    d.appendChild(ul); return d;
+  }
+
+  const upcoming = (mine||[]).filter(e=>!e.date || e.date >= today);
+  const past     = (mine||[]).filter(e=> e.date && e.date <  today);
+
+  card.appendChild(sect('Владелец — ближайшие', upcoming));
+  card.appendChild(sect('Владелец — прошедшие', past));
+  card.appendChild(sect('Гость', (guestIn||[])));
+
+  container.appendChild(card);
+}
+
+/* ------------------ Мини-тост ------------------ */
+function toast(msg){
+  const t = qs('#toast'); if (!t) return; t.textContent=msg; t.hidden=false;
+  clearTimeout(toast._t); toast._t=setTimeout(()=>{ t.hidden=true; }, 2000);
+}
