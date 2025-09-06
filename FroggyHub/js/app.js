@@ -1,9 +1,9 @@
 import { supa, getSession, onAuthState, signIn, signUpWithNickname, signOut, getProfile, joinEvent } from './api.js';
 
 const LINKS = {
-  home: '/FroggyHub/index.html',
-  menu: '/FroggyHub/lobby.html',
-  profile: '/FroggyHub/profile.html',
+  home: '/index.html',
+  menu: '/lobby.html',
+  profile: '/profile.html',
 };
 
 const elTabs   = document.querySelectorAll('[data-auth-tab]');
@@ -32,7 +32,7 @@ formLogin?.addEventListener('submit', async (e) => {
   try {
     const r = await signIn({ login: nickname, password });
     if (!r) throw new Error('Не удалось войти');
-    location.href = '/FroggyHub/lobby.html';
+    location.href = '/lobby.html';
   } catch (err) {
     if (errBox) { errBox.textContent = err.message || 'Ошибка входа'; errBox.hidden = false; }
   }
@@ -46,7 +46,7 @@ formSignup?.addEventListener('submit', async (e) => {
   try {
     const r = await signUpWithNickname({ nickname, email, password });
     if (r?.error) throw r.error;
-    location.href = '/FroggyHub/lobby.html';
+    location.href = '/lobby.html';
   } catch (err) {
     if (errBox) { errBox.textContent = err.message || 'Ошибка регистрации'; errBox.hidden = false; }
   }
