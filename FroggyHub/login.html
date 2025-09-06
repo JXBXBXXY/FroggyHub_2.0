@@ -3,26 +3,54 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Вход</title>
+  <title>Вход — FroggyHub</title>
   <link rel="stylesheet" href="./style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
-<body>
-  <div class="container" role="main">
-    <div class="card" style="max-width:480px;margin:40px auto">
-      <h1>Вход</h1>
-      <form id="login-form" class="grid" novalidate onsubmit="handleLogin(event)">
-        <label>Никнейм
-          <input id="login-nickname" type="text" autocomplete="username" required />
-        </label>
-        <label>Пароль
-          <input id="login-password" type="password" autocomplete="current-password" required />
-        </label>
-        <button class="btn btn--primary" type="submit">Войти</button>
-      </form>
+<body class="guest">
+  <header class="topbar">
+    <a href="#" class="logo" data-link="home">FroggyHub</a>
+    <div class="topbar-right">
+      <button class="guest-only" data-link="login">Войти</button>
+      <button class="authed-only" data-link="menu">Меню</button>
+      <button class="authed-only" data-link="profile">Профиль</button>
+      <button class="authed-only" data-action="logout">Выйти</button>
     </div>
-  </div>
+  </header>
+
+  <main class="fh-content">
+    <section class="auth-card-wrap">
+      <div class="auth-card">
+        <div class="tabs">
+          <div class="tab is-active" data-tab="login">Вход</div>
+          <div class="tab" data-tab="signup">Регистрация</div>
+          <div class="tab" data-tab="reset">Сброс</div>
+        </div>
+
+        <div id="paneLogin" class="auth-pane visible">
+          <input id="loginLogin" type="text" placeholder="Email или ник" required />
+          <input id="loginPassword" type="password" placeholder="Пароль" required />
+          <button id="btnLogin" class="btn btn--primary w-full">Войти</button>
+          <div id="loginError" class="form-error"></div>
+        </div>
+
+        <div id="paneSignup" class="auth-pane">
+          <input id="signupNickname" type="text" placeholder="Никнейм" required />
+          <input id="signupEmail" type="email" placeholder="Email" required />
+          <input id="signupPassword" type="password" placeholder="Пароль" required />
+          <button id="btnSignup" class="btn btn--primary w-full">Зарегистрироваться</button>
+          <div id="signupError" class="form-error"></div>
+        </div>
+
+        <div id="paneReset" class="auth-pane">
+          <input id="resetEmail" type="email" placeholder="Email" required />
+          <button id="btnReset" class="btn btn--primary w-full">Сбросить пароль</button>
+          <div id="resetError" class="form-error"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
+

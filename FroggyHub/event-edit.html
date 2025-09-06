@@ -8,7 +8,17 @@
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
-<body>
+<body class="guest">
+  <header class="topbar">
+    <a href="#" class="logo" data-link="home">FroggyHub</a>
+    <div class="topbar-right">
+      <button class="guest-only" data-link="login">Войти</button>
+      <button class="authed-only" data-link="menu">Меню</button>
+      <button class="authed-only" data-link="profile">Профиль</button>
+      <button class="authed-only" data-action="logout">Выйти</button>
+    </div>
+  </header>
+
   <main class="container" role="main">
     <form id="editForm" class="card grid edit-form" aria-describedby="editError">
       <h1>Редактировать событие</h1>
