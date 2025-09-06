@@ -68,122 +68,165 @@ function wireNav() {
     if (href) { e.preventDefault(); location.href = href; }
   });
 }
+// === Floating Message Chips ===
+const FH_MESSAGES = [
+  "Я приду к 19:00 ✨", "Я возьму пиццу 🍕", "Кто возьмёт колу? 🥤",
+  "Ребят, постучите в дверь 🚪", "Буду позже 🙈", "Добавил плейлист 🎶",
+  "Кто возьмет настолки? 🎲", "Буду через 15 минут ⏳", "Я за пивом 🍺",
+  "Буду online 💻", "Встречаемся у метро 🚉", "Я за мороженым 🍦",
+  "Принесу колонку 📢", "Сделаем фото 📸", "Не забудьте зарядки 🔌",
+  "Привезу попкорн 🍿", "Подготовлю викторину ❓", "Нужен штопор?",
+  "Устроим караоке", "Кто возьмет тарелки?", "Заберу пиццу по пути",
+  "Я за салатом", "Буду с +1", "Берите тёплые вещи", "Давайте играть в мафию",
+  "Принесу проектор", "У меня есть проектор", "Привезу настольный футбол",
+  "Привезу фрукты", "Кто за лимонадом?", "Друзья, до встречи",
+  "У кого есть карты?", "Привезу геймпад", "Я за хлопьями",
+  "Я возьму сок", "Приеду на час раньше", "Кто возьмёт кофе?",
+  "Где паркуемся? 🅿️"
+];
 
-let fhCloudsRoot;
+let fhCloudsRoot = null;
+let chips = [];
+let rafId = 0;
+let vw = 0;
+let vh = 0;
+const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+
 function ensureCloudsRoot() {
-  if (fhCloudsRoot && document.body.contains(fhCloudsRoot)) return fhCloudsRoot;
-  if (fhCloudsRoot?.parentNode) fhCloudsRoot.parentNode.removeChild(fhCloudsRoot);
-  fhCloudsRoot = document.createElement('div');
-  fhCloudsRoot.id = 'fh-message-clouds';
-  fhCloudsRoot.setAttribute('aria-hidden', 'true');
-  fhCloudsRoot.style.pointerEvents = 'none';
-  fhCloudsRoot.style.zIndex = '0';
-  document.body.prepend(fhCloudsRoot);
+  if (!fhCloudsRoot) {
+    fhCloudsRoot = document.getElementById('fh-message-clouds');
+    if (!fhCloudsRoot) {
+      fhCloudsRoot = document.createElement('div');
+      fhCloudsRoot.id = 'fh-message-clouds';
+      fhCloudsRoot.setAttribute('aria-hidden', 'true');
+      fhCloudsRoot.style.pointerEvents = 'none';
+      document.body.prepend(fhCloudsRoot);
+    }
+  }
   return fhCloudsRoot;
 }
 
-// ===== Floating chips (background) =====
-const FH_MESSAGES = [
-  'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪',
-  'Буду позже 🙈','Добавил плейлист 🎶','Кто возьмет настолки? 🎲','Буду через 15 минут ⏳',
-  'Я за пивом 🍺','Буду online 💻','Встречаемся у метро 🚉','Я за мороженым 🍦','Принесу колонку 📢',
-  'Сделаем фото 📸','Не забудьте зарядки 🔌','Привезу попкорн 🍿','Подготовлю викторину ❓'
-];
-const FH = {
-  MAX: 20, MARGIN: 20, PLACE_TRIES: 40, MIN_DIST: 120,
-  MIN_V: .045, MAX_V: .09, JITTER: .00012, KICK: .12
-};
-let chips = [], rafId = 0, chipsSpawned = false;
-function rand(a,b){return Math.random()*(b-a)+a}
-function clamp(v,a,b){return Math.min(Math.max(v,a),b)}
-function spawnChips(){
-  if (chipsSpawned) return;
-  chipsSpawned = true;
+function rand(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function spawnChips(count = null) {
   const root = ensureCloudsRoot();
-  const pool = [...FH_MESSAGES];
-  for(let i=pool.length-1;i>0;i--){const j=(Math.random()*(i+1))|0; [pool[i],pool[j]]=[pool[j],pool[i]]}
-  const list = pool.slice(0,FH.MAX);
-  const W = innerWidth, H = innerHeight;
+  if (!root) return;
+  chips = [];
+  root.innerHTML = '';
 
-  function canPlace(cx,cy,w,h){
-    if (cx-w/2 < FH.MARGIN || cy-h/2 < FH.MARGIN) return false;
-    if (cx+w/2 > W-FH.MARGIN || cy+h/2 > H-FH.MARGIN) return false;
-    for(const c of chips){
-      const dx=cx-(c.x+c.w/2), dy=cy-(c.y+c.h/2);
-      if (dx*dx+dy*dy < FH.MIN_DIST*FH.MIN_DIST) return false;
-    }
-    return true;
-  }
-  function nonZeroV(){
-    const a=rand(0,Math.PI*2), s=rand(FH.MIN_V,FH.MAX_V);
-    return {vx:Math.cos(a)*s, vy:Math.sin(a)*s};
-  }
+  vw = window.innerWidth;
+  vh = window.innerHeight;
 
-  list.forEach(msg=>{
-    const el=document.createElement('div');
-    el.className='fh-chip'; el.textContent=msg; root.appendChild(el);
-    const r=el.getBoundingClientRect(); const w=r.width||140, h=r.height||40;
-    let placed=false, x=FH.MARGIN, y=FH.MARGIN;
-    for(let t=0; t<FH.PLACE_TRIES && !placed; t++){
-      const cx=rand(FH.MARGIN+w/2, W-FH.MARGIN-w/2);
-      const cy=rand(FH.MARGIN+h/2, H-FH.MARGIN-h/2);
-      if (canPlace(cx,cy,w,h)){x=cx-w/2; y=cy-h/2; placed=true;}
-    }
-    if(!placed){ x=clamp(rand(FH.MARGIN, W-w-FH.MARGIN), FH.MARGIN, W-w-FH.MARGIN);
-                 y=clamp(rand(FH.MARGIN, H-h-FH.MARGIN), FH.MARGIN, H-h-FH.MARGIN); }
-    const {vx,vy}=nonZeroV();
-    chips.push({el,x,y,w,h,vx,vy,stuck:0});
-    el.style.transform=`translate3d(${x}px,${y}px,0)`;
+  const targetCount = count !== null ? count : Math.min(
+    FH_MESSAGES.length,
+    vw < 420 ? 10 : vw < 768 ? 16 : 24
+  );
+
+  const shuffled = [...FH_MESSAGES].sort(() => Math.random() - 0.5).slice(0, targetCount);
+
+  shuffled.forEach(text => {
+    const el = document.createElement('div');
+    el.className = 'fh-chip';
+    el.textContent = text;
+    root.appendChild(el);
+
+    const rect = el.getBoundingClientRect();
+    const chip = {
+      el,
+      w: rect.width,
+      h: rect.height,
+      x: rand(20, vw - rect.width - 20),
+      y: rand(20, vh - rect.height - 20),
+      vx: rand(-0.08, 0.08),
+      vy: rand(-0.08, 0.08)
+    };
+
+    chips.push(chip);
+    el.style.transform = `translate3d(${chip.x}px, ${chip.y}px, 0)`;
   });
-  startFloat();
 }
-function startFloat(){
-  cancelAnimationFrame(rafId);
-  let last=performance.now();
-  function tick(now){
-    const dt=now-last; last=now;
-    const W=innerWidth, H=innerHeight;
-    for(const c of chips){
-      c.vx += rand(-FH.JITTER,FH.JITTER)*dt;
-      c.vy += rand(-FH.JITTER,FH.JITTER)*dt;
-      const sp=Math.hypot(c.vx,c.vy);
-      if (sp < FH.MIN_V){ const a=rand(0,Math.PI*2); c.vx=Math.cos(a)*FH.MIN_V; c.vy=Math.sin(a)*FH.MIN_V; }
-      else if (sp > FH.MAX_V){ c.vx=(c.vx/sp)*FH.MAX_V; c.vy=(c.vy/sp)*FH.MAX_V; }
-      c.x += c.vx*dt; c.y += c.vy*dt;
 
-      if (c.x < FH.MARGIN){ c.x=FH.MARGIN; c.vx=Math.abs(c.vx); }
-      if (c.y < FH.MARGIN){ c.y=FH.MARGIN; c.vy=Math.abs(c.vy); }
-      if (c.x > W-c.w-FH.MARGIN){ c.x=W-c.w-FH.MARGIN; c.vx=-Math.abs(c.vx); }
-      if (c.y > H-c.h-FH.MARGIN){ c.y=H-c.h-FH.MARGIN; c.vy=-Math.abs(c.vy); }
+function updateChips() {
+  const borderMargin = 20;
 
-      const nearL=c.x<=FH.MARGIN+1, nearR=c.x>=W-c.w-FH.MARGIN-1;
-      const nearT=c.y<=FH.MARGIN+1, nearB=c.y>=H-c.h-FH.MARGIN-1;
-      if ((nearL||nearR) && (nearT||nearB)){
-        c.stuck+=dt; if (c.stuck>100){ c.vx+=(nearL?FH.KICK:-FH.KICK); c.vy+=(nearT?FH.KICK:-FH.KICK); c.stuck=0; }
-      } else c.stuck=Math.max(0,c.stuck-dt);
+  chips.forEach(chip => {
+    chip.x += chip.vx;
+    chip.y += chip.vy;
 
-      c.el.style.transform=`translate3d(${c.x}px,${c.y}px,0)`;
+    if (chip.x <= borderMargin || chip.x + chip.w >= vw - borderMargin) {
+      chip.vx *= -1;
+      chip.x = Math.max(borderMargin, Math.min(chip.x, vw - chip.w - borderMargin));
     }
-    rafId=requestAnimationFrame(tick);
+
+    if (chip.y <= borderMargin || chip.y + chip.h >= vh - borderMargin) {
+      chip.vy *= -1;
+      chip.y = Math.max(borderMargin, Math.min(chip.y, vh - chip.h - borderMargin));
+    }
+
+    chip.el.style.transform = `translate3d(${chip.x}px, ${chip.y}px, 0)`;
+  });
+
+  for (let i = 0; i < chips.length; i++) {
+    for (let j = i + 1; j < chips.length; j++) {
+      const a = chips[i];
+      const b = chips[j];
+
+      if (a.x < b.x + b.w && a.x + a.w > b.x &&
+          a.y < b.y + b.h && a.y + a.h > b.y) {
+        [a.vx, b.vx] = [b.vx, a.vx];
+        [a.vy, b.vy] = [b.vy, a.vy];
+      }
+    }
   }
-  rafId=requestAnimationFrame(tick);
 }
 
-let rzT;
+function animate() {
+  updateChips();
+  rafId = requestAnimationFrame(animate);
+}
+
+function startChips() {
+  stopChips();
+  if (REDUCED_MOTION) return;
+  spawnChips();
+  rafId = requestAnimationFrame(animate);
+}
+
+function stopChips() {
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = 0;
+  }
+}
+
+let resizeTimeout;
 window.addEventListener('resize', () => {
-  clearTimeout(rzT);
-  rzT = setTimeout(() => {
-    for (const c of chips) {
-      c.x = clamp(c.x, FH.MARGIN, innerWidth - c.w - FH.MARGIN);
-      c.y = clamp(c.y, FH.MARGIN, innerHeight - c.h - FH.MARGIN);
-      c.el.style.transform = `translate3d(${c.x}px,${c.y}px,0)`;
-    }
-  }, 200);
-}, { passive: true });
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    vw = window.innerWidth;
+    vh = window.innerHeight;
+    spawnChips(chips.length);
+  }, 250);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopChips();
+  } else {
+    startChips();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(startChips, 100);
+});
+
+window.FloatingChips = { start: startChips, stop: stopChips };
 
 async function boot() {
   wireNav();
-  try { ensureCloudsRoot(); spawnChips(); } catch {}
 
   const session = await getSession();
   setAuthState(!!session);

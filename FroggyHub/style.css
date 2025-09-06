@@ -34,6 +34,12 @@
   --danger:#ff6b6b;
   --frog-hero-max: 540px;
   --frog-hero-min: 360px;
+  --fh-green-1: #0b241a;
+  --fh-green-2: #123228;
+  --fh-green-3: #1a4535;
+  --chip-bg: #fff;
+  --chip-fg: #2E7D61;
+  --chip-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
 
 *{box-sizing:border-box}
@@ -41,7 +47,8 @@ html,body{height:100%;}
 body{
   margin:0;
   overflow:hidden;
-  background:#0f2a24;
+  background: linear-gradient(160deg, var(--fh-green-1), var(--fh-green-2), var(--fh-green-3));
+  min-height:100vh;
   color:var(--text);
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
@@ -100,29 +107,42 @@ body{
   will-change: transform;
 }
 
-/* Сам «чип» сообщения */
-.fh-chip {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .5rem 1rem;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  color: #e6f6ef;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-  backdrop-filter: blur(2px);
-  white-space: nowrap;
-  will-change: transform;
-  transform: translate3d(0,0,0);
-  user-select: none;
+/* Floating message chips */
+.fh-chip{
+  position:absolute;
+  left:0;
+  top:0;
+  transform:translate3d(0,0,0);
+  display:inline-flex;
+  align-items:center;
+  gap:0.5rem;
+  padding:0.5rem 0.9rem;
+  border-radius:20px;
+  background:var(--chip-bg);
+  color:var(--chip-fg);
+  box-shadow:var(--chip-shadow);
+  font-size:clamp(12px,1.6vw,16px);
+  line-height:1.2;
+  white-space:nowrap;
+  will-change:transform;
+  user-select:none;
+  opacity:0.95;
+  contain:layout paint; /* Micro-optimization */
 }
 
-/* На маленьких экранах делаем чипы компактнее */
-@media (max-width: 640px) {
-  .fh-chip { padding: .4rem .8rem; font-size: .9rem; }
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  #fh-message-clouds, .fh-chip {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
+/* Ensure UI elements stay above chips */
+.topbar, .screen, .card, .panel, .auth-card {
+  position: relative;
+  z-index: 10;
+}
 /* Плавные появление/исчезновение экранов */
 .screen{
   opacity:0;
