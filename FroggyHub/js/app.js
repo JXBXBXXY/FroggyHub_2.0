@@ -12,6 +12,12 @@ const formLogin  = document.getElementById('form-login');
 const formSignup = document.getElementById('form-signup');
 const errBox   = document.getElementById('auth-error');
 
+function showAuthError(msg) {
+  if (!errBox) return;
+  errBox.textContent = msg || 'Ошибка';
+  errBox.hidden = false;
+}
+
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-auth-tab]');
   if (!t) return;
@@ -32,9 +38,10 @@ formLogin?.addEventListener('submit', async (e) => {
   try {
     const r = await signIn({ login: nickname, password });
     if (!r) throw new Error('Не удалось войти');
-    location.href = '/lobby.html';
+    location.href = LINKS.menu;
   } catch (err) {
-    if (errBox) { errBox.textContent = err.message || 'Ошибка входа'; errBox.hidden = false; }
+    console.error('login error:', err);
+    showAuthError(err?.message || 'Ошибка входа');
   }
 });
 
@@ -45,10 +52,15 @@ formSignup?.addEventListener('submit', async (e) => {
   const password = formSignup.password.value;
   try {
     const r = await signUpWithNickname({ nickname, email, password });
+    // signUpWithNickname должен:
+    // 1) вызвать supabase.auth.signUp({ email, password })
+    // 2) выставить nickname в public.profiles (update по id)
+    // 3) вернуть { user, error } или бросить
     if (r?.error) throw r.error;
-    location.href = '/lobby.html';
+    location.href = LINKS.menu;
   } catch (err) {
-    if (errBox) { errBox.textContent = err.message || 'Ошибка регистрации'; errBox.hidden = false; }
+    console.error('signup error:', err);
+    showAuthError(err?.message || 'Ошибка регистрации');
   }
 });
 
@@ -68,6 +80,7 @@ function wireNav() {
     if (href) { e.preventDefault(); location.href = href; }
   });
 }
+
 // === Floating Message Chips ===
 const FH_MESSAGES = [
   "Я приду к 19:00 ✨", "Я возьму пиццу 🍕", "Кто возьмёт колу? 🥤",
@@ -230,10 +243,18 @@ async function boot() {
 
   const session = await getSession();
   setAuthState(!!session);
+
+  // если уже авторизован и зашёл на index — ведём в лобби
+  if (session && location.pathname.endsWith('/index.html')) {
+    location.href = LINKS.menu;
+    return;
+  }
+
   if (!session && !location.pathname.endsWith('/index.html')) {
     location.href = LINKS.home;
     return;
   }
+
   onAuthState((sess) => setAuthState(!!sess));
 
   document.addEventListener('click', async (e) => {
@@ -270,4 +291,3 @@ async function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', boot);
-
