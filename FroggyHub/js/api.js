@@ -7,7 +7,7 @@ const URL = (ENV.PUBLIC_SUPABASE_URL || '').trim();
 const KEY = (ENV.PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
 function looksLikePlaceholder(s) {
-  return !s || /PUBLIC_SUPABASE_/i.test(s) || s === '' || s.endsWith('/');
+  return !s || /supabase\.co\/?$/i.test(s) || /PUBLIC_SUPABASE_/i.test(s);
 }
 
 let _supa = null;
@@ -23,21 +23,22 @@ export const supa = (() => {
     document.body.appendChild(banner);
     return null;
   }
-  _supa = window.supabase.createClient(URL, KEY, {
-    auth: { persistSession: true, autoRefreshToken: true }
-  });
+  _supa = window.supabase?.createClient
+    ? window.supabase.createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true } })
+    : null;
   return _supa;
 })();
 
-export const getSession = () => {
-  if (!supa) return Promise.resolve(null);
-  return supa.auth.getSession().then((r) => r.data.session);
+export const getSession = async () => {
+  if (!supa) return null;
+  const { data } = await supa.auth.getSession();
+  return data.session;
 };
 
 export const onAuthState = (cb) => {
   if (!supa) return () => {};
-  const sub = supa.auth.onAuthStateChange((_evt, session) => cb(session));
-  return () => sub?.data?.subscription?.unsubscribe?.();
+  const { data: sub } = supa.auth.onAuthStateChange((_evt, session) => cb(session));
+  return () => sub?.subscription?.unsubscribe?.();
 };
 
 export async function signIn({ login, password }) {
@@ -50,24 +51,29 @@ export async function signIn({ login, password }) {
     if (!data?.email) throw new Error('User not found');
     email = data.email;
   }
-  return supa.auth.signInWithPassword({ email, password });
+  const { data, error } = await supa.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
 }
 
 export async function signUpWithNickname({ nickname, email, password }) {
   if (!supa) throw new Error('Supabase is not configured');
-  return supa.auth.signUp({
-    email,
-    password,
-    options: { data: { nickname } }
+  const { data, error } = await supa.auth.signUp({
+    email, password, options: { data: { nickname } }
   });
+  if (error) throw error;
+  return data;
 }
 
-export function resetPassword(email) {
+export async function resetPassword(email) {
   if (!supa) throw new Error('Supabase is not configured');
   return supa.auth.resetPasswordForEmail(email);
 }
 
-export const signOut = () => (supa ? supa.auth.signOut() : Promise.resolve());
+export const signOut = async () => {
+  if (!supa) return;
+  await supa.auth.signOut();
+};
 
 export async function getProfile() {
   if (!supa) return null;
