@@ -127,7 +127,9 @@ function ensureCloudsRoot() {
   if (fhCloudsRoot?.parentNode) fhCloudsRoot.parentNode.removeChild(fhCloudsRoot);
   fhCloudsRoot = document.createElement('div');
   fhCloudsRoot.id = 'fh-message-clouds';
-  document.body.appendChild(fhCloudsRoot);
+  fhCloudsRoot.setAttribute('aria-hidden', 'true');
+  fhCloudsRoot.style.pointerEvents = 'none';
+  document.body.prepend(fhCloudsRoot);
   return fhCloudsRoot;
 }
 

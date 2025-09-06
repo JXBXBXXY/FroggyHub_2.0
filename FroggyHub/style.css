@@ -50,17 +50,8 @@ body{
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 1;            /* было 0 — из-за этого могло не быть видно */
+  z-index: 0;
   overflow: hidden;
-}
-
-/* Любые экраны/оверлеи должны быть выше чипов */
-.screen,
-.menu-deck,
-.auth-card,
-#auth-overlay {
-  position: relative;
-  z-index: 10;
 }
 
 /* Состояния пузыря */
@@ -1008,19 +999,22 @@ html, body {
   overflow-x: hidden; /* чтобы пузырьки не вылезали сбоку */
 }
 
-#fh-message-clouds {
-  position: fixed; /* чтобы покрывал весь экран */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* чтобы не мешало кликам */
-  z-index: 0;
-}
 /* --- layers / order --- */
-#fh-message-clouds { z-index: 1; }          /* фоновые чипы — самый низ */
-.topbar, .menu-deck, .screen { position: relative; z-index: 10; }
-#auth-overlay, .auth-card, .auth-card-wrap { position: relative; z-index: 20; }
+.topbar,
+.screen,
+.card,
+.panel,
+.menu-deck,
+.auth-card,
+.auth-card-wrap {
+  position: relative;
+  z-index: 10;
+}
+
+#auth-overlay {
+  position: relative;
+  z-index: 20;
+}
 
 /* --- no blur on auth overlay (страница авторизации прозрачная) --- */
 #screen-auth,
