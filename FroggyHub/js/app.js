@@ -106,7 +106,9 @@ const FH_MESSAGES = [
   'Кто принесёт настольные игры? 🎲'
 ];
 // === ПЛАВАЮЩИЕ ЧИПЫ (anti-stick вер.) ===
-const FH_MAX_CHIPS = 20;
+const MAX_CHIPS = 20;
+// ... при создании:
+if (cloud.children.length >= MAX_CHIPS) cloud.removeChild(cloud.firstElementChild);
 const FH_PLACE_TRIES = 40;   // попыток поставить без наложений
 const FH_MIN_DIST = 120;     // мин. дистанция между центрами чипов
 const FH_MARGIN = 20;        // отступ от краёв
