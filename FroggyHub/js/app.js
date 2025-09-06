@@ -1,111 +1,42 @@
-import { supa, signIn, signUpWithNickname, resetPassword } from './api.js';
-window.supa = supa;
+// js/app.js
+import {
+  supa,
+  getSession,
+  signIn,
+  signUpWithNickname,
+  resetPassword,
+  signOut,
+} from './api.js';
 
+window.supa = supa; // для отладки в консоли
+
+/* =========================
+   Плавающие «смс»-чипы сзади
+   ========================= */
 const FH_MESSAGES = [
-  'Я приду к 19:00 ✨',
-  'Я возьму пиццу 🍕',
-  'Кто возьмёт колу? 🥤',
-  'Ребят, постучите в дверь 🚪',
-  'Буду позже 🙈',
-  'Закажем такси? 🚖',
-  'Добавил плейлист 🎶',
-  'У кого карты? 🎴',
-  'Забронировал столик 🍽️',
-  'Сделаем фото 📸',
-  'Я за пивом 🍺',
-  'Принесу проектор 📽️',
-  'Я купил шарики 🎈',
-  'Спойлер: будет торт 🎂',
-  'Я возьму чипсы 🥨',
-  'Друзья, до встречи 🐸',
-  'Нужны свечи 🕯️',
-  'Кто возьмет настолки? 🎲',
-  'Всем привет! 👋',
-  'Буду с +1 🙂',
-  'Я за сладким 🍩',
-  'Кто за лимонадом? 🍋',
-  'Прихвачу фрукты 🍇',
-  'Поставлю чайник ☕',
-  'Возьму пледы 🧣',
-  'Захвачу музыку 🔊',
-  'Кто возьмет мангал? 🔥',
-  'Я за салатом 🥗',
-  'Давайте играть в мафию 😎',
-  'Поделитесь адресом 🗺️',
-  'Где паркуемся? 🅿️',
-  'Принесу колонку 📢',
-  'Я принесу десерт 🍰',
-  'Кто возьмёт свечи? 🕯️',
-  'Я возьму сок 🧃',
-  'Берите тёплые вещи 🧥',
-  'Я за хлопьями 🍿',
-  'Нужен штопор? 🍷',
-  'Кто возьмёт гитару? 🎸',
-  'Давайте устроим караоке 🎤',
-  'Привезу настольный футбол ⚽',
-  'Я везу кота 🐱',
-  'Кто-то едет на велосипеде? 🚲',
-  'Приготовлю салаты 🥬',
-  'Я за фруктами 🍏',
-  'Сделаю лимонад 🍋',
-  'У меня есть проектор 📽️',
-  'Я приеду на час раньше ⏱️',
-  'Привезу геймпад 🎮',
-  'Я на метро 🚇',
-  'Возьму фотоаппарат 📷',
-  'Кто-то пьет чай? 🍵',
-  'Я привезу воду 💧',
-  'Есть у кого настольный теннис? 🏓',
-  'Я за хлебом 🍞',
-  'Кто возьмёт кофе? ☕',
-  'Давайте фильм посмотрим 🎬',
-  'Я приготовлю пасту 🍝',
-  'Возьму гитару 🎸',
-  'Нужны батарейки? 🔋',
-  'Я на машине 🚗',
-  'Кто возьмет тарелки? 🍽️',
-  'Буду через 15 минут ⏳',
-  'Захвачу зонтик ☔',
-  'Я возьму торт 🍰',
-  'Не забудьте зарядки 🔌',
-  'Я уже в пути 🛣️',
-  'Поставлю музыку 🎧',
-  'Принесу игру в угадайку 🤔',
-  'Я за печеньем 🍪',
-  'Буду online 💻',
-  'Увидимся у входа 🚪',
-  'Я за наушниками 🎧',
-  'Кто возьмет посуду? 🍽️',
-  'Мне нужно такси 🛺',
-  'У кого есть карты? 🃏',
-  'Заберу пиццу по пути 🍕',
-  'Кто за гирляндами? 🌟',
-  'Я отпечатаю фото 📸',
-  'Кто на десерт? 🍮',
-  'Встречаемся у метро 🚉',
-  'Я возьму мороженое 🍦',
-  'Поставлю плейлист вечера 🎵',
-  'Привезу настольный хоккей 🏒',
-  'Я беру карты Таро 🃏',
-  'Прихвачу селфи-палку 🤳',
-  'Запасуся маршмеллоу 🍡',
-  'Буду на самокате 🛴',
-  'Захвачу настольный дартс 🎯',
-  'У кого есть мяч? 🏀',
-  'Привезу лампу лаву 🪔',
-  'Я с домашним лимонадом 🍹',
-  'Захвачу гитару-бас 🎸',
-  'Принесу плейстейшен 🎮',
-  'Кто возьмёт микрофон? 🎙️',
-  'Я куплю фейерверки 🎆',
-  'Привезу попкорн 🍿',
-  'Зайду за напитками 🍻',
-  'Подготовлю викторину ❓',
-  'Привезу селфи-зону 📸',
-  'Захвачу набор для рисования 🎨',
-  'Кто принесёт настольные игры? 🎲'
+  'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪','Буду позже 🙈',
+  'Закажем такси? 🚖','Добавил плейлист 🎶','У кого карты? 🎴','Забронировал столик 🍽️','Сделаем фото 📸',
+  'Я за пивом 🍺','Принесу проектор 📽️','Я купил шарики 🎈','Спойлер: будет торт 🎂','Я возьму чипсы 🥨',
+  'Друзья, до встречи 🐸','Нужны свечи 🕯️','Кто возьмет настолки? 🎲','Всем привет! 👋','Буду с +1 🙂',
+  'Я за сладким 🍩','Кто за лимонадом? 🍋','Прихвачу фрукты 🍇','Поставлю чайник ☕','Возьму пледы 🧣',
+  'Захвачу музыку 🔊','Кто возьмет мангал? 🔥','Я за салатом 🥗','Давайте играть в мафию 😎','Поделитесь адресом 🗺️',
+  'Где паркуемся? 🅿️','Принесу колонку 📢','Я принесу десерт 🍰','Кто возьмёт свечи? 🕯️','Я возьму сок 🧃',
+  'Берите тёплые вещи 🧥','Я за хлопьями 🍿','Нужен штопор? 🍷','Кто возьмёт гитару? 🎸','Давайте устроим караоке 🎤',
+  'Привезу настольный футбол ⚽','Я везу кота 🐱','Кто-то едет на велосипеде? 🚲','Приготовлю салаты 🥬','Я за фруктами 🍏',
+  'Сделаю лимонад 🍋','У меня есть проектор 📽️','Я приеду на час раньше ⏱️','Привезу геймпад 🎮','Я на метро 🚇',
+  'Возьму фотоаппарат 📷','Кто-то пьет чай? 🍵','Я привезу воду 💧','Есть у кого настольный теннис? 🏓','Я за хлебом 🍞',
+  'Кто возьмёт кофе? ☕','Давайте фильм посмотрим 🎬','Я приготовлю пасту 🍝','Возьму гитару 🎸','Нужны батарейки? 🔋',
+  'Я на машине 🚗','Кто возьмет тарелки? 🍽️','Буду через 15 минут ⏳','Захвачу зонтик ☔','Я возьму торт 🍰',
+  'Не забудьте зарядки 🔌','Я уже в пути 🛣️','Поставлю музыку 🎧','Принесу игру в угадайку 🤔','Я за печеньем 🍪',
+  'Буду online 💻','Увидимся у входа 🚪','Я за наушниками 🎧','Кто возьмет посуду? 🍽️','Мне нужно такси 🛺',
+  'У кого есть карты? 🃏','Заберу пиццу по пути 🍕','Кто за гирляндами? 🌟','Я отпечатаю фото 📸','Кто на десерт? 🍮',
+  'Встречаемся у метро 🚉','Я возьму мороженое 🍦','Поставлю плейлист вечера 🎵','Привезу настольный хоккей 🏒','Я беру карты Таро 🃏',
+  'Прихвачу селфи-палку 🤳','Запасуся маршмеллоу 🍡','Буду на самокате 🛴','Захвачу настольный дартс 🎯','У кого есть мяч? 🏀',
+  'Привезу лампу лаву 🪔','Я с домашним лимонадом 🍹','Захвачу гитару-бас 🎸','Принесу плейстейшен 🎮','Кто возьмёт микрофон? 🎙️',
+  'Я куплю фейерверки 🎆','Привезу попкорн 🍿','Зайду за напитками 🍻','Подготовлю викторину ❓','Привезу селфи-зону 📸',
+  'Захвачу набор для рисования 🎨','Кто принесёт настольные игры? 🎲'
 ];
-// === ПЛАВАЮЩИЕ ЧИПЫ (anti-stick вер.) ===
+
 const MAX_CHIPS = 20;
 const FH_PLACE_TRIES = 40;
 const FH_MIN_DIST = 120;
@@ -129,6 +60,7 @@ function ensureCloudsRoot() {
   fhCloudsRoot.id = 'fh-message-clouds';
   fhCloudsRoot.setAttribute('aria-hidden', 'true');
   fhCloudsRoot.style.pointerEvents = 'none';
+  // ставим ПЕРЕД всем UI, чтобы оказался НИЖЕ по z-index (у слоя z-index:0 в CSS)
   document.body.prepend(fhCloudsRoot);
   return fhCloudsRoot;
 }
@@ -144,8 +76,7 @@ function spawnChips() {
   }
   const list = pool.slice(0, MAX_CHIPS);
 
-  const W = window.innerWidth;
-  const H = window.innerHeight;
+  const W = innerWidth, H = innerHeight;
 
   function canPlace(cx, cy, w, h) {
     if (cx - w/2 < FH_MARGIN || cy - h/2 < FH_MARGIN) return false;
@@ -189,9 +120,7 @@ function spawnChips() {
 
     const { vx, vy } = nonZeroVelocity();
     fhChips.push({ el, x, y, vx, vy, w, h, stuck: 0 });
-
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    el.classList.add('is-placed'); // делаем видимым
   });
 
   startFloat();
@@ -203,7 +132,7 @@ function startFloat() {
 
   function tick(now) {
     const dt = now - last; last = now;
-    const W = window.innerWidth, H = window.innerHeight;
+    const W = innerWidth, H = innerHeight;
 
     for (const c of fhChips) {
       c.vx += rand(-FH_JITTER, FH_JITTER) * dt;
@@ -251,13 +180,10 @@ function startFloat() {
   fhAnimId = requestAnimationFrame(tick);
 }
 
-function stopFloat() {
-  if (fhAnimId) cancelAnimationFrame(fhAnimId);
-  fhAnimId = 0;
-}
+function stopFloat() { if (fhAnimId) cancelAnimationFrame(fhAnimId); fhAnimId = 0; }
 
-window.addEventListener('resize', () => {
-  const W = window.innerWidth, H = window.innerHeight;
+addEventListener('resize', () => {
+  const W = innerWidth, H = innerHeight;
   fhChips.forEach(c => {
     c.x = clamp(c.x, FH_MARGIN, W - c.w - FH_MARGIN);
     c.y = clamp(c.y, FH_MARGIN, H - c.h - FH_MARGIN);
@@ -265,130 +191,134 @@ window.addEventListener('resize', () => {
   });
 }, { passive:true });
 
-function mountBackgroundOnce(){ try{ spawnChips(); }catch(e){ console.warn('[chips]',e); } }
-document.addEventListener('DOMContentLoaded', mountBackgroundOnce);
-/* === NAVIGATION HANDLERS (data-link) === */
-(function setupDataLinkNavigation(){
-  document.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-link]');
-    if (!el) return;
+/* ======================
+   Экраны и навигация
+   ====================== */
 
-    const key = el.getAttribute('data-link');
-    // Карта страниц в проекте (используй существующие html)
-    const map = {
-      home: 'index.html',
-      menu: 'lobby.html',      // меню/лобби
-      lobby: 'lobby.html',
-      profile: 'profile.html',
-      hub: 'hub.html',
-      // при необходимости дополни: edit, analytics и т.п.
-      edit: 'event-edit.html',
-      analytics: 'event-analytics.html'
-    };
+const screens = {
+  home:    document.getElementById('screen-home'),
+  auth:    document.getElementById('screen-auth'),
+  profile: document.getElementById('screen-profile'),
+  hub:     document.getElementById('screen-hub'),
+};
 
-    const url = map[key] || 'index.html';
+function showScreen(key) {
+  Object.values(screens).forEach(el => el && el.classList.add('hidden'));
+  const el = screens[key];
+  if (el) el.classList.remove('hidden');
+}
+
+// делегирование по атрибуту data-link="auth|home|profile|hub"
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-link]');
+  if (!a) return;
+  e.preventDefault();
+  const key = a.getAttribute('data-link');
+  if (key) showScreen(key);
+});
+
+/* ======================
+   Авторизация
+   ====================== */
+
+async function requireAuthOr(action) {
+  const session = await getSession();
+  if (!session) {
+    showScreen('auth');
+    return;
+  }
+  action();
+}
+
+// формы логина / регистрации / сброса
+const formLogin  = document.getElementById('formLogin');
+const formSignup = document.getElementById('formSignup');
+const formReset  = document.getElementById('formReset');
+
+if (formLogin) {
+  formLogin.addEventListener('submit', async (e) => {
     e.preventDefault();
-    window.location.href = url;
-  }, { passive: false });
-})();
-
-/* === AUTH HANDLERS for login.html ===
-   На странице login.html формы вызывают handleLogin/handleSignup/handleReset.
-   Экспортируем их в window, используя api.js (supa, signIn, signUpWithNickname, resetPassword).
-*/
-(function setupAuthHandlers(){
-  function qs(scope, sel){ return (scope || document).querySelector(sel); }
-
-  async function uiBusy(btn, busy = true) {
-    if (!btn) return;
-    if (busy) { btn.setAttribute('disabled','disabled'); btn.classList.add('is-busy'); }
-    else { btn.removeAttribute('disabled'); btn.classList.remove('is-busy'); }
-  }
-
-  function showFormError(ctx, msg) {
-    const box = ctx && qs(ctx, '.form-error');
-    if (box) box.textContent = msg || '';
-  }
-
-  // LOGIN
-  window.handleLogin = async function handleLogin(ev){
-    if (ev) ev.preventDefault();
-    const form = ev?.target?.closest('form') || document;
-    const email = qs(form, 'input[type="email"]')?.value?.trim() || '';
-    const password = qs(form, 'input[type="password"]')?.value || '';
-    const btn = ev?.submitter || qs(form, 'button[type="submit"]');
-
-    showFormError(form, '');
-    await uiBusy(btn, true);
+    const email = formLogin.email.value.trim();
+    const password = formLogin.password.value;
     try {
-      const { error } = await signIn(email, password);
-      if (error) throw error;
-      // успех → в лобби
-      window.location.href = 'lobby.html';
-    } catch (e) {
-      showFormError(form, e?.message || 'Ошибка входа');
-    } finally {
-      await uiBusy(btn, false);
+      await signIn(email, password);
+      showScreen('home');
+    } catch {
+      alert('Нужны публичные ключи Supabase (см. README/настройки сайта).');
     }
-  };
+  });
+}
 
-  // SIGNUP (ник + почта + пароль)
-  window.handleSignup = async function handleSignup(ev){
-    if (ev) ev.preventDefault();
-    const form = ev?.target?.closest('form') || document;
-    const nickname = qs(form, 'input[name="nickname"], input[placeholder*="ник"], input[placeholder*="Ник"]')?.value?.trim() || '';
-    const email = qs(form, 'input[type="email"]')?.value?.trim() || '';
-    const password = qs(form, 'input[type="password"]')?.value || '';
-    const btn = ev?.submitter || qs(form, 'button[type="submit"]');
-
-    showFormError(form, '');
-    await uiBusy(btn, true);
+if (formSignup) {
+  formSignup.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = formSignup.email.value.trim();
+    const password = formSignup.password.value;
+    const nickname = formSignup.nickname.value.trim();
     try {
-      const { error } = await signUpWithNickname({ email, password, nickname });
-      if (error) throw error;
-      // после регистрации можно сразу вести в лобби
-      window.location.href = 'lobby.html';
-    } catch (e) {
-      showFormError(form, e?.message || 'Ошибка регистрации');
-    } finally {
-      await uiBusy(btn, false);
+      await signUpWithNickname(email, password, nickname);
+      showScreen('home');
+    } catch {
+      alert('Нужны публичные ключи Supabase (см. README/настройки сайта).');
     }
-  };
+  });
+}
 
-  // RESET PASSWORD
-  window.handleReset = async function handleReset(ev){
-    if (ev) ev.preventDefault();
-    const form = ev?.target?.closest('form') || document;
-    const email = qs(form, 'input[type="email"]')?.value?.trim() || '';
-    const btn = ev?.submitter || qs(form, 'button[type="submit"]');
-
-    showFormError(form, '');
-    await uiBusy(btn, true);
+if (formReset) {
+  formReset.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = formReset.email.value.trim();
     try {
-      const { error } = await resetPassword(email);
-      if (error) throw error;
-      showFormError(form, 'Ссылка для сброса отправлена на почту.');
-    } catch (e) {
-      showFormError(form, e?.message || 'Ошибка при сбросе пароля');
-    } finally {
-      await uiBusy(btn, false);
+      await resetPassword(email);
+      alert('Если почта найдена — письмо отправлено.');
+    } catch {
+      alert('Нужны публичные ключи Supabase (см. README/настройки сайта).');
     }
-  };
-})();
+  });
+}
 
-/* === CLOUDS SAFETY: убедимся, что контейнер есть и чипы видимы === */
-(function ensureMessageCloudsLayer(){
-  // если наш фон уже существует — ничего не делаем
-  let root = document.getElementById('fh-message-clouds');
-  if (!root) {
-    root = document.createElement('div');
-    root.id = 'fh-message-clouds';
-    document.body.appendChild(root);
-  }
+// выход
+const btnLogout = document.querySelector('[data-action="logout"]');
+if (btnLogout) {
+  btnLogout.addEventListener('click', async () => {
+    await signOut();
+    showScreen('auth');
+  });
+}
 
-  // Если в CSS чипы скрыты до расстановки, убедимся что при спауне
-  // мы добавляем им класс .is-placed. Если spawnChips уже реализован — ок.
-  // Здесь лёгкая страховка: показать уже существующие чипы.
-  root.querySelectorAll('.fh-chip').forEach(el => el.classList.add('is-placed'));
-})();
+/* ======================
+   Кнопки «Создать/Присоединиться»
+   ====================== */
 
+const createBtn = document.querySelector('[data-action="create-event"]');
+if (createBtn) {
+  createBtn.addEventListener('click', () => {
+    requireAuthOr(() => {
+      // тут можешь показать форму создания события / перейти на экран
+      showScreen('hub');
+    });
+  });
+}
+
+const joinBtn = document.querySelector('[data-action="join-event"]');
+if (joinBtn) {
+  joinBtn.addEventListener('click', () => {
+    requireAuthOr(() => {
+      showScreen('hub'); // или открыть модал ввода кода, если есть
+    });
+  });
+}
+
+/* ======================
+   Старт приложения
+   ====================== */
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // фоновые чипы
+  try { spawnChips(); } catch (e) { console.warn('[chips]', e); }
+
+  // показать нужный экран
+  const session = await getSession();
+  if (!session) showScreen('auth');
+  else showScreen('home');
+});
