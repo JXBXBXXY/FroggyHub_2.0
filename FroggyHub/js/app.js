@@ -276,3 +276,7 @@ window.addEventListener('resize', () => {
 
 function mountBackgroundOnce(){ try{ spawnChips(); }catch(e){ console.warn('[chips]',e); } }
 document.addEventListener('DOMContentLoaded', mountBackgroundOnce);
+// пример: внутри функции, которая позиционирует чип
+chip.style.left = `${x}px`;
+chip.style.top  = `${y}px`;
+chip.classList.add('is-placed'); // ← покажем только после расстановки
