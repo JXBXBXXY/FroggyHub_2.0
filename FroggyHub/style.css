@@ -990,3 +990,21 @@ html, body { height: 100%; }
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #0b241a; /* твой основной фон */
+  overflow-x: hidden; /* чтобы пузырьки не вылезали сбоку */
+}
+
+#fh-message-clouds {
+  position: fixed; /* чтобы покрывал весь экран */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* чтобы не мешало кликам */
+  z-index: 0;
+}
