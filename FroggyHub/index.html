@@ -1,93 +1,111 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FroggyHub</title>
 
-  <!-- общий стиль проекта -->
+  <!-- Стили -->
   <link rel="stylesheet" href="./style.css" />
 
-  <!-- ENV: на Netlify сниппет/скриптом прокинь window.ENV -->
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ENV (Netlify вставит PUBLIC_SUPABASE_URL и PUBLIC_SUPABASE_ANON_KEY) -->
   <script>
     window.ENV = window.ENV || {
       PUBLIC_SUPABASE_URL: "PUBLIC_SUPABASE_URL",
-      PUBLIC_SUPABASE_ANON_KEY: "PUBLIC_SUPABASE_ANON_KEY",
+      PUBLIC_SUPABASE_ANON_KEY: "PUBLIC_SUPABASE_ANON_KEY"
     };
   </script>
 </head>
 <body class="guest">
-  <!-- Топбар -->
+  <!-- ===== Topbar ===== -->
   <header class="topbar">
-    <a class="brand" data-link="home">FroggyHub</a>
-    <nav>
-      <button class="nav-btn guest-only" data-open-auth>Войти</button>
-      <button class="nav-chip authed-only" data-link="menu">Меню</button>
-      <button class="nav-chip authed-only" data-link="profile">Профиль</button>
-      <button class="nav-chip authed-only" id="btn-logout">Выйти</button>
-    </nav>
+    <a href="#" class="logo">FroggyHub</a>
+    <div class="topbar-right">
+      <button class="guest-only" data-link="login">Войти</button>
+      <button class="authed-only" data-link="menu">Меню</button>
+      <button class="authed-only" data-link="profile">Профиль</button>
+      <button class="authed-only" data-action="logout">Выйти</button>
+    </div>
   </header>
 
-  <main class="screen" id="screen-index">
-    <!-- здесь может быть landing/промо; для гостя показываем auth-карту -->
-    <section class="auth-card-wrap guest-only" id="auth-overlay" aria-labelledby="auth-title">
-      <div class="card auth-card">
-        <h2 id="auth-title">Вход / Регистрация</h2>
-        <div class="tabs">
-          <button class="tab is-active" data-auth-tab="login">Вход</button>
-          <button class="tab" data-auth-tab="signup">Регистрация</button>
-          <button class="tab" data-auth-tab="reset">Сброс</button>
+  <!-- ===== Screens ===== -->
+  <main class="fh-content">
+
+    <!-- Экран авторизации -->
+    <section id="screen-auth" class="screen visible">
+      <div class="auth-card-wrap">
+        <div class="auth-card">
+          <div class="tabs">
+            <div class="tab is-active" data-tab="login">Вход</div>
+            <div class="tab" data-tab="signup">Регистрация</div>
+            <div class="tab" data-tab="reset">Сброс</div>
+          </div>
+
+          <div id="paneLogin" class="auth-pane visible">
+            <input id="loginLogin" type="text" placeholder="Email или ник" required />
+            <input id="loginPassword" type="password" placeholder="Пароль" required />
+            <button id="btnLogin" class="btn btn--primary w-full">Войти</button>
+            <div id="loginError" class="form-error"></div>
+          </div>
+
+          <div id="paneSignup" class="auth-pane">
+            <input id="signupNickname" type="text" placeholder="Никнейм" required />
+            <input id="signupEmail" type="email" placeholder="Email" required />
+            <input id="signupPassword" type="password" placeholder="Пароль" required />
+            <button id="btnSignup" class="btn btn--primary w-full">Зарегистрироваться</button>
+            <div id="signupError" class="form-error"></div>
+          </div>
+
+          <div id="paneReset" class="auth-pane">
+            <input id="resetEmail" type="email" placeholder="Email" required />
+            <button id="btnReset" class="btn btn--primary w-full">Сбросить пароль</button>
+            <div id="resetError" class="form-error"></div>
+          </div>
         </div>
-
-        <!-- Вход -->
-        <form class="auth-pane visible" data-pane="login" id="form-login">
-          <label> Email или ник
-            <input name="login" autocomplete="username" required />
-          </label>
-          <label> Пароль
-            <input name="password" type="password" autocomplete="current-password" required />
-          </label>
-          <button type="submit" class="btn btn--primary">Войти</button>
-        </form>
-
-        <!-- Регистрация -->
-        <form class="auth-pane" data-pane="signup" id="form-signup">
-          <label> Никнейм
-            <input name="nickname" autocomplete="nickname" required />
-          </label>
-          <label> Email
-            <input name="email" type="email" autocomplete="email" required />
-          </label>
-          <label> Пароль
-            <input name="password" type="password" autocomplete="new-password" required />
-          </label>
-          <button type="submit" class="btn btn--primary">Создать аккаунт</button>
-        </form>
-
-        <!-- Сброс пароля -->
-        <form class="auth-pane" data-pane="reset" id="form-reset">
-          <label> Email
-            <input name="email" type="email" required />
-          </label>
-          <button type="submit" class="btn">Отправить ссылку</button>
-        </form>
-
-        <p id="auth-error" class="error" role="status" aria-live="polite"></p>
       </div>
     </section>
 
-    <!-- Блок меню для авторизованных (пример) -->
-    <section class="panel authed-only" id="lobby-shortcuts">
-      <div class="actions">
-        <button class="btn btn--primary" data-link="lobby">Открыть лобби</button>
+    <!-- Экран лобби -->
+    <section id="screen-lobby" class="screen">
+      <div class="container">
+        <div class="menu-grid">
+          <button data-link="event-edit" class="btn btn--primary">Создать событие</button>
+          <div class="join-row">
+            <input id="joinCode" type="text" maxlength="6" placeholder="Введите 6-значный код" />
+            <button id="btnJoin" class="btn btn--secondary">Присоединиться</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Экран профиля -->
+    <section id="screen-profile" class="screen">
+      <div class="container">
+        <div class="card">
+          <h2>Профиль</h2>
+          <div>Ник: <span id="profile-nickname"></span></div>
+          <div>Email: <span id="profile-email"></span></div>
+          <div>Создан: <span id="profile-created"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Экран хаба -->
+    <section id="screen-hub" class="screen">
+      <div class="container">
+        <h2>Мои события</h2>
+        <div id="my-events" class="event-grid"></div>
       </div>
     </section>
   </main>
 
-  <!-- Фоновые «смски» — контейнер создаёт JS; держим место для SSR-дефолта -->
-  <div id="fh-message-clouds" aria-hidden="true"></div>
+  <!-- ===== Background messages ===== -->
+  <div id="fh-message-clouds"></div>
 
-  <!-- единый модуль приложения (сам подгрузит Supabase CDN при необходимости) -->
+  <!-- Скрипты -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
