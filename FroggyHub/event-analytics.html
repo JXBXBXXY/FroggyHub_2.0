@@ -8,6 +8,7 @@
 </head>
 <body class="guest">
   <div id="fh-message-clouds" aria-hidden="true"></div>
+
   <header class="topbar" data-auth-only>
     <a href="#" class="logo" data-link="home">FroggyHub</a>
     <div class="topbar-right">
@@ -16,56 +17,66 @@
       <button data-action="logout">Выйти</button>
     </div>
   </header>
+
   <main class="container" role="main" data-auth-only>
     <div class="card" id="eventHead">
-      <div class="hero">
+      <div class="hero" role="group" aria-labelledby="eventTitle">
         <div class="hero-text">
           <h1 id="eventTitle">Событие</h1>
-          <div class="chips">
-            <span class="chip" id="eventDate">—</span>
-            <span class="chip" id="eventTime">—</span>
-            <span class="chip" id="eventAddr">—</span>
+          <div class="chips" role="list">
+            <span class="chip" id="eventDate" role="listitem">—</span>
+            <span class="chip" id="eventTime" role="listitem">—</span>
+            <span class="chip" id="eventAddr" role="listitem">—</span>
           </div>
         </div>
       </div>
-      <div class="bar-actions">
+
+      <div class="bar-actions" role="toolbar" aria-label="Действия со событием">
         <button class="btn btn--ghost btn--sm" id="backBtn" aria-label="Назад в меню">Вернуться в меню</button>
-        <button class="btn btn--primary btn--sm" id="editEventBtn" aria-label="Редактировать событие">Изменить</button>
+        <!-- кнопка скрыта по умолчанию; app.js покажет её владельцу -->
+        <button class="btn btn--primary btn--sm hidden" id="editEventBtn" aria-label="Редактировать событие">Изменить</button>
       </div>
     </div>
 
     <section class="card" id="visitorsBlock" aria-labelledby="visitorsTitle">
       <h2 id="visitorsTitle">Посетители</h2>
-      <div class="stats">
-        <span class="badge yes" id="rsvpYesCount">0</span>
-        <span class="badge maybe" id="rsvpMaybeCount">0</span>
-        <span class="badge no" id="rsvpNoCount">0</span>
+
+      <div class="stats" role="group" aria-label="Сводка статусов RSVP">
+        <span class="badge yes"   id="rsvpYesCount"   aria-label="Идут">0</span>
+        <span class="badge maybe" id="rsvpMaybeCount" aria-label="Возможно">0</span>
+        <span class="badge no"    id="rsvpNoCount"    aria-label="Не идут">0</span>
       </div>
+
       <div class="progress" id="rsvpProgress" aria-hidden="true">
-        <div class="yes" id="rsvpYesBar"></div>
+        <div class="yes"   id="rsvpYesBar"></div>
         <div class="maybe" id="rsvpMaybeBar"></div>
-        <div class="no" id="rsvpNoBar"></div>
+        <div class="no"    id="rsvpNoBar"></div>
       </div>
+
       <ul id="visitorsList" class="ea-list" role="list" aria-describedby="visitorsHint"></ul>
       <p id="visitorsHint" class="hint">Статусы: 🟢 Иду, 🟡 Возможно, 🔴 Не иду</p>
     </section>
 
     <section class="card" id="wishlistBlock" aria-labelledby="wishlistTitle">
       <h2 id="wishlistTitle">Wishlist</h2>
-      <div class="stats">
-        <span class="badge free" id="giftFreeCount">0</span>
-        <span class="badge taken" id="giftTakenCount">0</span>
+
+      <div class="stats" role="group" aria-label="Сводка по подаркам">
+        <span class="badge free"  id="giftFreeCount"  aria-label="Свободно">0</span>
+        <span class="badge taken" id="giftTakenCount" aria-label="Занято">0</span>
       </div>
+
       <div class="progress" id="giftProgress" aria-hidden="true">
-        <div class="free" id="giftFreeBar"></div>
+        <div class="free"  id="giftFreeBar"></div>
         <div class="taken" id="giftTakenBar"></div>
       </div>
+
       <ul id="wishlistList" class="wl-list" role="list" aria-describedby="wishlistHint"></ul>
       <p id="wishlistHint" class="hint">🟢 свободно, 🔒 занято</p>
     </section>
 
     <p id="error" class="error" role="status" aria-live="polite"></p>
   </main>
+
   <div id="cookieCard" class="card" style="display:none" data-auth-only>
     <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
       <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
@@ -79,12 +90,28 @@
       <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
     </div>
   </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden data-auth-only></div>
+
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Public env -->
   <script src="env.js"></script>
   <!-- App -->
   <script type="module" src="js/app.js"></script>
+
+  <script>
+    // Небольшой хук: если кнопка «Изменить» видима, клик ведёт на редактирование (app.js тоже навешивает обработчик)
+    document.getElementById('editEventBtn')?.addEventListener('click', (e) => {
+      if (e.defaultPrevented) return;
+      // app.js делает редирект с использованием code из query
+      // этот код оставлен на случай, если app.js грузится дольше
+      const params = new URLSearchParams(location.search);
+      const code = params.get('code') || '';
+      if (code) {
+        location.href = `/event-edit.html?code=${encodeURIComponent(code)}`;
+      }
+    });
+  </script>
 </body>
 </html>
