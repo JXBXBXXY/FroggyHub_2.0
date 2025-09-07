@@ -433,7 +433,9 @@ body.scene-final #frog{max-width:95px;transform:translate(-50%,-65%);}
 }
 .lilypads img { max-width: 22vw; height: auto; }
 #frog.jump{animation:jump .55s ease}
-@keyframes jump{0%{transform:translate(-50%,-50%)}35%{transform:translate(-50%,-85%)}100%{transform:translate(-50%,-50%)} }
+@keyframes jump{0%{transform:translate(-50%,-50%)}
+35%{transform:translate(-50%,-85%)}
+100%{transform:translate(-50%,-50%)} }
 body.scene-final #stumpImg{display:block}
 body.scene-final #frog{width:min(140px,20vw);transform:translate(-50%,-78%);will-change:top,left,transform;z-index:2}
 
@@ -463,8 +465,8 @@ body.force-mobile #finalRight { order: 1; width: 100%; }
   border-radius:22px;
   box-shadow:0 20px 60px rgba(0,0,0,.45);
   padding:18px 18px 22px;
-    backdrop-filter:blur(4px) saturate(120%);
-  }
+  backdrop-filter:blur(4px) saturate(120%);
+}
 /* Итоговый экран: уже были стили – добавь страховку при принудительной мобиле */
 body.force-mobile #bigClock { margin-bottom: 12px; }
 body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
@@ -864,4 +866,127 @@ body.scene-intro .speech{display:block}
 #auth-overlay {
   position: relative;
   z-index: 20;
+}
+
+/* === 1) ТЁМНЫЕ НАТИВНЫЕ ПОЛЯ (вкл. date/time) === */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+textarea,
+select{
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+input::placeholder, textarea::placeholder{ color: var(--muted); }
+input:focus, textarea:focus, select:focus{
+  outline: 2px solid var(--ring);
+  box-shadow: 0 6px 18px var(--shadow);
+}
+/* пиктограммы календаря/часов — светлые */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  filter: invert(85%);
+  opacity: .9;
+}
+/* autofill */
+input:-webkit-autofill{
+  -webkit-text-fill-color: var(--text);
+  box-shadow: 0 0 0 100px var(--input-bg) inset !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* === 2) КНОПКИ В ВЕРХНЕМ ХАБЕ (без .btn) === */
+.fh-header, .topbar{
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(0,0,0,.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.fh-header a, .fh-header button,
+.topbar a, .topbar button{
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 12px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text); font-weight: 600;
+}
+.fh-header a:hover, .fh-header button:hover,
+.topbar a:hover, .topbar button:hover{ background: rgba(255,255,255,.10); }
+
+/* === 3) ВЕРНИМ «СТЕКЛО» И УБЕРЁМ СВЕТЛЫЕ ПЕРЕОПРЕДЕЛЕНИЯ === */
+/* Универсальный класс стекла */
+.glassy{
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+}
+
+/* Применить стекло к основным контейнерам */
+.card, .panel, .invite-card, .auth-card, .modal .card, .final-card{
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+}
+
+/* Если хочешь светлую карточную верстку только в «светлом» экране,
+   жёстко ограничим её областью .bg-frog */
+.bg-frog .final-card{
+  background: #f5fff9 !important;
+  border: 1px solid #bfe3d3 !important;
+  box-shadow: 0 10px 30px #083d2a15 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+/* а в остальных сценах финальная карточка — стеклянная тёмная */
+:not(.bg-frog) .final-card{
+  background: rgba(15,48,32,.8) !important;
+  border: 1px solid #1e5a3f !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45) !important;
+  backdrop-filter: blur(6px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(120%) !important;
+}
+
+/* Убедимся, что фоновые «чипы» не перекрывают UI */
+#fh-message-clouds{ z-index: 0; }
+.topbar, .fh-header, .screen, .panel, .card, .modal{ position: relative; z-index: 10; }
+
+
+/* Чистим системный стиль у хедер-кнопок (Safari/Firefox) */
+.fh-header button,
+.topbar button{
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Safari: текст внутри нативного date/time */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value{
+  color: var(--text);
+}
+
+/* Топбар: не даём ссылкам становиться фиолетовыми (visited) */
+.fh-header a:link,
+.fh-header a:visited,
+.topbar a:link,
+.topbar a:visited{
+  color: var(--text);
 }
