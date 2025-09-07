@@ -8,24 +8,49 @@
 
 *{box-sizing:border-box}
 
-/* === базовый бэкграунд, скролл разрешен === */
-html,body{height:100%}
-body{
-  margin:0;
-  overflow:auto;               /* важно: было hidden */
+/* === БАЗА: html/body и контейнер чипов === */
+html, body { height: 100%; }
+body {
+  margin: 0;
+  overflow: auto;
   background:linear-gradient(160deg,var(--fh-green-1),var(--fh-green-2),var(--fh-green-3));
   min-height:100vh;
   color:var(--text);
   font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
 }
 
-/* === пузырьки/чипы под UI === */
 #fh-message-clouds{
-  position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;       /* фоновый слой под UI */
+  overflow: hidden;
 }
 
-/* === Слои поверх чипов (реальный UI) === */
-.topbar, .fh-header, .screen, .panel, .card, .modal, .final-card{ position:relative; z-index:10 }
+/* Пузырёк-чип сообщения (ровно то, что рисует app.js как .fh-chip) */
+.fh-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: 8px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.09);
+  color: rgba(255,255,255,.90);
+
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  box-shadow: 0 12px 28px rgba(0,0,0,.28), 0 0 1px rgba(255,255,255,.08) inset;
+  text-shadow: 0 1px 1px rgba(0,0,0,.25);
+}
+
+/* === UI ВСЕГДА ВЫШЕ ЧИПОВ === */
+.topbar, .fh-header, .screen, .panel, .card, .modal, .final-card {
+  position: relative;
+  z-index: 10;
+}
 
 /* === ГЛАССОВЫЕ КАРТОЧКИ (тёмные по умолчанию) === */
 .card, .panel, .invite-card, .auth-card, .modal .card, .final-card{
@@ -44,27 +69,6 @@ body{
   box-shadow:0 10px 30px #083d2a15;
   backdrop-filter:none; -webkit-backdrop-filter:none;
   color:#082016;
-}
-
-/* === Единый стиль топбара (кнопки/ссылки/submit) === */
-.topbar, .fh-header{
-  position:sticky; top:0;
-  background:rgba(0,0,0,.15);
-  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.topbar a, .topbar button, .topbar input[type="button"], .topbar input[type="submit"],
-.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"]{
-  -webkit-appearance:none; appearance:none;
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 10px; border-radius:12px;
-  background:var(--glass);
-  border:1px solid var(--border);
-  color:var(--text) !important; font-weight:600; text-decoration:none; line-height:1;
-}
-.topbar a:hover, .topbar button:hover, .topbar input[type="submit"]:hover,
-.fh-header a:hover, .fh-header button:hover, .fh-header input[type="submit"]:hover{
-  background:rgba(255,255,255,.10);
 }
 
 /* === СБРОС нативных кнопок, чтобы не ломали внешний вид === */
@@ -95,20 +99,6 @@ input::placeholder, textarea::placeholder{ color:rgba(255,255,255,.55) }
 input:focus, textarea:focus, select:focus{
   outline:2px solid var(--ring);
   box-shadow:0 6px 18px var(--shadow);
-}
-
-/* Компактная «пилюля» (для поля кода в лобби) */
-.pill-input{
-  -webkit-appearance:none; appearance:none;
-  display:inline-flex; align-items:center; gap:.5rem;
-  padding:8px 12px; line-height:1; min-height:32px;
-  border-radius:999px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.10);
-  backdrop-filter:blur(6px);
-  box-shadow:0 4px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
-  color:rgba(255,255,255,.90);
-  font:600 14px/1 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
 }
 
 /* WebKit пиктограммы календаря/часов — светлые */
@@ -165,45 +155,6 @@ input:-webkit-autofill{
   0% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(4px, -6px) scale(1.05); }
   100% { transform: translate(-3px, 3px) scale(0.95); }
-}
-
-/* Базовый вид «смс» в виде iOS-пилюли */
-.bubble.chip{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:8px 12px;border-radius:999px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
-  color: rgba(255,255,255,.85);
-  font-size: 14px; line-height: 1;
-  transform: translate3d(0,0,0);
-  transition: transform .2s ease-out, opacity .3s ease;
-  white-space: nowrap;
-  will-change: transform;
-}
-
-/* Floating message chips */
-.fh-chip{
-  position:absolute;
-  left:0;
-  top:0;
-  transform:translate3d(0,0,0);
-  display:inline-flex;
-  align-items:center;
-  gap:0.5rem;
-  padding:0.5rem 0.9rem;
-  border-radius:20px;
-  background:var(--chip-bg);
-  color:var(--chip-fg);
-  box-shadow:var(--chip-shadow);
-  font-size:clamp(12px,1.6vw,16px);
-  line-height:1.2;
-  white-space:nowrap;
-  will-change:transform;
-  user-select:none;
-  opacity:0.95;
-  contain:layout paint; /* Micro-optimization */
 }
 
 /* Respect reduced motion preference */
@@ -301,47 +252,6 @@ input:-webkit-autofill{
 .shake{animation:shake .15s linear;}
 @media (prefers-reduced-motion: reduce){.shake{animation:none;}}
 
-/* Универсальная кнопка */
-.btn{
-  -webkit-appearance:none; appearance:none;
-  display:inline-flex; align-items:center; justify-content:center;
-  gap:.5rem; padding:.7rem 1.1rem;
-  border:1px solid var(--border);
-  border-radius:12px;
-  background:var(--glass);
-  color:#e6f7ee; font-weight:600; line-height:1;
-  text-decoration:none; cursor:pointer;
-  pointer-events:auto;
-  transition:transform .06s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease;
-  box-shadow:0 6px 18px rgba(0,0,0,.18);
-}
-.btn:hover{ transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.22);}
-.btn:active{ transform:translateY(0); box-shadow:0 4px 14px rgba(0,0,0,.18);}
-.btn[disabled],
-.btn.is-busy,
-.btn:disabled{
-  cursor:not-allowed;
-  opacity:.6;
-  transform:none;
-}
-.btn:focus-visible{ outline:2px solid var(--brand-400); outline-offset:2px; }
-
-/* Вариации */
-.btn--primary{ background:linear-gradient(180deg,var(--brand-500),var(--brand-600)); border-color:var(--brand-500); color:var(--on-brand);}
-.btn--primary:hover{ background:linear-gradient(180deg,var(--brand-400),var(--brand-500));}
-.btn--secondary{ background:rgba(21,73,57,.45); border-color:var(--border);}
-.btn--ghost{ background:transparent; border-color:rgba(255,255,255,.18); }
-.btn--chip{ padding:.35rem .7rem; border-radius:999px; font-weight:700; }
-.btn--sm{ padding:.45rem .7rem; font-size:.9rem; }
-.btn--xl{ padding:1rem 1.25rem; font-size:1.05rem; }
-.btn.w-full{ width:100%; }
-
-/* Кнопка-ссылка тоже выглядит как кнопка */
-a.btn{ color:inherit; }
-
-/* Дополнительные вариации */
-.btn--danger{ background:#b93737; color:#fff; }
-.btn--danger:hover{ background:#a12f2f; }
 
 .card, .container, header, nav {
   pointer-events:auto;
@@ -894,67 +804,64 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 
 /* ===== Главная: центрирование блока ввода ===== */
 .home-screen{
-  min-height: 100dvh;
+  min-height: calc(100dvh - 60px); /* с учётом топбара */
   display: grid;
   place-items: center;
-  padding-top: 56px; /* чтобы не залезть под шапку */
 }
 
 .home-hero{
-  width: 100%;
-  display: grid;
-  place-items: center;
+  width: min(880px, 92vw);
+  transform: translateY(-5vh); /* «чуть ниже середины»: отрицательный сдвиг меньше 50% */
 }
 
-.join-wrap{
-  border-radius: 16px;
-  padding: 14px 18px;
-  /* лёгкий сдвиг «чуть ниже середины» */
-  transform: translateY(6vh);
+.join-wrap.glassy{
+  padding: 12px; border-radius: 20px;
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.09);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
 }
 
 .join-row{
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  align-items: center;
+  grid-template-columns: 1fr auto auto;
   gap: 10px;
 }
 
-/* компактный стек на мобильных */
 @media (max-width: 720px){
-  .join-row{ grid-auto-flow: row; width: min(92vw, 420px); }
+  .home-hero{ transform: translateY(-2vh); }
+  .join-row{ grid-template-columns: 1fr; }
 }
 
-/* ===== Унифицированные «пилюли» (инпут и чипы) ===== */
-
-/* компактный «стеклянный» инпут-пилюля */
+/* Пилюльный инпут (короткий) */
 .pill-input{
-  -webkit-appearance: none; appearance: none;
-  display: inline-flex; align-items: center; gap: .5rem;
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; gap:.5rem;
   padding: 8px 12px; line-height: 1;
   border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  color: var(--text, #eaf7f1);
+  box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 0 1px rgba(255,255,255,.06);
+  min-height: 34px; font: 600 14px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+}
+.pill-input::placeholder{ color: rgba(234,247,241,.55); }
+
+/* Универсальные кнопки */
+.btn{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; padding: 8px 12px; line-height:1;
+  border-radius:12px; border:1px solid rgba(255,255,255,.10);
   background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.16);
-  color: var(--text);
-  box-shadow:
-    0 4px 20px rgba(0,0,0,.25),
-    inset 0 0 0 1px rgba(255,255,255,.06);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  font-weight: 600;
-  font-size: 14px;
-  min-height: 36px;
+  color: var(--text, #eaf7f1); font-weight:600; text-decoration:none;
 }
-.pill-input::placeholder{ color: rgba(255,255,255,.65); }
-.pill-input:focus{
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  box-shadow: 0 8px 28px rgba(0,0,0,.28);
-}
+.btn:hover{ background: rgba(255,255,255,.12); }
+.btn--primary{ background: rgba(22,163,74,.22); border-color: rgba(190, 255, 220,.25); }
 
 /* единый стиль для «строк/чипов» в облаках (белые таблетки) */
-.bubble.chip, .fh-chip{
+.bubble.chip{
   display:inline-flex; align-items:center; gap:.5rem;
   padding:8px 12px;
   border-radius:999px;
@@ -966,30 +873,35 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   line-height:1;
 }
 
-/* ===== Шапка: логотип слева, кнопки справа ===== */
+/* === ТОПБАР === */
 .topbar{
-  position: sticky; top: 0; z-index: 10;
-  display:flex; justify-content:space-between; align-items:center;
+  position: sticky; top: 0;
+  z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px;
+
   background: rgba(0,0,0,.15);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
 .topbar .logo{
-  font-weight: 900; letter-spacing:.2px;
-  text-decoration:none; color: var(--text);
+  font-weight: 800; text-decoration: none;
   padding: 6px 10px; border-radius: 12px;
+  color: var(--text, #eaf7f1);
 }
-.topbar-right{ display:flex; gap:8px; }
+.topbar-right{ display: flex; gap: 8px; }
 
-/* чтобы любые <a>/<button>/<input type=submit> в топбаре были «стеклом» */
-.topbar a, .topbar button, .topbar input[type="submit"]{
-  -webkit-appearance:none; appearance:none;
-  display:inline-flex; align-items:center; gap:6px;
-  padding:6px 10px; border-radius:12px;
-  background:var(--glass);
-  border:1px solid var(--border);
-  color:var(--text); font-weight:600; text-decoration:none;
+/* Кнопки в топбаре (унифицированный «glass»-вид) */
+.topbar a, .topbar button,
+.fh-header a, .fh-header button,
+.topbar input[type="button"], .topbar input[type="submit"]{
+  -webkit-appearance: none; appearance: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.09);
+  color: var(--text, #eaf7f1);
+  font-weight: 600; text-decoration: none; line-height: 1;
 }
 .topbar a:hover, .topbar button:hover{ background: rgba(255,255,255,.10); }
