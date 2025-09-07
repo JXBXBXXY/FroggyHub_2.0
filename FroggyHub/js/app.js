@@ -10,7 +10,7 @@ const LINKS = {
   home: '/index.html',
   menu: '/lobby.html',
   profile: '/profile.html',
-  settings: '/profile.html',
+  settings: '/profile.html',      // временно
   'event-edit': '/event-edit.html'
 };
 const qs  = (s, r = document) => r.querySelector(s);
@@ -18,7 +18,6 @@ const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
 const path   = () => location.pathname.replace(/\/+$/, '/');
 const params = () => Object.fromEntries(new URLSearchParams(location.search).entries());
 const isPage = (name) => path().endsWith(`/${name}`);
-
 function setAuthState(isAuthed) {
   document.body.classList.toggle('authed', !!isAuthed);
   document.body.classList.toggle('guest', !isAuthed);
@@ -159,7 +158,17 @@ async function boot() {
 
   // роуты
   if (isPage('lobby.html')) await initLobby();
-  if (isPage('event-edit.html')) await initEventEdit();
+  if (isPage('event-edit.html')) {
+    // Важно: не вызывать сохранение сразу. Вешаем сабмит на форму/кнопку.
+    const form = qs('#editForm') || qs('form');
+    const saveBtn = qs('#saveEvent');
+    if (form) {
+      form.addEventListener('submit', async (e)=>{ e.preventDefault(); await initEventEdit(); });
+    }
+    if (saveBtn && !form) { // если формы нет, но есть кнопка
+      saveBtn.addEventListener('click', async (e)=>{ e.preventDefault(); await initEventEdit(); });
+    }
+  }
   if (isPage('event-analytics.html')) await initEventAnalytics();
   if (isPage('profile.html')) await initProfile();
 
@@ -183,7 +192,7 @@ async function initLobby(){
   });
 }
 
-/* ------------------ Создание/редактирование события ------------------ */
+/* ------------------ Создание события ------------------ */
 function genCode(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<6;i++) s+=a[(Math.random()*a.length)|0]; return s; }
 
 async function initEventEdit(){
@@ -198,7 +207,7 @@ async function initEventEdit(){
     .single();
   if (profErr || !prof) return alert('Не удалось найти профиль пользователя');
 
-  // 2) валидации обязательных полей
+  // 2) валидация обязательных полей
   const dateVal = qs('#editDate')?.value;
   if (!dateVal) return alert('Выберите дату события');
 
@@ -211,10 +220,10 @@ async function initEventEdit(){
     notes:  qs('#editNotes')?.value || '',
     dress:  qs('#editDress')?.value || '',
     bring:  qs('#editBring')?.value || '',
-    host_user_id: prof.pid
+    host_user_id: prof.pid            // bigint (profiles.pid)
   };
 
-  let code = genCode();
+  const code = genCode();
 
   const { data, error } = await supa
     .from('events')
@@ -263,7 +272,7 @@ async function initEventAnalytics(){
   }
 }
 
-/* ------------------ Минимальный список гостей (read-only скелет) ------------------ */
+/* ------------------ Минимальный список гостей (read-only) ------------------ */
 async function renderRSVP(event_id){
   const list = qs('#visitorsList'); if (!list) return;
   const { data } = await supa.from('rsvps').select('nickname,status').eq('event_id', event_id);
@@ -284,7 +293,7 @@ async function renderRSVP(event_id){
 }
 function statusEmoji(s){ return s==='yes'?'🟢 Иду':s==='maybe'?'🟡 Возможно':'🔴 Не иду'; }
 
-/* ------------------ Минимальный wishlist (read-only скелет) ------------------ */
+/* ------------------ Минимальный wishlist (read-only) ------------------ */
 async function renderWishlist(event_id){
   const list = qs('#wishlistList'); if (!list) return;
   const { data } = await supa.from('gifts').select('title,taken_by').eq('event_id', event_id);
