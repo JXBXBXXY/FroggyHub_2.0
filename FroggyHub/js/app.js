@@ -72,7 +72,7 @@ function updateChips(){
   for (const c of chips){
     c.x+=c.vx; c.y+=c.vy;
     if (c.x<=m||c.x+c.w>=vw-m){ c.vx*=-1; c.x=Math.max(m,Math.min(c.x,vw-c.w-m)); }
-    if (c.y<=м||c.y+c.h>=vh-м){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-м)); }
+    if (c.y<=м||c.y+c.h>=vh-м){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-m)); }
     c.el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
   }
   for (let i=0;i<chips.length;i++)for(let j=i+1;j<chips.length;j++){
@@ -180,39 +180,43 @@ async function initLobby(){
 function genCode(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<6;i++) s+=a[(Math.random()*a.length)|0]; return s; }
 
 async function initEventEdit(){
-  const f = qs('#editForm');
-  if (!f) return;
+  const sess = await getSession();
+  if (!sess?.user?.id) return alert('Нужна авторизация');
 
-  f.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    if (!supa) return alert('Auth не инициализирован');
+  // 1. Получаем pid текущего пользователя
+  const { data: prof, error: profErr } = await supa
+    .from('profiles')
+    .select('pid')
+    .eq('id', sess.user.id)   // id = UUID
+    .single();
 
-    const sess = await getSession();
-    if (!sess?.user?.id) return alert('Нужна авторизация');
+  if (profErr || !prof) {
+    return alert('Не удалось найти профиль пользователя');
+  }
 
-    const payload = {
-      title: qs('#editTitle')?.value?.trim() || 'Событие',
-      date: qs('#editDate')?.value || null,
-      time: qs('#editTime')?.value || null,
-      address: qs('#editAddress')?.value || '',
-      notes: qs('#editNotes')?.value || '',
-      dress: qs('#editDress')?.value || '',
-      bring: qs('#editBring')?.value || '',
-      host_user_id: sess.user.id,   // <— ВАЖНО
-    };
+  // 2. Формируем payload
+  const payload = {
+    title: qs('#editTitle')?.value?.trim() || 'Событие',
+    date: qs('#editDate')?.value || null,
+    time: qs('#editTime')?.value || null,
+    address: qs('#editAddress')?.value || '',
+    notes: qs('#editNotes')?.value || '',
+    dress: qs('#editDress')?.value || '',
+    bring: qs('#editBring')?.value || '',
+    host_user_id: prof.pid   // ✅ bigint
+  };
 
-    let code = genCode();
+  let code = genCode();
 
-    const { data, error } = await supa
-      .from('events')
-      .insert([{ ...payload, code }])
-      .select('*')
-      .single();
+  const { data, error } = await supa
+    .from('events')
+    .insert([{ ...payload, code }])
+    .select('*')
+    .single();
 
-    if (error) return alert(error.message||'Не удалось создать событие');
+  if (error) return alert(error.message || 'Не удалось создать событие');
 
-    goto(`/event-analytics.html?code=${encodeURIComponent(data.code)}&owner=1`);
-  });
+  goto(`/event-analytics.html?code=${encodeURIComponent(data.code)}&owner=1`);
 }
 
 /* ------------------ Страница события (аналитика/гость) ------------------ */
