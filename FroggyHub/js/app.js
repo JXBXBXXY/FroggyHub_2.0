@@ -72,7 +72,7 @@ function updateChips(){
   for (const c of chips){
     c.x+=c.vx; c.y+=c.vy;
     if (c.x<=m||c.x+c.w>=vw-m){ c.vx*=-1; c.x=Math.max(m,Math.min(c.x,vw-c.w-m)); }
-    if (c.y<=м||c.y+c.h>=vh-м){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-m)); }
+    if (c.y<=m||c.y+c.h>=vh-m){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-m)); }
     c.el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
   }
   for (let i=0;i<chips.length;i++)for(let j=i+1;j<chips.length;j++){
@@ -237,7 +237,9 @@ async function initEventAnalytics(){
     myPid = prof?.pid ?? null;
   }
 
-  const isOwner = (myPid && ev.host_user_id === myPid) || p.owner === '1';
+  const isOwner =
+    (myPid != null && Number(ev.host_user_id) === Number(myPid)) ||
+    p.owner === '1';
 
   qs('#eventTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
   qs('#eventDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
@@ -317,9 +319,7 @@ async function initProfile(){
     .eq('user_id', sess.user.id)   // тут user_id = UUID — оставляем
     .order('created_at', { ascending: false });
 
-  // ... дальше без изменений
-}
-
+  // рендер карточек
   const container = qs('.container'); if (!container) return;
   const card=document.createElement('div'); card.className='card';
   const h2=document.createElement('h2'); h2.textContent='Мои события';
