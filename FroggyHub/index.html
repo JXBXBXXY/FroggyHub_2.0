@@ -6,44 +6,36 @@
   <title>FroggyHub</title>
 <link rel="stylesheet" href="/style.css?v=6">
 </head>
-<body class="guest">
+<body class="guest bg-frog">
+  <!-- фоновые сообщения -->
   <div id="fh-message-clouds" aria-hidden="true"></div>
+
+  <!-- TOPBAR -->
   <header class="topbar" data-auth-only>
-    <button data-link="menu">Меню</button>
-    <button data-link="profile">Профиль</button>
-    <button data-action="logout">Выйти</button>
+    <a class="logo" href="index.html" data-link="home">FroggyHub</a>
+    <nav class="topbar-right">
+      <button data-link="menu">Меню</button>
+      <button data-link="profile">Профиль</button>
+      <button data-action="logout">Выйти</button>
+    </nav>
   </header>
 
-  <main class="auth-card" data-guest-only>
-    <nav class="auth-tabs" data-guest-only>
-      <button type="button" class="tab is-active" data-auth-tab="login">Вход</button>
-      <button type="button" class="tab" data-auth-tab="signup">Регистрация</button>
-    </nav>
-
-    <section id="pane-login" class="auth-pane visible" data-pane="login">
-      <form id="form-login" novalidate>
-        <label for="loginNickname">Никнейм</label>
-        <input id="loginNickname" name="nickname" autocomplete="username" required />
-        <label for="loginPassword">Пароль</label>
-        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
-        <button id="btnLogin" class="btn btn--primary" type="submit">Войти</button>
-      </form>
+  <!-- HERO на главной -->
+  <main id="home" class="home-screen">
+    <section class="home-hero">
+      <div class="join-wrap glassy">
+        <div class="join-row">
+          <a class="btn btn--primary" data-link="create">Создать событие</a>
+          <input id="joinCode" inputmode="numeric" maxlength="6"
+                 class="pill-input"
+                 placeholder="Введите 6-значный код" />
+          <button class="btn" id="joinBtn" data-action="join">Присоединиться</button>
+        </div>
+      </div>
     </section>
-
-    <section id="pane-signup" class="auth-pane" data-pane="signup" hidden>
-      <form id="form-signup" novalidate>
-        <label for="signupNickname">Никнейм</label>
-        <input id="signupNickname" name="nickname" required />
-        <label for="signupEmail">Email</label>
-        <input id="signupEmail" name="email" type="email" autocomplete="email" required />
-        <label for="signupPassword">Пароль</label>
-        <input id="signupPassword" name="password" type="password" autocomplete="new-password" required />
-        <button id="btnSignup" class="btn btn--primary" type="submit">Зарегистрироваться</button>
-      </form>
-    </section>
-
-    <p id="auth-error" class="error" role="alert" aria-live="polite" hidden></p>
   </main>
+
+  <!-- остальной код страницы, скрипты и т.д. оставь как есть -->
 
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
