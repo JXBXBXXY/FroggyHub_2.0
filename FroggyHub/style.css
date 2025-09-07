@@ -29,6 +29,7 @@ body {
 
 /* Пузырёк-чип сообщения (ровно то, что рисует app.js как .fh-chip) */
 .fh-chip{
+  animation: floaty 6s ease-in-out infinite;
   display: inline-flex;
   align-items: center;
   gap: .35rem;
@@ -810,6 +811,10 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 }
 
 .home-hero{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
   width: min(880px, 92vw);
   transform: translateY(-5vh); /* «чуть ниже середины»: отрицательный сдвиг меньше 50% */
 }
@@ -824,9 +829,15 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 }
 
 .join-row{
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 10px;
+  .join-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pill-input {
+  flex: 1;
+  min-width: 220px;
 }
 
 @media (max-width: 720px){
@@ -905,3 +916,23 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   font-weight: 600; text-decoration: none; line-height: 1;
 }
 .topbar a:hover, .topbar button:hover{ background: rgba(255,255,255,.10); }
+.pill-input {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+.pill-input::placeholder {
+  color: var(--muted);
+}
+.pill-input:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
