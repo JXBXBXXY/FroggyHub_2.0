@@ -406,7 +406,7 @@ body.scene-intro .wrap, body.scene-final .wrap{grid-template-rows:100vh 0}
   .pad{width:115px;height:115px;}
 }
 .ripples{position:absolute;inset:0;pointer-events:none;opacity:.18}
-.ripples:before,.ripples:after{content:"";position:absolute;left:50%;top:50%;width:70vmin;height:70vmin;border-radius:50%;border:8px solid rgba(255,255,255,.15);transform:translate(-50%,-50%);animation:ripple 7s linear infinite}
+.ripples:before,.ripples:after{content:"";position:absolute;left:50%;top:50%;width:70vmin;height:70vmin;border-radius:50%;border:8px solid rgba(255,255,255,.15);transform:translate(-50%,-50%);animatio[...]
 .ripples:after{animation-delay:3.5s}
 @keyframes ripple{0%{transform:translate(-50%,-50%) scale(.7);opacity:.25}100%{transform:translate(-50%,-50%) scale(1.3);opacity:0}}
 
@@ -502,9 +502,9 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 }
 
 /* Пузырь: только в интро */
-.speech{position:absolute;left:50%;top:72%;transform:translate(-50%,0);max-width:min(760px,92vw);background:rgba(13,34,24,.6);border:2px solid rgba(67,230,141,.35);border-radius:18px;padding:14px 18px;color:var(--text);backdrop-filter:blur(2px) saturate(130%);box-shadow:0 10px 0 rgba(0,0,0,.3);z-index:6}
+.speech{position:absolute;left:50%;top:72%;transform:translate(-50%,0);max-width:min(760px,92vw);background:rgba(13,34,24,.6);border:2px solid rgba(67,230,141,.35);border-radius:18px;padding:14px 18px[...]
 .speech .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
-.pill{flex:1;min-width:220px;padding:14px 16px;font-weight:900;cursor:pointer;border:none;border-radius:999px;background:linear-gradient(180deg,#36d07d,#23b86b);color:#0a1e14;box-shadow:0 14px 0 rgba(0,0,0,.25)}
+.pill{flex:1;min-width:220px;padding:14px 16px;font-weight:900;cursor:pointer;border:none;border-radius:999px;background:linear-gradient(180deg,#36d07d,#23b86b);color:#0a1e14;box-shadow:0 14px 0 rgba([...]
 .pill.secondary{background:linear-gradient(180deg,#ffd973,#f0b429);color:#2b2300}
 
 /* Панель шагов */
@@ -515,7 +515,7 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 .brick input,.brick textarea{width:100%;background:#245d41;color:#eaffef;border:1px solid #2ec774;border-radius:14px;padding:12px 14px}
 .wl-wrap{max-height:50vh;overflow:auto;padding-right:6px}
 .gridVar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;background:rgba(20,70,45,.35);border-radius:14px;padding:10px;border:1px solid #2a7c56}
-.cell{aspect-ratio:1/1;border-radius:16px;cursor:pointer;position:relative;background:radial-gradient(45% 45% at 30% 28%, #66cc8d 0 60%, #3fab6c 100%);box-shadow:0 12px 0 rgba(0,0,0,.25),0 0 0 6px rgba(255,255,255,.05) inset;display:grid;place-items:center;color:#082016}
+.cell{aspect-ratio:1/1;border-radius:16px;cursor:pointer;position:relative;background:radial-gradient(45% 45% at 30% 28%, #66cc8d 0 60%, #3fab6c 100%);box-shadow:0 12px 0 rgba(0,0,0,.25),0 0 0 6px rgb[...]
 .cell .label{font-weight:900;text-align:center;padding:8px 6px;font-size:.9rem}
 .cell .status{position:absolute;top:8px;left:8px;font-size:.75rem;font-weight:800;padding:4px 8px;border-radius:999px;color:#082016;background:#eaffefcc}
 .cell.taken{filter:saturate(60%) brightness(.9)}
@@ -525,15 +525,6 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
   .list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
   .list li{background:#113424;border:1px solid #2a7c56;border-radius:12px;padding:10px 12px}
   .code-box{font-size:2rem;font-weight:900;background:#143d2a;border:1px solid #2a7c56;display:inline-block;padding:10px 18px;border-radius:12px;margin-top:8px}
-/* Грид вишлиста — резиновый без перепрыгиваний */
-.wishlist-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
-}
-@media (max-width: 480px){
-  .wishlist-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-}
 
 /* На время фокуса поля не меняют метрики карточек (боремся с reflow) */
 .form-row, .final-card { contain: layout paint; }
@@ -542,14 +533,14 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 .bar-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .pill-mini{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #2a7c56;background:#143d2a;color:#dfffe6;font-weight:700}
 
-#sessionBanner{position:fixed;left:0;right:0;top:0;max-width:1100px;margin:12px auto 0;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));background:var(--panel);border:1px solid var(--panel-bd);box-shadow:0 10px 26px var(--shadow);text-align:center;}
+#sessionBanner{position:fixed;left:0;right:0;top:0;max-width:1100px;margin:12px auto 0;padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));background:var(--panel);border:1px solid var([...]
 #sessionBanner[hidden]{display:none;pointer-events:none;opacity:0;}
 .error{color:#ff6b6b;font-size:.9rem;min-height:1.2em}
 
 /* Cookie banner */
 
 .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap;}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--panel-bd);box-shadow:0 10px 26px var(--shadow);padding:10px 16px;border-radius:12px;z-index:1200;}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--panel-bd);box-shadow:0 10px 26px var(--shadow);padding:10px 16px;border-radius:12px[...]
 
 #cookieCard{
   position: fixed; right: 24px; bottom: 24px; z-index: 1000;
@@ -608,7 +599,44 @@ body.scene-intro .speech{display:block}
 .ea-item{display:grid;grid-template-columns:64px 1fr 120px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
 .ea-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;}
 .ea-status{text-align:right;}
-.wl-item{display:grid;grid-template-columns:1fr 200px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
+
+/* === УНИВЕРСАЛЬНЫЙ ВИШЛИСТ (для всех экранов) === */
+.wl-list{ 
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.wl-item{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:12px;
+  padding:8px 0;
+  border-bottom:1px solid var(--card-border);
+}
+.wl-item > *{ min-width:0; }
+.wl-item .wl-title{ white-space:normal; overflow-wrap:anywhere; }
+
+/* Фолбэк, если нет .wl-title */
+.wl-item > :first-child{
+  min-width:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* Чистая последняя строка */
+.wl-item:last-child { border-bottom: 0; }
+
+/* Кнопки/бейджи справа не сжимаются некрасиво */
+.wl-item > :last-child { min-width: max-content; }
+
+/* --- WISHLIST ITEMS: перенос слов на несколько строк --- */
+/*
+.wl-list, .wl-item { display: block; width: 100%; }
+.wl-item { word-wrap: break-word; white-space: normal; }
+*/
+/* --- END WISHLIST STYLES --- */
+
 .wl-claimed{display:flex;align-items:center;gap:8px;}
 .wl-ava{width:32px;height:32px;border-radius:50%;object-fit:cover;}
 @media (max-width:640px){
@@ -618,6 +646,7 @@ body.scene-intro .speech{display:block}
   .wl-item{grid-template-columns:1fr;text-align:center;}
   .wl-claimed{justify-content:center;margin-top:4px;}
 }
+
 /* RSVP and wishlist indicators */
 .rsvp-yes{color:#35c97f;}
 .rsvp-maybe{color:#f0b429;}
@@ -800,564 +829,39 @@ body.scene-intro .speech{display:block}
 .final-stats .n { font-size: 22px; font-weight: 700; color:#0b3d2a; }
 
 .final-wishlist h2 { margin: 8px 0 10px; color:#0b3d2a; }
-.wl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 12px; }
-.wl-card { background:#fff; border:1px solid #d9efe4; border-radius:12px; padding:12px; }
+
+/* === КАРТОЧНАЯ СЕТКА ТОЛЬКО В ФИНАЛЬНОМ БЛОКЕ === */
+.final-wishlist .wl-list{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(190px,1fr));
+  gap:12px;
+}
+.final-wishlist .wl-card{
+  background:#fff; 
+  border:1px solid #d9efe4; 
+  border-radius:12px; 
+  padding:12px;
+}
 .wl-tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; }
 .wl-free { background:#d7fbe8; color:#0b3d2a; }
 .wl-taken { background:#ffe3e3; color:#7a1c1c; }
 
-/* Top bar */
-.topbar{
-  position: sticky; top: 0; z-index: 50;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 16px;
-  background:rgba(0,0,0,.15); backdrop-filter:blur(6px);
-  border-bottom:1px solid rgba(255,255,255,.06);
-}
-.topbar .logo{ font-weight:800; letter-spacing:.3px; color:#cdeed9; text-decoration:none; }
-.topbar-right{ display:flex; gap:8px; }
-.btn-sm{ padding:6px 10px; font-size:12px; border-radius:12px; }
-.btn-ghost{ background:transparent; border:1px solid rgba(255,255,255,.18); }
-.btn-ghost:hover{ background:rgba(255,255,255,.06); }
-
-/* Layout helpers */
-.container{ max-width:980px; margin:32px auto; padding:0 16px; }
-.panel{
-  background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.08);
-  border-radius:20px; box-shadow:0 10px 28px rgba(0,0,0,.3); padding:18px;
-}
-
-/* Menu */
-.menu-deck{position:fixed; left:50%; transform:translateX(-50%); bottom:8vh; width:min(880px,92vw);}
-.menu-grid{display:grid; grid-template-columns:1fr auto; gap:12px;}
-.join-row{display:grid; gap:12px; grid-template-columns:1fr auto;}
-@media (max-width:600px){
-  .menu-grid{grid-template-columns:1fr;}
-}
-
-/* Decor should not intercept clicks */
-.decor-layer{ position:relative; pointer-events:none; }
-.decor{ position:absolute; pointer-events:none; user-select:none; opacity:.95; }
-.decor.stump{ left:0; bottom:-20px; width:180px; opacity:.85; }
-
-button:not([disabled]){ cursor:pointer; }
-
-/* Profile */
-.profile-card{ display:grid; gap:18px; }
-.profile-head{ display:flex; gap:16px; align-items:center; }
-.avatar{
-  width:84px; height:84px; border-radius:50%; overflow:hidden;
-  object-fit:cover; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
-}
-.nick-chip{
-  padding:6px 10px; border-radius:12px;
-  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
-  font-weight:600;
-}
-.events-col{ display:grid; gap:10px; }
-.event-item{
-  display:flex; justify-content:space-between; align-items:center; gap:12px;
-  padding:10px 12px; border:1px solid rgba(255,255,255,.1); border-radius:12px;
-  background:rgba(0,0,0,.14);
-}
-.event-title{ font-weight:700; }
-.event-meta{ opacity:.8; font-size:12px; }
-.event-actions{ display:flex; gap:8px; }
-
-/* Сетки форм */
-.form-grid{ display:grid; gap:14px; }
-
-/* Общие панели и формы */
-.screen .panel{max-width:980px;margin:22px auto;padding:18px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
-.stack{display:grid;gap:12px}
-.row{display:flex;gap:12px;align-items:center}
-.row.end{justify-content:flex-end}
-
-/* Wishlist */
-.wish-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:12px}
-.wish-item{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px}
-.wish-item.taken{ opacity:.6; }
-.wish-item.taken button{ pointer-events:none; }
-
-.stack-md > * + * { margin-top: 12px; }
-.row-end { display: flex; justify-content: flex-end; }
-.gap-sm { gap: 10px; }
-
-/* Центровка лягушки, модалок и куки */
-.hero{position:relative;display:flex;justify-content:center;align-items:flex-end;margin:40px 0 0}
-.hero .stump{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:min(220px,35vw);z-index:1;pointer-events:none}
-.hero .frog{position:relative;z-index:2;width:min(520px,72vw);max-width:90vw;height:auto;pointer-events:none}
-/* Герой: лягушка на пне */
-.hero-frog{
-  width:clamp(var(--frog-hero-min), 38vw, var(--frog-hero-max));
-  margin-inline:auto;
-}
-.hero-frog .frog{
-  width:100%;max-width:none;height:auto;pointer-events:none;
-}
-.hero-frog .stump{
-  transform:translateX(-50%) scale(1.05);
-}
-.modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:saturate(1.2) blur(6px);z-index:50}
-.modal[hidden]{display:none}
-.modal .card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 20px;min-width:min(560px,92vw);color:#fff}
-.cookie{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40}
-.cookie__text{color:#dff9ea;line-height:1.35;font-size:14px}
-.cookie__actions{margin-left:auto}
-
-/* Type modal: horizontal buttons + footer cancel */
-.modal-actions.row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
-.modal-footer{display:flex;justify-content:flex-end;margin-top:16px}
-
-/* Final screen layout */
-.final-wrap{max-width:1100px;margin:24px auto;padding:0 16px}
-.final-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
-@media (max-width:900px){.final-grid{grid-template-columns:1fr}}
-
-.card{background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 10px 28px rgba(0,0,0,.35);padding:18px}
-.invite-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 14px 32px rgba(0,0,0,.35);padding:18px}
-
-.final-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
-.final-code{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.btn-chip{padding:6px 10px;border-radius:999px}
-
-.final-details .row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:start;margin:6px 0}
-.final-details .label{opacity:.8}
-.final-actions{margin-top:14px;display:flex;justify-content:flex-start}
-
-.invite-title{font-size:22px;font-weight:700;margin-bottom:8px}
-.invite-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.18)}
-.invite-desc{opacity:.9;margin:8px 0 12px}
-.invite-subtitle{font-weight:700;margin:4px 0 6px}
-
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chips .chip{cursor:default}
-.chips .chip.taken{opacity:.5;border-style:dashed}
-
-.invite-legend{display:flex;gap:12px;margin-top:10px;opacity:.8;font-size:.95em}
-.invite-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.4)}
-.invite-legend .dot.free{background:#19c34a}
-.invite-legend .dot.taken{background:#c3a019}
-.w-100{width:100%}
-
-/* === Auth polish === */
-.auth-card{max-width:640px;margin:6vh auto;padding:20px 22px;border-radius:18px;
-  background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
-  box-shadow:0 18px 40px rgba(0,0,0,.35)}
-.auth-card h1,.auth-card h2{letter-spacing:.2px}
-.auth-card .tabs{margin:10px 0 14px}
-.auth-card .input, .auth-card input[type="text"], .auth-card input[type="password"]{
-  height:52px;font-size:16px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
-  background:rgba(10,10,10,.55);padding:0 16px;color:#fff}
-.auth-card .input::placeholder{color:rgba(255,255,255,.55)}
-.btn-xl{height:52px;font-weight:600;border-radius:14px}
-.btn-primary{background:linear-gradient(180deg,#2e7a62,#1f5c49);border:1px solid rgba(255,255,255,.12)}
-.btn-primary:hover{filter:brightness(1.06)}
-@media (max-width:720px){
-  .auth-card{margin:3vh 12px;padding:16px}
-}
-
-/* === Final single-column === */
-.final-wrap{max-width:860px;margin:32px auto;padding:0 16px;display:block}
-.final-card{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
-  border-radius:20px;padding:22px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
-#final-left{transform:scale(1.03);transform-origin:center}
-#final-right[hidden]{display:none !important}
-@media (max-width:720px){
-  .final-wrap{margin:16px auto}
-  .final-card{padding:16px}
-}
-
-/* FH visibility defaults (append only) */
 #screen-home { display: block; }
 #screen-auth.hidden { display: none; }
-
-/* FH screens visibility (append only) */
 #screen-home, #screen-auth, #screen-profile, #screen-hub { display: none; }
 #screen-home:not(.hidden),
 #screen-auth:not(.hidden),
 #screen-profile:not(.hidden),
 #screen-hub:not(.hidden) { display: block; }
 
-/* --- remove frog hero globally --- */
 .hero, .hero-frog, .frog-hero, .hero .frog,
 #hero, .hero-wrap, .hero-stump {
   display: none !important;
 }
 
-/* layers */
 .auth-card,
 .auth-card-wrap,
 #auth-overlay {
   position: relative;
   z-index: 20;
-}
-
-/* remove blur on auth overlay */
-#screen-auth,
-#auth-overlay,
-.auth-backdrop,
-.auth-card::before,
-.auth-card::after {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: transparent !important;
-}
-/* Базовая фиксация скролла: по умолчанию скролла НЕТ */
-html, body { height: 100%; }
-#screen-wishlist {
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  background: #0b241a; /* твой основной фон */
-  overflow-x: hidden; /* чтобы пузырьки не вылезали сбоку */
-}
-
-/* --- layers / order --- */
-.topbar,
-.screen,
-.card,
-.panel,
-.menu-deck,
-.auth-card,
-.auth-card-wrap {
-  position: relative;
-  z-index: 10;
-}
-
-#auth-overlay {
-  position: relative;
-  z-index: 20;
-}
-
-/* --- no blur on auth overlay (страница авторизации прозрачная) --- */
-#screen-auth,
-#auth-overlay,
-.auth-backdrop,
-.auth-card::before,
-.auth-card::after {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: transparent !important;
-}
-
-/* фоновые чипы по умолчанию невидимы, пока не расставим координаты */
-#fh-message-clouds .fh-chip { visibility: hidden; }
-#fh-message-clouds .fh-chip.is-placed { visibility: visible; }
-
-/* --- auth gate visibility --- */
-
-/* --- message chips layer (behind UI) --- */
-#fh-message-clouds {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-#fh-message-clouds .fh-chip { position: absolute; }
-
-.topbar,.screen,.card,.panel,.menu-deck,.auth-card,.auth-card-wrap,
-input,select,textarea,button{ position:relative; z-index:10; }
-
-body.guest [data-auth-only] { display:none !important; }
-body.authed [data-guest-only] { display:none !important; }
-
-/* --- auth panes --- */
-.auth-tabs { display:inline-flex; gap:.5rem; margin-bottom:1rem; }
-.auth-tabs .tab { padding:.5rem 1rem; border-radius:.75rem; }
-.tab.is-active { background: rgba(60,140,110,.35); }
-
-.auth-pane { display:none; }
-.auth-pane.visible { display:block; }
-.auth-pane form { display:grid; gap:.75rem; max-width:420px; margin:0 auto; }
-
-.error[role="alert"] { margin-top:1rem; color:var(--danger); }
-
-.btn:focus-visible, input:focus-visible, .tab:focus-visible {
-  outline:2px solid rgba(255,255,255,.6);
-  outline-offset:2px;
-}
-/* ===== FroggyHub Glass Theme (drop-in) ===== */
-:root{
-  /* Палитра */
-  --fh-bg-1:#0b241a; --fh-bg-2:#123228; --fh-bg-3:#1a4535;
-  --fh-fg:#e9f7f1;            /* основной текст */
-  --fh-fg-muted:#b8d5cb;      /* вспомогательный текст */
-  --fh-accent:#2ee6a6;        /* акцент/подсветки */
-  --fh-danger:#ff6b6b;
-  --fh-shadow: 0 10px 30px rgba(0,0,0,.35);
-
-  /* Стекло: подложки + бордеры */
-  --glass-strong-bg: rgba(255,255,255,.10);
-  --glass-strong-br: rgba(255,255,255,.40);
-  --glass-muted-bg:  rgba(255,255,255,.07);
-  --glass-muted-br:  rgba(255,255,255,.22);
-  --glass-input-bg:  rgba(255,255,255,.10);
-
-  --glass-blur-strong: 22px;
-  --glass-blur-muted:  14px;
-
-  /* Формы */
-  --input-fg:#f7fffb;
-  --input-ph:#cfe4dc;
-  --input-br:rgba(255,255,255,.25);
-  --focus-ring: 0 0 0 2px rgba(46,230,166,.55), 0 0 0 6px rgba(46,230,166,.15);
-}
-
-/* Фон */
-body{
-  color:var(--fh-fg);
-  background: radial-gradient(1200px 800px at 10% -10%, rgba(46,230,166,.08), transparent 55%),
-              linear-gradient(160deg, var(--fh-bg-1), var(--fh-bg-2), var(--fh-bg-3));
-  min-height:100svh;
-  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-}
-
-/* Чипы — позади всего */
-#fh-message-clouds{ position:fixed; inset:0; z-index:0; pointer-events:none; }
-.fh-chip{
-  background:#fff; color:#2E7D61; box-shadow:0 6px 18px rgba(0,0,0,.25);
-  border-radius:20px; padding:.5rem .9rem; font-size:clamp(12px,1.6vw,16px);
-  line-height:1.2; white-space:nowrap; will-change:transform; user-select:none; opacity:.95;
-}
-
-/* Слои интерфейса поверх чипов */
-.topbar, .screen, .card, .panel, .auth-card, .container, .toast { position:relative; z-index:10; }
-
-/* ===== Стеклянный топбар (сильное стекло) ===== */
-.topbar{
-  backdrop-filter: blur(var(--glass-blur-strong));
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  background:linear-gradient(to bottom, var(--glass-strong-bg), rgba(255,255,255,.04));
-  border-bottom:1px solid var(--glass-strong-br);
-  box-shadow: var(--fh-shadow);
-}
-.topbar .logo{ color:var(--fh-fg); text-decoration:none; font-weight:700; letter-spacing:.2px; }
-.topbar button{
-  background:rgba(255,255,255,.08);
-  border:1px solid var(--glass-strong-br);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color:var(--fh-fg);
-  padding:.55rem .9rem; border-radius:14px; cursor:pointer;
-  transition:transform .12s ease, background .2s, border-color .2s;
-}
-.topbar button:hover{ transform:translateY(-1px); background:rgba(255,255,255,.14); }
-.topbar button:active{ transform:translateY(0); }
-
-/* ===== Карточки / панели (матовое стекло) ===== */
-.card, .panel, .auth-card{
-  backdrop-filter: blur(var(--glass-blur-muted));
-  -webkit-backdrop-filter: blur(var(--glass-blur-muted));
-  background:linear-gradient(180deg, var(--glass-muted-bg), rgba(255,255,255,.03));
-  border:1px solid var(--glass-muted-br);
-  border-radius:18px;
-  box-shadow: var(--fh-shadow);
-  color:var(--fh-fg);
-}
-.auth-card{ max-width:min(620px, 92vw); margin: clamp(16px,6vh,48px) auto; padding: clamp(16px,3.2vw,28px); }
-.card{ padding: clamp(16px,2.4vw,24px); }
-
-/* Заголовки / вспомогательные */
-h1,h2,h3{ color:#f4fffc; text-shadow:0 1px 0 rgba(255,255,255,.04); }
-.hint, .note, .subtle{ color:var(--fh-fg-muted); }
-
-/* ===== Формы (матовые поля) ===== */
-input, textarea, select{
-  width:100%;
-  color:var(--input-fg);
-  background: var(--glass-input-bg);
-  border:1px solid var(--input-br);
-  border-radius:14px;
-  padding:.8rem 1rem;
-  outline: none;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: box-shadow .15s ease, border-color .15s ease, background .2s ease;
-}
-input::placeholder, textarea::placeholder{ color:var(--input-ph); opacity:.9; }
-input:hover, textarea:hover{ border-color:rgba(255,255,255,.35); background:rgba(255,255,255,.13); }
-input:focus, textarea:focus{ box-shadow: var(--focus-ring); border-color:transparent; background:rgba(255,255,255,.16); }
-
-/* Ряды форм и join-row */
-.join-row{ display:flex; gap:.75rem; align-items:center; }
-.join-row input{ flex:1; min-width:0; }
-
-/* ===== Кнопки (iOS-glass) ===== */
-.btn{
-  display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
-  padding:.8rem 1.1rem; border-radius:14px; cursor:pointer; user-select:none;
-  border:1px solid var(--glass-strong-br);
-  background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.06));
-  color:var(--fh-fg); text-decoration:none;
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  transition:transform .12s ease, filter .12s ease, background .2s ease, border-color .2s ease;
-}
-.btn:hover{ transform:translateY(-1px); filter:saturate(1.05); }
-.btn:active{ transform:translateY(0); }
-.btn[disabled]{ opacity:.55; pointer-events:none; }
-
-.btn--primary{
-  border-color: rgba(46,230,166,.55);
-  background:
-    radial-gradient(180px 40px at 50% -10%, rgba(46,230,166,.45), transparent 60%),
-    linear-gradient(180deg, rgba(46,230,166,.25), rgba(46,230,166,.10));
-  box-shadow: 0 8px 26px rgba(46,230,166,.15), inset 0 1px 0 rgba(255,255,255,.25);
-}
-.btn--secondary{
-  border-color: rgba(255,255,255,.35);
-  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.05));
-}
-.btn--ghost{
-  background: transparent;
-  border-color: rgba(255,255,255,.25);
-}
-
-/* Бейджи, чипы интерфейса */
-.chip, .badge{
-  display:inline-flex; align-items:center; gap:.35rem;
-  padding:.35rem .65rem; border-radius:999px; font-size:.85rem;
-  color:#0f2a22; background:rgba(255,255,255,.85); border:1px solid rgba(255,255,255,.9);
-}
-
-/* Тосты */
-.toast{
-  position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
-  padding:.75rem 1rem; border-radius:14px;
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  background:rgba(22,50,40,.55); border:1px solid rgba(255,255,255,.28);
-  color:#f0fffb; box-shadow: var(--fh-shadow);
-}
-
-/* Сетки / контейнеры (не меняем семантику) */
-.container{ width:min(1100px, 92vw); margin-inline:auto; }
-.menu-grid, .event-grid{ gap:1rem; }
-
-/* Ошибки */
-.error{ color:var(--danger); font-weight:600; }
-
-/* Фолбэк, если нет backdrop-filter */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
-  .topbar{
-    background: rgba(255,255,255,.08);
-  }
-  .card, .panel, .auth-card{
-    background: rgba(255,255,255,.06);
-  }
-  input, textarea{
-    background: rgba(255,255,255,.10);
-  }
-}
-
-/* Доступность: меньше движения */
-@media (prefers-reduced-motion: reduce){
-  *{ animation:none !important; transition:none !important; }
-}
-/* ===========================
-   FROGGYHUB — SCROLL FIX PATCH
-   Класть В САМЫЙ НИЗ style.css
-   =========================== */
-
-/* 1) Разрешаем вертикальный скролл только при необходимости
-      и убираем горизонтальный (если чипы/анимации выпрыгивают) */
-html, body {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-  min-height: 100svh !important;      /* корректная высота на мобилах */
-  overflow-x: hidden !important;       /* горизонтальный скролл — никогда */
-  overflow-y: auto !important;         /* вертикальный скролл — когда нужен */
-}
-
-/* 2) Иногда в теме встречался body{overflow:hidden}. Страхуемся. */
-body {
-  overflow: auto !important;
-  -webkit-overflow-scrolling: touch;   /* плавный скролл на iOS */
-}
-
-/* 3) Фикс для фиксированных больших блоков, чтобы они не выталкивали вьюпорт.
-      (если после создания события карточка длиннее экрана — страница теперь скроллится) */
-.final-wrap,
-.final-grid,
-.final-card,
-.screen .panel,
-.container {
-  max-width: 1100px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* 4) Если где-то задана высота в 100vh — смягчим на мобильных.
-      (Редко, но помогает от «обрезаний» контента под адресной строкой) */
-@media (max-width: 768px) {
-  .wrap,
-  .pond,
-  .final-wrap {
-    min-height: 100svh !important;
-    height: auto !important;
-  }
-}
-
-/* 5) Меню-дек внизу не должен перекрывать клики — сохраняем поведение,
-      но не даём ему создавать лишний горизонтальный скролл */
-.menu-deck {
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: min(880px, 92vw) !important;
-  max-width: 100% !important;
-  will-change: transform;
-}
-
-/* 6) Фоновые чипы остаются за контентом и не влияют на скролл */
-#fh-message-clouds {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 0 !important;
-  pointer-events: none !important;
-  overflow: hidden !important;
-}
-
-/* 7) Контентные слои поверх */
-.topbar, .screen, .card, .panel, .auth-card, .container, .toast, .menu-deck {
-  position: relative;
-  z-index: 10;
-}
-
-/* 8) Защита от «переполнения» длинных текстов */
-.card, .panel, .final-card, .invite-card {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* 9) Если где-то явно блокировали скролл секции — разрешим прокрутку локально */
-#screen-hub,
-#screen-profile,
-#screen-wishlist,
-#screen-auth,
-#screen-home {
-  overflow: visible;          /* секции сами не режут скролл */
-}
-
-/* 10) Патч для iOS клавиатуры: когда инпуты внизу, чтобы всё было досягаемо */
-@supports (-webkit-touch-callout: none) {
-  .edit-form {
-    padding-bottom: max(80px, env(safe-area-inset-bottom));
-  }
-}
-
-/* 11) На случай, если была принудительная блокировка колёсика у body */
-body, main {
-  overscroll-behavior-y: contain; /* без резких «отбивок» на iOS/Safari */
-}
-
-/* 12) Мелкая косметика: чтобы тень/блюр не вызывали прокрутку по оси X */
-.card, .panel, .auth-card, .final-card {
-  contain: paint; /* локализуем эффекты в границах блока */
 }
