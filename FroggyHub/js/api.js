@@ -112,7 +112,7 @@ export async function nf(path, opts = {}) {
 }
 
 export async function joinEvent({ code, nickname }) {
-  const res = await fetch('/.netlify/functions/event-join', {
+  const res = await fetch('/.netlify/functions/event-join-v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, nickname }),
