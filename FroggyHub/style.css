@@ -891,3 +891,105 @@ body.scene-intro .speech{display:block}
 
 
 body.scene-intro, body.scene-final { overflow: hidden; }
+
+/* ===== Главная: центрирование блока ввода ===== */
+.home-screen{
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding-top: 56px; /* чтобы не залезть под шапку */
+}
+
+.home-hero{
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.join-wrap{
+  border-radius: 16px;
+  padding: 14px 18px;
+  /* лёгкий сдвиг «чуть ниже середины» */
+  transform: translateY(6vh);
+}
+
+.join-row{
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  gap: 10px;
+}
+
+/* компактный стек на мобильных */
+@media (max-width: 720px){
+  .join-row{ grid-auto-flow: row; width: min(92vw, 420px); }
+}
+
+/* ===== Унифицированные «пилюли» (инпут и чипы) ===== */
+
+/* компактный «стеклянный» инпут-пилюля */
+.pill-input{
+  -webkit-appearance: none; appearance: none;
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: 8px 12px; line-height: 1;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.16);
+  color: var(--text);
+  box-shadow:
+    0 4px 20px rgba(0,0,0,.25),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-weight: 600;
+  font-size: 14px;
+  min-height: 36px;
+}
+.pill-input::placeholder{ color: rgba(255,255,255,.65); }
+.pill-input:focus{
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.28);
+}
+
+/* единый стиль для «строк/чипов» в облаках (белые таблетки) */
+.bubble.chip, .fh-chip{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#fff;
+  color:#204b3a; /* читаемый зелёный текст */
+  border: 0;
+  box-shadow: 0 10px 24px rgba(0,0,0,.22);
+  font-weight: 600;
+  line-height:1;
+}
+
+/* ===== Шапка: логотип слева, кнопки справа ===== */
+.topbar{
+  position: sticky; top: 0; z-index: 10;
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 10px 14px;
+  background: rgba(0,0,0,.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.topbar .logo{
+  font-weight: 900; letter-spacing:.2px;
+  text-decoration:none; color: var(--text);
+  padding: 6px 10px; border-radius: 12px;
+}
+.topbar-right{ display:flex; gap:8px; }
+
+/* чтобы любые <a>/<button>/<input type=submit> в топбаре были «стеклом» */
+.topbar a, .topbar button, .topbar input[type="submit"]{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:12px;
+  background:var(--glass);
+  border:1px solid var(--border);
+  color:var(--text); font-weight:600; text-decoration:none;
+}
+.topbar a:hover, .topbar button:hover{ background: rgba(255,255,255,.10); }
