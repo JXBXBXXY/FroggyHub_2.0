@@ -2,7 +2,7 @@
 import {
   supa, getSession, onAuthState,
   signIn, signUpWithNickname, signOut,
-  getProfile, joinEvent
+  joinEvent
 } from './api.js';
 
 /* ------------------ Утилиты ------------------ */
@@ -171,6 +171,7 @@ async function boot() {
 
   if (isPage('wishlist-setup.html')) await initWishlistSetup();
   if (isPage('event-summary.html')) await initEventSummary();
+
   if (isPage('event-analytics.html')) await initEventAnalytics();
 
   if (isPage('profile.html')) await initProfile();
@@ -237,81 +238,7 @@ async function initEventEdit(){
   if (error) return alert(error.message || 'Не удалось создать событие');
 
   // ⇒ на шаг вишлиста
-  goto(`${LINKS['wishlist-setup']}?event=${encodeURIComponent(data.id)}&code=${encodeURIComponent(data.code)}`);
-}
-
-/* ------------------ Шаг 2: заполнение вишлиста ------------------ */
-async function initWishlistSetup(){
-  const p = params();
-  const eventId = Number(p.event);
-  const code = p.code;
-  if (!eventId || !code) { alert('Не хватает данных события'); goto(LINKS.menu); return; }
-
-  // элементы
-  const input = qs('#giftInput');
-  const addBtn = qs('#giftAdd');
-  const nextBtn = qs('#giftNext');
-  const list = qs('#giftList');
-  const counterFree = qs('#giftFreeCount');
-  const counterTaken = qs('#giftTakenCount');
-
-  async function refresh(){
-    const { data } = await supa.from('gifts').select('id,title,taken_by').eq('event_id', eventId).order('id');
-    list.innerHTML = '';
-    let free=0, taken=0;
-    (data||[]).forEach(g=>{
-      const li=document.createElement('li');
-      li.className='wl-item';
-      li.textContent = g.title || 'Подарок';
-      if (g.taken_by) { taken++; li.textContent += ' — 🔒 занято'; } else { free++; }
-      list.appendChild(li);
-    });
-    counterFree && (counterFree.textContent = String(free));
-    counterTaken && (counterTaken.textContent = String(taken));
-  }
-
-  addBtn?.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    const title = (input?.value||'').trim();
-    if (!title) return;
-    await supa.from('gifts').insert([{ event_id: eventId, title }]);
-    input.value = '';
-    await refresh();
-  });
-
-  nextBtn?.addEventListener('click', (e)=>{
-    e.preventDefault();
-    goto(`${LINKS['event-summary']}?event=${encodeURIComponent(eventId)}&code=${encodeURIComponent(code)}`);
-  });
-
-  await refresh();
-}
-
-/* ------------------ Шаг 3: финальная сводка + код ------------------ */
-async function initEventSummary(){
-  const p = params();
-  const eventId = Number(p.event);
-  const code = p.code;
-  if (!eventId || !code) { alert('Не хватает данных события'); goto(LINKS.menu); return; }
-
-  const { data: ev, error } = await supa.from('events').select('*').eq('id', eventId).single();
-  if (error || !ev) { alert('Событие не найдено'); goto(LINKS.menu); return; }
-
-  // заполняем поля
-  qs('#sumTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
-  qs('#sumDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
-  qs('#sumTime')?.replaceChildren(document.createTextNode(ev.time || '—'));
-  qs('#sumAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
-  qs('#sumNotes')?.replaceChildren(document.createTextNode(ev.notes || '—'));
-  qs('#sumCode')?.replaceChildren(document.createTextNode(code));
-
-  // копирование кода
-  qs('#sumCopy')?.addEventListener('click', ()=>{ copy(code); toast('Код скопирован'); });
-
-  // кнопка «Открыть аналитику» (только владелец увидит по RLS/проверке на странице)
-  qs('#toAnalytics')?.addEventListener('click', ()=>{
-    goto(`${LINKS['event-analytics']}?code=${encodeURIComponent(code)}&owner=1`);
-  });
+  goto(`${LINKS['wishlist-setup']}?code=${encodeURIComponent(data.code)}`);
 }
 
 /* ------------------ Страница события (аналитика/только владелец) ------------------ */
@@ -420,7 +347,11 @@ async function initProfile(){
       const e = ev.events || ev;
       const li=document.createElement('li');
       const a=document.createElement('a');
-      a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}&owner=1`;
+      if (title === 'Гость') {
+        a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}`;
+      } else {
+        a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}&owner=1`;
+      }
       a.textContent=`${e.title} — ${e.date||'—'}`;
       li.appendChild(a); ul.appendChild(li);
     });
@@ -442,3 +373,118 @@ function toast(msg){
   const t = qs('#toast'); if (!t) return; t.textContent=msg; t.hidden=false;
   clearTimeout(toast._t); toast._t=setTimeout(()=>{ t.hidden=true; }, 2000);
 }
+
+/* ------------------ Wishlist Setup (после создания события) ------------------ */
+async function initWishlistSetup(){
+  const p = params();
+  const code = (p.code || '').trim();
+  const errEl = document.getElementById('wlError');
+  const listEl = document.getElementById('giftList');
+  const freeEl = document.getElementById('giftFreeCount');
+  const takenEl = document.getElementById('giftTakenCount');
+  const addBtn = document.getElementById('giftAdd');
+  const nextBtn = document.getElementById('giftNext');
+  const skipBtn = document.getElementById('giftSkip');
+  const inputEl = document.getElementById('giftInput');
+
+  function showErr(m){ if(errEl){ errEl.textContent=m||''; } }
+
+  if (!code){ showErr('Код события не указан'); return; }
+
+  // грузим событие
+  const { data: ev, error: evErr } = await supa.from('events').select('*').eq('code', code).single();
+  if (evErr || !ev){ showErr('Событие не найдено'); return; }
+  document.getElementById('wlTitle')?.replaceChildren(document.createTextNode(`Вишлист: ${ev.title || 'Событие'}`));
+
+  // проверка владельца
+  const sess = await getSession();
+  let isOwner = false;
+  if (sess?.user?.id){
+    const { data: me } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
+    isOwner = me?.pid != null && Number(ev.host_user_id) === Number(me.pid);
+  }
+  if (!isOwner){ showErr('Только владелец может редактировать вишлист'); return; }
+
+  async function renderList(){
+    const { data: gifts } = await supa.from('gifts').select('id,title,taken_by').eq('event_id', ev.id).order('id', { ascending: true });
+    listEl.innerHTML = '';
+    let free=0, taken=0;
+    (gifts||[]).forEach(g=>{
+      const li=document.createElement('li');
+      li.className='wl-item';
+      li.textContent = g.title || 'Подарок';
+      if (g.taken_by){ li.textContent += ' — 🔒 занято'; taken++; } else { free++; }
+      listEl.appendChild(li);
+    });
+    if (freeEl)  freeEl.textContent  = String(free);
+    if (takenEl) takenEl.textContent = String(taken);
+  }
+
+  async function addGift(){
+    showErr('');
+    const title = (inputEl?.value || '').trim();
+    if (!title){ showErr('Введите название подарка'); return; }
+    const { error } = await supa.from('gifts').insert([{ event_id: ev.id, title }]);
+    if (error){ showErr(error.message || 'Не удалось добавить'); return; }
+    inputEl.value = '';
+    await renderList();
+  }
+
+  addBtn?.addEventListener('click', addGift);
+  inputEl?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addGift(); }});
+
+  nextBtn?.addEventListener('click', ()=>{
+    location.href = `/event-summary.html?code=${encodeURIComponent(code)}`;
+  });
+  skipBtn?.addEventListener('click', ()=>{
+    location.href = `/event-summary.html?code=${encodeURIComponent(code)}`;
+  });
+
+  await renderList();
+}
+
+/* ------------------ Event Summary (итоги + код приглашения) ------------------ */
+async function initEventSummary(){
+  const p = params();
+  const code = (p.code || '').trim();
+  const errEl = document.getElementById('sumError');
+
+  function showErr(m){ if(errEl){ errEl.textContent=m||''; } }
+
+  if (!code){ showErr('Код события не указан'); return; }
+
+  const { data: ev, error } = await supa.from('events').select('*').eq('code', code).single();
+  if (error || !ev){ showErr('Событие не найдено'); return; }
+
+  // только владелец видит эту страницу как финальный шаг
+  const sess = await getSession();
+  let isOwner = false;
+  if (sess?.user?.id){
+    const { data: me } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
+    isOwner = me?.pid != null && Number(ev.host_user_id) === Number(me.pid);
+  }
+  if (!isOwner){ showErr('Только владелец может просматривать итоговую информацию'); return; }
+
+  const setText = (id, val)=> document.getElementById(id)?.replaceChildren(document.createTextNode(val ?? '—'));
+
+  setText('sumTitle', ev.title || 'Событие');
+  setText('sumDate', ev.date || '—');
+  setText('sumTime', ev.time || '—');
+  setText('sumAddr', ev.address || '—');
+  setText('sumNotes', ev.notes || '—');
+  setText('sumCode', ev.code || '—');
+
+  const copyBtn = document.getElementById('sumCopy');
+  copyBtn?.addEventListener('click', ()=> {
+    navigator.clipboard?.writeText(ev.code || '');
+    const t = document.getElementById('toast');
+    if (t){ t.textContent='Код скопирован'; t.hidden=false; clearTimeout(copyBtn._t); copyBtn._t=setTimeout(()=>{ t.hidden=true; }, 1500); }
+  });
+
+  const toAnalBtn = document.getElementById('toAnalytics');
+  toAnalBtn?.addEventListener('click', ()=>{
+    location.href = `/event-analytics.html?code=${encodeURIComponent(code)}&owner=1`;
+  });
+}
+
+проверь
