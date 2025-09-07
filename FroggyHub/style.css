@@ -44,6 +44,17 @@
 
 *{box-sizing:border-box}
 html,body{height:100%;}
+
+button,
+input[type="button"],
+input[type="submit"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+}
 body{
   margin:0;
   overflow:hidden;
@@ -139,7 +150,7 @@ body{
 }
 
 /* Ensure UI elements stay above chips */
-.topbar, .fh-header, .screen, .panel, .card, .modal{
+.screen, .panel, .card, .modal{
   position: relative;
   z-index: 10;
 }
@@ -703,7 +714,6 @@ body.scene-intro .speech{display:block}
 .list { margin: 8px 0; padding-left: 18px; }
 .list li { margin: 3px 0; }
 
-.fh-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; }
 .fh-logo { font-weight:800; text-decoration:none; }
 .fh-nav a, .fh-nav button { margin-left:12px; }
 
@@ -819,12 +829,40 @@ body.scene-intro .speech{display:block}
 
 /* === 2) КНОПКИ В ВЕРХНЕМ ХАБЕ (без .btn) === */
 .fh-header, .topbar{
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(0,0,0,.15);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 20px;
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(0,0,0,.15);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
+
+/* Header links & buttons */
+.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"],
+.topbar a, .topbar button, .topbar input[type="button"], .topbar input[type="submit"]{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:12px;
+  background:var(--glass);
+  border:1px solid var(--border);
+  color:var(--text) !important;
+  font-weight:600;
+  text-decoration:none;
+  line-height:1;
+}
+.fh-header a:hover, .fh-header button:hover, .fh-header input[type="button"]:hover, .fh-header input[type="submit"]:hover,
+.topbar a:hover, .topbar button:hover, .topbar input[type="button"]:hover, .topbar input[type="submit"]:hover{
+  background:rgba(255,255,255,.10);
+}
+.fh-header a:link, .fh-header a:visited,
+.topbar a:link, .topbar a:visited{ color:var(--text) !important; }
 
 /* === 3) ВЕРНИМ «СТЕКЛО» И УБЕРЁМ СВЕТЛЫЕ ПЕРЕОПРЕДЕЛЕНИЯ === */
 /* Универсальный класс стекла */
@@ -845,40 +883,20 @@ body.scene-intro .speech{display:block}
   -webkit-backdrop-filter: blur(12px) saturate(120%);
 }
 
-/* === TOP BAR BUTTONS (голые <button>/<a>) === */
-.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"],
-.topbar a, .topbar button, .topbar input[type="button"], .topbar input[type="submit"]{
-  -webkit-appearance: none;
-  appearance: none;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-radius: 12px;
-  background: var(--glass);
-  border: 1px solid var(--border);
-  color: var(--text) !important; font-weight: 600;
-  text-decoration: none;
+/* Final card theme */
+.final-card{
+  background:rgba(15,48,32,.8);
+  border:1px solid #1e5a3f;
+  box-shadow:0 20px 60px rgba(0,0,0,.45);
+  backdrop-filter:blur(6px) saturate(120%);
+  -webkit-backdrop-filter:blur(6px) saturate(120%);
 }
-.fh-header a:hover, .fh-header button:hover, .fh-header input[type="button"]:hover, .fh-header input[type="submit"]:hover,
-.topbar a:hover, .topbar button:hover, .topbar input[type="button"]:hover, .topbar input[type="submit"]:hover{
-  background: rgba(255,255,255,.10);
-}
-.fh-header a:link, .fh-header a:visited,
-.topbar a:link, .topbar a:visited{ color: var(--text) !important; }
-
-/* Default dark glass */
-:not(.bg-frog) .final-card{
-  background: rgba(15,48,32,.8) !important;
-  border: 1px solid #1e5a3f !important;
-  box-shadow: 0 20px 60px rgba(0,0,0,.45) !important;
-  backdrop-filter: blur(6px) saturate(120%) !important;
-  -webkit-backdrop-filter: blur(6px) saturate(120%) !important;
-}
-/* Light version only within .bg-frog */
 .bg-frog .final-card{
-  background: #f5fff9 !important;
-  border: 1px solid #bfe3d3 !important;
-  box-shadow: 0 10px 30px #083d2a15 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background:#f5fff9;
+  border:1px solid #bfe3d3;
+  box-shadow:0 10px 30px #083d2a15;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
 }
 
 /* === Dark native inputs (incl. date/time) === */
@@ -936,31 +954,3 @@ input:-webkit-autofill{
 
 body.scene-intro, body.scene-final { overflow: hidden; }
 body:not(.scene-intro):not(.scene-final) { overflow: auto; }
-button, input[type="button"], input[type="submit"] {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  background: none;
-  border: none;
-  color: inherit;
-  font: inherit;
-}
-
-/* === TOPBAR / FH-HEADER SAFE RESET === */
-.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"],
-.topbar    a, .topbar    button, .topbar    input[type="button"], .topbar    input[type="submit"] {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: var(--glass) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text) !important;
-  font-weight: 600;
-  text-decoration: none;
-  line-height: 1;
-}
-.fh-header a:hover, .fh-header button:hover, .fh-header input[type="button"]:hover, .fh-header input[type="submit"]:hover,
-.topbar    a:hover, .topbar    button:hover, .topbar    input[type="button"]:hover, .topbar    input[type="submit"]:hover {
-  background: rgba(255,255,255,.10) !important;
-}
