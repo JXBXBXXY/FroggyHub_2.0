@@ -1,9 +1,9 @@
 /* === CORE THEME VARS (есть уже — проверь чтобы совпадало) === */
 :root{
-  --brand:#2E7D61; --brand-500:#1f6e57; --brand-600:#256a52; --brand-400:#298a6d;
-  --on-brand:#e9fff2; --border:#2c5b4b; --glass:rgba(255,255,255,.06);
-  --text:#EAF7F1; --muted:#A4CDBD; --ring:#4FE2A7; --shadow:rgba(0,0,0,.35);
+  --brand:#2E7D61; --brand-600:#256a52;
+  --text:#EAF7F1; --muted:#A4CDBD; --ring:#4FE2A7;
   --fh-green-1:#0b241a; --fh-green-2:#123228; --fh-green-3:#1a4535;
+  --brand-500:#1f6e57; --brand-400:#298a6d; --on-brand:#e9fff2; --border:#2c5b4b; --glass:rgba(255,255,255,.06); --shadow:rgba(0,0,0,.35);
 }
 
 *{box-sizing:border-box}
@@ -20,37 +20,24 @@ body {
 }
 
 #fh-message-clouds{
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;       /* фоновый слой под UI */
-  overflow: hidden;
+  position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;
 }
 
 /* Базовый пузырёк-сообщение (чип), который app.js позиционирует по X/Y */
 .fh-chip{
-  position: absolute;          /* ВАЖНО: иначе выстраиваются в ряд сверху */
-  left: 0; top: 0;             /* исходная точка, дальше смещение через transform */
-  transform: translate3d(0,0,0);
-  will-change: transform;
-  white-space: nowrap;
+  position:absolute;
+  animation: floaty 6s ease-in-out infinite;
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:8px 12px; border-radius:999px; white-space:nowrap;
 
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  padding: 8px 12px;
-  border-radius: 999px;
-
-  /* glass вид */
   background: rgba(0,0,0,.22);
   border: 1px solid rgba(255,255,255,.09);
   color: rgba(255,255,255,.90);
+
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
   box-shadow: 0 12px 28px rgba(0,0,0,.28), 0 0 1px rgba(255,255,255,.08) inset;
   text-shadow: 0 1px 1px rgba(0,0,0,.25);
-
-  animation: floaty 6s ease-in-out infinite;
 }
 
 /* === UI ВСЕГДА ВЫШЕ ЧИПОВ === */
@@ -80,7 +67,7 @@ body {
 
 /* === СБРОС нативных кнопок, чтобы не ломали внешний вид === */
 button, input[type="button"], input[type="submit"]{
-  -webkit-appearance:none !important; appearance:none !important;
+  -webkit-appearance:none; appearance:none;
   background:none; border:none; color:inherit; font:inherit; padding:0; border-radius:0;
   cursor:pointer;
 }
@@ -816,9 +803,8 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 }
 
 .home-hero{
-  display: flex; align-items: center; justify-content: center;
-  width: min(880px, 92vw);
-  transform: translateY(6vh);   /* «чуть ниже середины» */
+  display:flex; align-items:center; justify-content:center;
+  width:min(880px,92vw); transform:translateY(-5vh);
 }
 
 .join-wrap.glassy{
@@ -830,13 +816,10 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
 }
 
-.join-row{
-  display:flex; gap:12px; flex-wrap:wrap; justify-content:center;
-}
-.pill-input{ flex:1; min-width:220px; }
-@media (max-width: 720px){
-  .home-hero{ transform: translateY(3vh); }
-  .join-row{ flex-direction:column; }
+.join-row{ display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+@media (max-width:720px){
+  .home-hero{ transform:translateY(-2vh); }
+  .join-row{ gap:10px; }
 }
 
 /* Пилюльный инпут (короткий) */
@@ -896,17 +879,3 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   color: var(--text, #eaf7f1);
 }
 .topbar-right{ display: flex; gap: 8px; }
-
-/* Кнопки в топбаре (унифицированный «glass»-вид) */
-.topbar a, .topbar button,
-.fh-header a, .fh-header button,
-.topbar input[type="button"], .topbar input[type="submit"]{
-  -webkit-appearance: none; appearance: none;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-radius: 12px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.09);
-  color: var(--text, #eaf7f1);
-  font-weight: 600; text-decoration: none; line-height: 1;
-}
-.topbar a:hover, .topbar button:hover{ background: rgba(255,255,255,.10); }
