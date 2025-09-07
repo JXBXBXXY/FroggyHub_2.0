@@ -23,13 +23,18 @@
   <!-- HERO на главной -->
   <main id="home" class="home-screen">
     <section class="home-hero">
-      <div class="join-wrap glassy">
+      <div class="join-wrap glassy" role="group" aria-label="Создать или присоединиться">
         <div class="join-row">
           <a class="btn btn--primary" data-link="event-edit">Создать событие</a>
-          <input id="joinCode" inputmode="numeric" maxlength="6"
-                 class="pill-input"
-                 placeholder="Введите 6-значный код" />
-          <button class="btn" id="btnJoin" data-action="join">Присоединиться</button>
+          <input
+            id="joinCode"
+            class="pill-input"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="Введите 6-значный код"
+            aria-label="Код приглашения"
+          />
+          <button id="btnJoin" class="btn" data-action="join">Присоединиться</button>
         </div>
       </div>
     </section>
