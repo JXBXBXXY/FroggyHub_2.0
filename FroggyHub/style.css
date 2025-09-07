@@ -27,24 +27,30 @@ body {
   overflow: hidden;
 }
 
-/* Пузырёк-чип сообщения (ровно то, что рисует app.js как .fh-chip) */
+/* Базовый пузырёк-сообщение (чип), который app.js позиционирует по X/Y */
 .fh-chip{
-  animation: floaty 6s ease-in-out infinite;
+  position: absolute;          /* ВАЖНО: иначе выстраиваются в ряд сверху */
+  left: 0; top: 0;             /* исходная точка, дальше смещение через transform */
+  transform: translate3d(0,0,0);
+  will-change: transform;
+  white-space: nowrap;
+
   display: inline-flex;
   align-items: center;
   gap: .35rem;
   padding: 8px 12px;
   border-radius: 999px;
-  white-space: nowrap;
 
+  /* glass вид */
   background: rgba(0,0,0,.22);
   border: 1px solid rgba(255,255,255,.09);
   color: rgba(255,255,255,.90);
-
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
   box-shadow: 0 12px 28px rgba(0,0,0,.28), 0 0 1px rgba(255,255,255,.08) inset;
   text-shadow: 0 1px 1px rgba(0,0,0,.25);
+
+  animation: floaty 6s ease-in-out infinite;
 }
 
 /* === UI ВСЕГДА ВЫШЕ ЧИПОВ === */
@@ -687,7 +693,6 @@ body.scene-intro .speech{display:block}
 .list { margin: 8px 0; padding-left: 18px; }
 .list li { margin: 3px 0; }
 
-.fh-logo { font-weight:800; text-decoration:none; }
 .fh-nav a, .fh-nav button { margin-left:12px; }
 
 /* фон меню без кувшинок */
@@ -811,12 +816,9 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 }
 
 .home-hero{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
   width: min(880px, 92vw);
-  transform: translateY(-5vh); /* «чуть ниже середины»: отрицательный сдвиг меньше 50% */
+  transform: translateY(6vh);   /* «чуть ниже середины» */
 }
 
 .join-wrap.glassy{
@@ -829,20 +831,12 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 }
 
 .join-row{
-  .join-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
+  display:flex; gap:12px; flex-wrap:wrap; justify-content:center;
 }
-.pill-input {
-  flex: 1;
-  min-width: 220px;
-}
-
+.pill-input{ flex:1; min-width:220px; }
 @media (max-width: 720px){
-  .home-hero{ transform: translateY(-2vh); }
-  .join-row{ grid-template-columns: 1fr; }
+  .home-hero{ transform: translateY(3vh); }
+  .join-row{ flex-direction:column; }
 }
 
 /* Пилюльный инпут (короткий) */
@@ -916,23 +910,3 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   font-weight: 600; text-decoration: none; line-height: 1;
 }
 .topbar a:hover, .topbar button:hover{ background: rgba(255,255,255,.10); }
-.pill-input {
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  color: var(--text);
-  font-size: 16px;
-  font-weight: 600;
-  text-align: center;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 6px 18px rgba(0,0,0,.25);
-}
-.pill-input::placeholder {
-  color: var(--muted);
-}
-.pill-input:focus {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}

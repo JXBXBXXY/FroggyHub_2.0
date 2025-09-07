@@ -6,34 +6,6 @@ body {
   @apply antialiased;
 }
 
-#fh-message-clouds {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.fh-message-cloud {
-  position: absolute;
-  background: #fff;
-  color: #1a4535;
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 14px;
-  line-height: 1.4;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  white-space: nowrap;
-  will-change: transform;
-  user-select: none;
-}
-
-@media (max-width: 640px) {
-  .fh-message-cloud {
-    font-size: 12px;
-    padding: 4px 10px;
-  }
-}
 
 /* ==== UNIFIED "GLASS" INPUTS ACROSS THE APP ==== */
 
