@@ -79,7 +79,7 @@ function updateChips(){
     }
     if (c.y <= m || c.y + c.h >= vh - m){
       c.vy *= -1;
-      c.y = Math.max(m, Math.min(c.y, vh - c.h - m));
+      c.y = Math.max(m, Math.min(c.y, vh - m));
     }
     c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
   }
@@ -215,9 +215,13 @@ async function initEventEdit(){
   const dateVal = qs('#editDate')?.value;
   if (!dateVal) return alert('Выберите дату события');
 
+  // Title: минимум 1–2 символа
+  const titleVal = qs('#editTitle')?.value?.trim() || '';
+  if (titleVal.length < 1) return alert('Введите название события (минимум 1 символ)');
+
   // 3) payload (host_user_id — bigint pid)
   const payload = {
-    title:  qs('#editTitle')?.value?.trim() || 'Событие',
+    title:  titleVal,
     date:   dateVal,
     time:   qs('#editTime')?.value || null,
     address:qs('#editAddress')?.value || '',
@@ -270,8 +274,9 @@ async function initEventAnalytics(){
   qs('#eventAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
   qs('#editEventBtn')?.classList.toggle('hidden', !isOwner);
 
-  renderRSVP(ev.id);
-  renderWishlist(ev.id);
+  // FIX: дождаться загрузки списков
+  await renderRSVP(ev.id);
+  await renderWishlist(ev.id);
 
   qs('#backBtn')?.addEventListener('click', ()=> goto(LINKS.menu));
   qs('#editEventBtn')?.addEventListener('click', ()=> goto(`${LINKS['event-edit']}?code=${encodeURIComponent(code)}`));
@@ -350,12 +355,15 @@ async function initProfile(){
       const e = ev.events || ev;
       const li=document.createElement('li');
       const a=document.createElement('a');
+      // Гость: не ведём в аналитику, просто текст
       if (title === 'Гость') {
-        a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}`;
+        a.textContent = `${e.title} — ${e.date||'—'}`;
+        a.classList.add('disabled-link');
+        a.title = 'Аналитика доступна только создателю события';
       } else {
         a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}&owner=1`;
+        a.textContent=`${e.title} — ${e.date||'—'}`;
       }
-      a.textContent=`${e.title} — ${e.date||'—'}`;
       li.appendChild(a); ul.appendChild(li);
     });
     d.appendChild(ul); return d;
@@ -486,8 +494,6 @@ async function initEventSummary(){
 
   const toAnalBtn = document.getElementById('toAnalytics');
   toAnalBtn?.addEventListener('click', ()=>{
-    location.href = `/event-analytics.html?code=${encodeURIComponent(code)}&owner=1`;
+    location.href = `/event-analytics.html?code=${encodeURIComponent(code)}`;
   });
 }
-
-
