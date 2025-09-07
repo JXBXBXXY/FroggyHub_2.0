@@ -10,7 +10,7 @@ const LINKS = {
   home: '/index.html',
   menu: '/lobby.html',
   profile: '/profile.html',
-  settings: '/profile.html',      // временно, пока нет отдельной страницы
+  settings: '/profile.html',
   'event-edit': '/event-edit.html'
 };
 const qs  = (s, r = document) => r.querySelector(s);
@@ -68,17 +68,24 @@ function spawnChips(count=null){
   });
 }
 function updateChips(){
-  const m=20;
+  const m = 20;
   for (const c of chips){
-    c.x+=c.vx; c.y+=c.vy;
-    if (c.x<=m||c.x+c.w>=vw-m){ c.vx*=-1; c.x=Math.max(m,Math.min(c.x,vw-c.w-m)); }
-    if (c.y<=m||c.y+c.h>=vh-m){ c.vy*=-1; c.y=Math.max(m,Math.min(c.y,vh-c.h-m)); }
-    c.el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
+    c.x += c.vx; c.y += c.vy;
+    if (c.x <= m || c.x + c.w >= vw - m){
+      c.vx *= -1;
+      c.x = Math.max(m, Math.min(c.x, vw - c.w - m));
+    }
+    if (c.y <= m || c.y + c.h >= vh - m){
+      c.vy *= -1;
+      c.y = Math.max(m, Math.min(c.y, vh - c.h - m));
+    }
+    c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
   }
-  for (let i=0;i<chips.length;i++)for(let j=i+1;j<chips.length;j++){
+  for (let i=0;i<chips.length;i++) for (let j=i+1;j<chips.length;j++){
     const a=chips[i], b=chips[j];
     if (a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y){
-      [a.vx,b.vx]=[b.vx,a.vx]; [a.vy,b.vy]=[b.vy,a.vy];
+      [a.vx,b.vx] = [b.vx,a.vx];
+      [a.vy,b.vy] = [b.vy,a.vy];
     }
   }
 }
@@ -146,11 +153,11 @@ async function boot() {
   const authed = !!session;
   setAuthState(authed);
 
-  // редиректы, чтобы не было «пустой страницы»
+  // редиректы
   if (authed && (path() === '/' || path().endsWith('/index.html'))) { goto(LINKS.menu); return; }
   if (!authed && !(path() === '/' || path().endsWith('/index.html'))) { goto(LINKS.home); return; }
 
-  // роуты страниц
+  // роуты
   if (isPage('lobby.html')) await initLobby();
   if (isPage('event-edit.html')) await initEventEdit();
   if (isPage('event-analytics.html')) await initEventAnalytics();
@@ -183,27 +190,28 @@ async function initEventEdit(){
   const sess = await getSession();
   if (!sess?.user?.id) return alert('Нужна авторизация');
 
-  // 1. Получаем pid текущего пользователя
+  // 1) pid текущего пользователя
   const { data: prof, error: profErr } = await supa
     .from('profiles')
     .select('pid')
     .eq('id', sess.user.id)   // id = UUID
     .single();
+  if (profErr || !prof) return alert('Не удалось найти профиль пользователя');
 
-  if (profErr || !prof) {
-    return alert('Не удалось найти профиль пользователя');
-  }
+  // 2) валидации обязательных полей
+  const dateVal = qs('#editDate')?.value;
+  if (!dateVal) return alert('Выберите дату события');
 
-  // 2. Формируем payload
+  // 3) payload (host_user_id — bigint pid)
   const payload = {
-    title: qs('#editTitle')?.value?.trim() || 'Событие',
-    date: qs('#editDate')?.value || null,
-    time: qs('#editTime')?.value || null,
-    address: qs('#editAddress')?.value || '',
-    notes: qs('#editNotes')?.value || '',
-    dress: qs('#editDress')?.value || '',
-    bring: qs('#editBring')?.value || '',
-    host_user_id: prof.pid   // ✅ bigint
+    title:  qs('#editTitle')?.value?.trim() || 'Событие',
+    date:   dateVal,
+    time:   qs('#editTime')?.value || null,
+    address:qs('#editAddress')?.value || '',
+    notes:  qs('#editNotes')?.value || '',
+    dress:  qs('#editDress')?.value || '',
+    bring:  qs('#editBring')?.value || '',
+    host_user_id: prof.pid
   };
 
   let code = genCode();
@@ -229,23 +237,19 @@ async function initEventAnalytics(){
   const { data: ev, error } = await supa.from('events').select('*').eq('code', code).single();
   if (error || !ev) { qs('#error')?.replaceChildren(document.createTextNode('Событие не найдено')); return; }
 
-  // получаем pid текущего пользователя
+  // получаем pid текущего пользователя и сверяем с host_user_id
   const sess = await getSession();
   let myPid = null;
   if (sess?.user?.id) {
-    const { data: prof } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
-    myPid = prof?.pid ?? null;
+    const { data: me } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
+    myPid = me?.pid ?? null;
   }
-
-  const isOwner =
-    (myPid != null && Number(ev.host_user_id) === Number(myPid)) ||
-    p.owner === '1';
+  const isOwner = (myPid != null && Number(ev.host_user_id) === Number(myPid)) || p.owner === '1';
 
   qs('#eventTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
   qs('#eventDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
   qs('#eventTime')?.replaceChildren(document.createTextNode(ev.time || '—'));
   qs('#eventAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
-
   qs('#editEventBtn')?.classList.toggle('hidden', !isOwner);
 
   renderRSVP(ev.id);
@@ -259,7 +263,7 @@ async function initEventAnalytics(){
   }
 }
 
-/* Минимальный список гостей (только чтение для скелета) */
+/* ------------------ Минимальный список гостей (read-only скелет) ------------------ */
 async function renderRSVP(event_id){
   const list = qs('#visitorsList'); if (!list) return;
   const { data } = await supa.from('rsvps').select('nickname,status').eq('event_id', event_id);
@@ -270,16 +274,17 @@ async function renderRSVP(event_id){
     li.textContent = `${r.nickname || 'Гость'} — ${statusEmoji(r.status)}`;
     list.appendChild(li);
   });
-  const yes = (data||[]).filter(x=>x.status==='yes').length;
+  const yes   = (data||[]).filter(x=>x.status==='yes').length;
   const maybe = (data||[]).filter(x=>x.status==='maybe').length;
-  const no = (data||[]).filter(x=>x.status==='no').length;
-  qs('#rsvpYesCount') && (qs('#rsvpYesCount').textContent = String(yes));
-  qs('#rsvpMaybeCount') && (qs('#rsvpMaybeCount').textContent = String(maybe));
-  qs('#rsvpNoCount') && (qs('#rsvpNoCount').textContent = String(no));
+  const no    = (data||[]).filter(x=>x.status==='no').length;
+  const y = qs('#rsvpYesCount'), m = qs('#rsvpMaybeCount'), n = qs('#rsvpNoCount');
+  y && (y.textContent = String(yes));
+  m && (m.textContent = String(maybe));
+  n && (n.textContent = String(no));
 }
 function statusEmoji(s){ return s==='yes'?'🟢 Иду':s==='maybe'?'🟡 Возможно':'🔴 Не иду'; }
 
-/* Минимальный wishlist (только чтение для скелета) */
+/* ------------------ Минимальный wishlist (read-only скелет) ------------------ */
 async function renderWishlist(event_id){
   const list = qs('#wishlistList'); if (!list) return;
   const { data } = await supa.from('gifts').select('title,taken_by').eq('event_id', event_id);
@@ -291,10 +296,11 @@ async function renderWishlist(event_id){
     if (g.taken_by) li.textContent += ' — 🔒 занято';
     list.appendChild(li);
   });
-  const free = (data||[]).filter(x=>!x.taken_by).length;
+  const free  = (data||[]).filter(x=>!x.taken_by).length;
   const taken = (data||[]).filter(x=>x.taken_by).length;
-  qs('#giftFreeCount') && (qs('#giftFreeCount').textContent = String(free));
-  qs('#giftTakenCount') && (qs('#giftTakenCount').textContent = String(taken));
+  const f = qs('#giftFreeCount'), t = qs('#giftTakenCount');
+  f && (f.textContent = String(free));
+  t && (t.textContent = String(taken));
 }
 
 /* ------------------ Профиль: актуальные / прошедшие ------------------ */
@@ -302,31 +308,29 @@ async function initProfile(){
   if (!supa) return;
   const sess = await getSession(); if (!sess?.user?.id) return;
 
-  // берём pid
-  const { data: prof } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
-  const myPid = prof?.pid;
-  if (!myPid) return;
+  const { data: me } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
+  const myPid = me?.pid; if (!myPid) return;
 
   const today = new Date().toISOString().slice(0,10);
 
   const { data: mine } = await supa.from('events')
     .select('id,title,date,code')
-    .eq('host_user_id', myPid)     // <-- pid, а не uuid
+    .eq('host_user_id', myPid)
     .order('date', { ascending: true });
 
   const { data: guestIn } = await supa.from('rsvps')
     .select('event_id,events(id,title,date,code)')
-    .eq('user_id', sess.user.id)   // тут user_id = UUID — оставляем
+    .eq('user_id', sess.user.id)
     .order('created_at', { ascending: false });
 
-  // рендер карточек
   const container = qs('.container'); if (!container) return;
   const card=document.createElement('div'); card.className='card';
   const h2=document.createElement('h2'); h2.textContent='Мои события';
   card.appendChild(h2);
 
   function sect(title, items){
-    const d=document.createElement('div'); const hh=document.createElement('h3'); hh.textContent=title; d.appendChild(hh);
+    const d=document.createElement('div');
+    const hh=document.createElement('h3'); hh.textContent=title; d.appendChild(hh);
     const ul=document.createElement('ul');
     (items||[]).forEach(ev=>{
       const e = ev.events || ev;
