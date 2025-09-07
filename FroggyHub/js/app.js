@@ -242,6 +242,7 @@ async function initEventEdit(){
 }
 
 /* ------------------ Страница события (аналитика/только владелец) ------------------ */
+
 async function initEventAnalytics(){
   if (!supa) return;
   const p = params();
@@ -258,7 +259,8 @@ async function initEventAnalytics(){
     const { data: me } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
     myPid = me?.pid ?? null;
   }
-  const isOwner = (myPid != null && Number(ev.host_user_id) === Number(myPid)) || p.owner === '1';
+  // ИЗМЕНЕНИЕ: теперь только pid совпадает
+  const isOwner = (myPid != null && Number(ev.host_user_id) === Number(myPid));
 
   if (!isOwner) { alert('Доступ к аналитике есть только у создателя события'); goto(LINKS.menu); return; }
 
@@ -274,6 +276,7 @@ async function initEventAnalytics(){
   qs('#backBtn')?.addEventListener('click', ()=> goto(LINKS.menu));
   qs('#editEventBtn')?.addEventListener('click', ()=> goto(`${LINKS['event-edit']}?code=${encodeURIComponent(code)}`));
 }
+
 
 /* ------------------ Списки (read-only) ------------------ */
 async function renderRSVP(event_id){
@@ -487,4 +490,4 @@ async function initEventSummary(){
   });
 }
 
-проверь
+
