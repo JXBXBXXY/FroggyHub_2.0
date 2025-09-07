@@ -832,8 +832,9 @@ body.scene-intro .speech{display:block}
 /* === 2) КНОПКИ В ВЕРХНЕМ ХАБЕ (без .btn) === */
 .fh-header, .topbar{
   display:flex;
-  justify-content:space-between;
+  justify-content:flex-end;
   align-items:center;
+  gap:10px;
   padding:12px 20px;
   position:sticky;
   top:0;
@@ -844,27 +845,26 @@ body.scene-intro .speech{display:block}
   border-bottom:1px solid rgba(255,255,255,.08);
 }
 
-/* Header links & buttons */
-.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"],
-.topbar a, .topbar button, .topbar input[type="button"], .topbar input[type="submit"]{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 10px;
-  border-radius:12px;
-  background:var(--glass);
-  border:1px solid var(--border);
-  color:var(--text) !important;
-  font-weight:600;
-  text-decoration:none;
-  line-height:1;
+/* Header buttons */
+.topbar button,
+.fh-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
 }
-.fh-header a:hover, .fh-header button:hover, .fh-header input[type="button"]:hover, .fh-header input[type="submit"]:hover,
-.topbar a:hover, .topbar button:hover, .topbar input[type="button"]:hover, .topbar input[type="submit"]:hover{
-  background:rgba(255,255,255,.10);
+
+.topbar button:hover,
+.fh-header button:hover {
+  background: rgba(255,255,255,.10);
 }
-.fh-header a:link, .fh-header a:visited,
-.topbar a:link, .topbar a:visited{ color:var(--text) !important; }
 
 /* === 3) ВЕРНИМ «СТЕКЛО» И УБЕРЁМ СВЕТЛЫЕ ПЕРЕОПРЕДЕЛЕНИЯ === */
 /* Универсальный класс стекла */
