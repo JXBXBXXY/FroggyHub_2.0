@@ -1,4 +1,4 @@
-// app.js — навигация + «скелет» потоков Owner/Guest
+// app.js — навигация + поток Owner/Guest + пост-онбординг события
 import {
   supa, getSession, onAuthState,
   signIn, signUpWithNickname, signOut,
@@ -10,8 +10,11 @@ const LINKS = {
   home: '/index.html',
   menu: '/lobby.html',
   profile: '/profile.html',
-  settings: '/profile.html',      // временно
-  'event-edit': '/event-edit.html'
+  settings: '/profile.html',
+  'event-edit': '/event-edit.html',
+  'wishlist-setup': '/wishlist-setup.html',
+  'event-summary': '/event-summary.html',
+  'event-analytics': '/event-analytics.html'
 };
 const qs  = (s, r = document) => r.querySelector(s);
 const qsa = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -27,7 +30,7 @@ function setAuthState(isAuthed) {
 function goto(href) { location.href = href; }
 function copy(text) { try { navigator.clipboard?.writeText(text); } catch {} }
 
-/* ------------------ Floating chips (фон) ------------------ */
+/* ------------------ Фоновая анимация (чипы) ------------------ */
 const FH_MESSAGES = [
   "Я приду к 19:00 ✨","Я возьму пиццу 🍕","Кто возьмёт колу? 🥤",
   "Ребят, постучите в дверь 🚪","Буду позже 🙈","Добавил плейлист 🎶",
@@ -146,7 +149,7 @@ document.addEventListener('click', async (e)=>{
   await signOut(); goto(LINKS.home);
 });
 
-/* ------------------ Guard + page boot ------------------ */
+/* ------------------ Boot & роутинг ------------------ */
 async function boot() {
   const session = await getSession();
   const authed = !!session;
@@ -158,18 +161,18 @@ async function boot() {
 
   // роуты
   if (isPage('lobby.html')) await initLobby();
+
   if (isPage('event-edit.html')) {
-    // Важно: не вызывать сохранение сразу. Вешаем сабмит на форму/кнопку.
     const form = qs('#editForm') || qs('form');
     const saveBtn = qs('#saveEvent');
-    if (form) {
-      form.addEventListener('submit', async (e)=>{ e.preventDefault(); await initEventEdit(); });
-    }
-    if (saveBtn && !form) { // если формы нет, но есть кнопка
-      saveBtn.addEventListener('click', async (e)=>{ e.preventDefault(); await initEventEdit(); });
-    }
+    if (form) form.addEventListener('submit', async (e)=>{ e.preventDefault(); await initEventEdit(); });
+    if (saveBtn && !form) saveBtn.addEventListener('click', async (e)=>{ e.preventDefault(); await initEventEdit(); });
   }
+
+  if (isPage('wishlist-setup.html')) await initWishlistSetup();
+  if (isPage('event-summary.html')) await initEventSummary();
   if (isPage('event-analytics.html')) await initEventAnalytics();
+
   if (isPage('profile.html')) await initProfile();
 
   onAuthState((sess) => setAuthState(!!sess));
@@ -203,7 +206,7 @@ async function initEventEdit(){
   const { data: prof, error: profErr } = await supa
     .from('profiles')
     .select('pid')
-    .eq('id', sess.user.id)   // id = UUID
+    .eq('id', sess.user.id)
     .single();
   if (profErr || !prof) return alert('Не удалось найти профиль пользователя');
 
@@ -220,7 +223,7 @@ async function initEventEdit(){
     notes:  qs('#editNotes')?.value || '',
     dress:  qs('#editDress')?.value || '',
     bring:  qs('#editBring')?.value || '',
-    host_user_id: prof.pid            // bigint (profiles.pid)
+    host_user_id: prof.pid
   };
 
   const code = genCode();
@@ -228,15 +231,90 @@ async function initEventEdit(){
   const { data, error } = await supa
     .from('events')
     .insert([{ ...payload, code }])
-    .select('*')
+    .select('id, code')
     .single();
 
   if (error) return alert(error.message || 'Не удалось создать событие');
 
-  goto(`/event-analytics.html?code=${encodeURIComponent(data.code)}&owner=1`);
+  // ⇒ на шаг вишлиста
+  goto(`${LINKS['wishlist-setup']}?event=${encodeURIComponent(data.id)}&code=${encodeURIComponent(data.code)}`);
 }
 
-/* ------------------ Страница события (аналитика/гость) ------------------ */
+/* ------------------ Шаг 2: заполнение вишлиста ------------------ */
+async function initWishlistSetup(){
+  const p = params();
+  const eventId = Number(p.event);
+  const code = p.code;
+  if (!eventId || !code) { alert('Не хватает данных события'); goto(LINKS.menu); return; }
+
+  // элементы
+  const input = qs('#giftInput');
+  const addBtn = qs('#giftAdd');
+  const nextBtn = qs('#giftNext');
+  const list = qs('#giftList');
+  const counterFree = qs('#giftFreeCount');
+  const counterTaken = qs('#giftTakenCount');
+
+  async function refresh(){
+    const { data } = await supa.from('gifts').select('id,title,taken_by').eq('event_id', eventId).order('id');
+    list.innerHTML = '';
+    let free=0, taken=0;
+    (data||[]).forEach(g=>{
+      const li=document.createElement('li');
+      li.className='wl-item';
+      li.textContent = g.title || 'Подарок';
+      if (g.taken_by) { taken++; li.textContent += ' — 🔒 занято'; } else { free++; }
+      list.appendChild(li);
+    });
+    counterFree && (counterFree.textContent = String(free));
+    counterTaken && (counterTaken.textContent = String(taken));
+  }
+
+  addBtn?.addEventListener('click', async (e)=>{
+    e.preventDefault();
+    const title = (input?.value||'').trim();
+    if (!title) return;
+    await supa.from('gifts').insert([{ event_id: eventId, title }]);
+    input.value = '';
+    await refresh();
+  });
+
+  nextBtn?.addEventListener('click', (e)=>{
+    e.preventDefault();
+    goto(`${LINKS['event-summary']}?event=${encodeURIComponent(eventId)}&code=${encodeURIComponent(code)}`);
+  });
+
+  await refresh();
+}
+
+/* ------------------ Шаг 3: финальная сводка + код ------------------ */
+async function initEventSummary(){
+  const p = params();
+  const eventId = Number(p.event);
+  const code = p.code;
+  if (!eventId || !code) { alert('Не хватает данных события'); goto(LINKS.menu); return; }
+
+  const { data: ev, error } = await supa.from('events').select('*').eq('id', eventId).single();
+  if (error || !ev) { alert('Событие не найдено'); goto(LINKS.menu); return; }
+
+  // заполняем поля
+  qs('#sumTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
+  qs('#sumDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
+  qs('#sumTime')?.replaceChildren(document.createTextNode(ev.time || '—'));
+  qs('#sumAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
+  qs('#sumNotes')?.replaceChildren(document.createTextNode(ev.notes || '—'));
+  qs('#sumCode')?.replaceChildren(document.createTextNode(code));
+
+  // копирование кода
+  qs('#sumCopy')?.addEventListener('click', ()=>{ copy(code); toast('Код скопирован'); });
+
+  // кнопка «Открыть аналитику» (только владелец увидит по RLS/проверке на странице)
+  qs('#toAnalytics')?.addEventListener('click', ()=>{
+    goto(`${LINKS['event-analytics']}?code=${encodeURIComponent(code)}&owner=1`);
+  });
+}
+
+/* ------------------ Страница события (аналитика/только владелец) ------------------ */
 async function initEventAnalytics(){
   if (!supa) return;
   const p = params();
@@ -246,7 +324,7 @@ async function initEventAnalytics(){
   const { data: ev, error } = await supa.from('events').select('*').eq('code', code).single();
   if (error || !ev) { qs('#error')?.replaceChildren(document.createTextNode('Событие не найдено')); return; }
 
-  // получаем pid текущего пользователя и сверяем с host_user_id
+  // проверяем владельца
   const sess = await getSession();
   let myPid = null;
   if (sess?.user?.id) {
@@ -254,6 +332,8 @@ async function initEventAnalytics(){
     myPid = me?.pid ?? null;
   }
   const isOwner = (myPid != null && Number(ev.host_user_id) === Number(myPid)) || p.owner === '1';
+
+  if (!isOwner) { alert('Доступ к аналитике есть только у создателя события'); goto(LINKS.menu); return; }
 
   qs('#eventTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
   qs('#eventDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
@@ -265,14 +345,10 @@ async function initEventAnalytics(){
   renderWishlist(ev.id);
 
   qs('#backBtn')?.addEventListener('click', ()=> goto(LINKS.menu));
-  qs('#editEventBtn')?.addEventListener('click', ()=> goto(`/event-edit.html?code=${encodeURIComponent(code)}`));
-
-  if (isOwner) {
-    qs('#eventTitle')?.addEventListener('click', ()=>{ copy(code); toast('Код скопирован'); });
-  }
+  qs('#editEventBtn')?.addEventListener('click', ()=> goto(`${LINKS['event-edit']}?code=${encodeURIComponent(code)}`));
 }
 
-/* ------------------ Минимальный список гостей (read-only) ------------------ */
+/* ------------------ Списки (read-only) ------------------ */
 async function renderRSVP(event_id){
   const list = qs('#visitorsList'); if (!list) return;
   const { data } = await supa.from('rsvps').select('nickname,status').eq('event_id', event_id);
@@ -293,7 +369,6 @@ async function renderRSVP(event_id){
 }
 function statusEmoji(s){ return s==='yes'?'🟢 Иду':s==='maybe'?'🟡 Возможно':'🔴 Не иду'; }
 
-/* ------------------ Минимальный wishlist (read-only) ------------------ */
 async function renderWishlist(event_id){
   const list = qs('#wishlistList'); if (!list) return;
   const { data } = await supa.from('gifts').select('title,taken_by').eq('event_id', event_id);
@@ -312,7 +387,7 @@ async function renderWishlist(event_id){
   t && (t.textContent = String(taken));
 }
 
-/* ------------------ Профиль: актуальные / прошедшие ------------------ */
+/* ------------------ Профиль ------------------ */
 async function initProfile(){
   if (!supa) return;
   const sess = await getSession(); if (!sess?.user?.id) return;
@@ -345,7 +420,7 @@ async function initProfile(){
       const e = ev.events || ev;
       const li=document.createElement('li');
       const a=document.createElement('a');
-      a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}`;
+      a.href=`/event-analytics.html?code=${encodeURIComponent(e.code)}&owner=1`;
       a.textContent=`${e.title} — ${e.date||'—'}`;
       li.appendChild(a); ul.appendChild(li);
     });
