@@ -1,56 +1,72 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>Итоги события</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="/css/styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wishlist для события</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="authed">
-  <header class="topbar">
-    <button data-link="menu" class="btn">Меню</button>
-    <button data-action="logout" class="btn">Выйти</button>
+<body class="guest">
+  <div id="fh-message-clouds" aria-hidden="true"></div>
+
+  <header class="topbar" data-auth-only>
+    <a href="#" class="logo" data-link="home">FroggyHub</a>
+    <div class="topbar-right">
+      <button data-link="menu">Меню</button>
+      <button data-link="profile">Профиль</button>
+      <button data-action="logout">Выйти</button>
+    </div>
   </header>
 
-  <main class="container">
+  <main class="container" role="main" data-auth-only>
     <div class="card">
-      <h1>Итоги события</h1>
+      <h1 id="wlTitle">Добавьте подарки к событию</h1>
+      <p class="hint">Сначала создайте событие, затем добавьте несколько позиций в вишлист. Гости смогут «занимать» эти позиции позже.</p>
 
-      <div class="grid two">
-        <div>
-          <h3>Название</h3>
-          <p id="sumTitle">—</p>
-        </div>
-        <div>
-          <h3>Дата</h3>
-          <p id="sumDate">—</p>
-        </div>
-        <div>
-          <h3>Время</h3>
-          <p id="sumTime">—</p>
-        </div>
-        <div>
-          <h3>Адрес</h3>
-          <p id="sumAddr">—</p>
-        </div>
-        <div class="col-span-2">
-          <h3>Заметки</h3>
-          <p id="sumNotes">—</p>
-        </div>
+      <div class="grid">
+        <label>Новая позиция
+          <input id="giftInput" placeholder="Напр.: Безалкогольный сидр" />
+        </label>
+        <button id="giftAdd" class="btn btn--primary" aria-label="Добавить позицию">Добавить</button>
       </div>
 
-      <hr>
-
-      <div class="invite">
-        <h3>Код для приглашения гостей</h3>
-        <p class="code"><span id="sumCode">— — — — — —</span></p>
-        <button id="sumCopy" class="btn btn-secondary">Скопировать код</button>
-        <button id="toAnalytics" class="btn btn-primary">Открыть аналитику</button>
+      <div class="stats" style="margin-top: 1rem;">
+        <span class="badge free" id="giftFreeCount">0</span>
+        <span class="badge taken" id="giftTakenCount">0</span>
       </div>
+
+      <ul id="giftList" class="wl-list" role="list" aria-live="polite" style="margin-top:1rem;"></ul>
+
+      <div class="bar-actions" style="margin-top:1.5rem;">
+        <button class="btn btn--ghost" id="giftSkip">Пропустить</button>
+        <button class="btn btn--primary" id="giftNext">Далее</button>
+      </div>
+
+      <p id="wlError" class="error" role="status" aria-live="polite"></p>
     </div>
   </main>
 
-  <div id="toast" hidden></div>
-  <script type="module" src="/js/app.js"></script>
+  <div id="cookieCard" class="card" style="display:none" data-auth-only>
+    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
+      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
+    </svg>
+    <div class="cookieHeading">Cookies</div>
+    <div class="cookieDescription">
+      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
+    </div>
+    <div class="buttonContainer">
+      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
+      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden data-auth-only></div>
+
+  <!-- Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Public env -->
+  <script src="env.js"></script>
+  <!-- App -->
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
