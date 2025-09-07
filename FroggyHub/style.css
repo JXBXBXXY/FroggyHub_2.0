@@ -1052,3 +1052,67 @@ input[type="datetime-local"]::-webkit-date-and-time-value{
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+/* === FIX PACK — низ файла ================================== */
+
+/* Форсим тёмные поля именно в формах редактирования и модалках */
+.edit-form input,
+.edit-form select,
+.edit-form textarea,
+.modal .card input,
+.modal .card select,
+.modal .card textarea{
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--input-border) !important;
+  color-scheme: dark; /* подсказываем браузеру тёмную схему для нативных виджетов */
+}
+.edit-form input::placeholder,
+.edit-form textarea::placeholder{ color: var(--muted) !important; }
+
+/* Иконки календаря/часов (WebKit) */
+.edit-form input[type="date"]::-webkit-calendar-picker-indicator,
+.edit-form input[type="time"]::-webkit-calendar-picker-indicator,
+.edit-form input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  filter: invert(85%);
+  opacity: .9;
+}
+.edit-form input[type="date"]::-webkit-date-and-time-value,
+.edit-form input[type="time"]::-webkit-date-and-time-value,
+.edit-form input[type="datetime-local"]::-webkit-date-and-time-value{
+  color: var(--text);
+}
+
+/* Топбар: стилизуем не только <button>, но и input-кнопки/ссылки */
+.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"],
+.topbar a, .topbar button, .topbar input[type="button"], .topbar input[type="submit"]{
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 12px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text) !important; font-weight: 600;
+  text-decoration: none;
+}
+.fh-header a:hover, .fh-header button:hover,
+.fh-header input[type="button"]:hover, .fh-header input[type="submit"]:hover,
+.topbar a:hover, .topbar button:hover,
+.topbar input[type="button"]:hover, .topbar input[type="submit"]:hover{
+  background: rgba(255,255,255,.10);
+}
+
+/* «Стекло» по умолчанию тёмное, светлое — только в .bg-frog */
+:not(.bg-frog) .final-card{
+  background: rgba(15,48,32,.8) !important;
+  border: 1px solid #1e5a3f !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45) !important;
+  backdrop-filter: blur(6px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(120%) !important;
+}
+.bg-frog .final-card{
+  background: #f5fff9 !important;
+  border: 1px solid #bfe3d3 !important;
+  box-shadow: 0 10px 30px #083d2a15 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
