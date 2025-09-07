@@ -990,3 +990,65 @@ input[type="datetime-local"]::-webkit-date-and-time-value{
 .topbar a:visited{
   color: var(--text);
 }
+/* === FORCE DARK FIELDS IN EDIT FORM === */
+.edit-form input,
+.edit-form select,
+.edit-form textarea,
+.modal .card input,
+.modal .card select,
+.modal .card textarea {
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--input-border) !important;
+}
+.edit-form input::placeholder,
+.edit-form textarea::placeholder { color: var(--muted) !important; }
+
+/* Нативные date/time – иконка и текст (WebKit) */
+.edit-form input[type="date"]::-webkit-calendar-picker-indicator,
+.edit-form input[type="time"]::-webkit-calendar-picker-indicator,
+.edit-form input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(85%);
+  opacity: .9;
+}
+.edit-form input[type="date"]::-webkit-date-and-time-value,
+.edit-form input[type="time"]::-webkit-date-and-time-value,
+.edit-form input[type="datetime-local"]::-webkit-date-and-time-value {
+  color: var(--text);
+}
+
+/* === TOP BAR BUTTONS (голые <button>/<a>) === */
+.fh-header a, .fh-header button,
+.topbar a, .topbar button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 12px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  color: var(--text) !important; font-weight: 600;
+  text-decoration: none;
+}
+.fh-header a:hover, .fh-header button:hover,
+.topbar a:hover, .topbar button:hover {
+  background: rgba(255,255,255,.10);
+}
+.fh-header a:link, .fh-header a:visited,
+.topbar a:link, .topbar a:visited { color: var(--text) !important; }
+
+/* === GLASS BACK (по умолчанию тёмная «стеклянная» карточка) === */
+.final-card {
+  background: rgba(15,48,32,.8) !important;
+  border: 1px solid #1e5a3f !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45) !important;
+  backdrop-filter: blur(6px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(120%) !important;
+}
+/* Светлая версия — только внутри .bg-frog */
+.bg-frog .final-card {
+  background: #f5fff9 !important;
+  border: 1px solid #bfe3d3 !important;
+  box-shadow: 0 10px 30px #083d2a15 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
