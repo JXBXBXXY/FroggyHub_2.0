@@ -892,7 +892,9 @@ body.scene-intro .speech{display:block}
   color: #082016;
 }
 
-/* === Dark native inputs (incl. date/time) === */
+/* === GLOBAL DARK INPUT THEME === */
+
+/* Base inputs */
 input[type="text"],
 input[type="password"],
 input[type="email"],
@@ -910,41 +912,69 @@ select{
   border-radius: 10px;
   padding: 12px 14px;
 }
-input::placeholder, textarea::placeholder{ color: var(--muted); }
-input:focus, textarea:focus, select:focus{
+
+/* Focus ring + shadow */
+input:focus,
+textarea:focus,
+select:focus{
   outline: 2px solid var(--ring);
   box-shadow: 0 6px 18px var(--shadow);
 }
+
+/* Placeholder tint */
+input::placeholder,
+textarea::placeholder{ color: var(--muted); }
+
+/* WebKit picker icons & value color */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator{
   filter: invert(85%);
   opacity: .9;
-  color: var(--text);
 }
 input[type="date"]::-webkit-date-and-time-value,
 input[type="time"]::-webkit-date-and-time-value,
 input[type="datetime-local"]::-webkit-date-and-time-value{
   color: var(--text);
-  filter: invert(85%);
 }
+
+/* Autofill: keep dark */
 input:-webkit-autofill{
   -webkit-text-fill-color: var(--text);
   box-shadow: 0 0 0 100px var(--input-bg) inset !important;
   transition: background-color 9999s ease-in-out 0s;
 }
-/* Force in edit form / modals */
+
+/* Always >=16px to prevent mobile zoom */
+input, textarea, select{ font-size:16px; }
+
+/* === ENFORCE IN CRITICAL AREAS (higher specificity) === */
+
+/* Edit form + Modals: force dark (helps if other rules try to override) */
 .edit-form input,
 .edit-form select,
 .edit-form textarea,
 .modal .card input,
 .modal .card select,
-.modal .card textarea {
+.modal .card textarea{
   background: var(--input-bg) !important;
   color: var(--text) !important;
   border: 1px solid var(--input-border) !important;
 }
 .edit-form input::placeholder,
-.edit-form textarea::placeholder { color: var(--muted) !important; }
+.edit-form textarea::placeholder{
+  color: var(--muted) !important;
+}
+.edit-form input[type="date"]::-webkit-calendar-picker-indicator,
+.edit-form input[type="time"]::-webkit-calendar-picker-indicator,
+.edit-form input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  filter: invert(85%);
+  opacity: .9;
+}
+.edit-form input[type="date"]::-webkit-date-and-time-value,
+.edit-form input[type="time"]::-webkit-date-and-time-value,
+.edit-form input[type="datetime-local"]::-webkit-date-and-time-value{
+  color: var(--text);
+}
 
 body.scene-intro, body.scene-final { overflow: hidden; }
