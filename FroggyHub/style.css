@@ -52,12 +52,14 @@ input[type="submit"] {
   appearance: none !important;
   background: none;
   border: none;
+  padding: 0;
+  border-radius: 0;
   color: inherit;
   font: inherit;
 }
 body{
   margin:0;
-  overflow:hidden;
+  overflow:auto;
   background: linear-gradient(160deg, var(--fh-green-1), var(--fh-green-2), var(--fh-green-3));
   min-height:100vh;
   color:var(--text);
@@ -169,7 +171,7 @@ body{
 #auth-overlay,
 .fh-auth {
   position: relative;
-  z-index: 5;
+  z-index: 10;
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -180,7 +182,7 @@ body{
 /* стеклянная карточка авторизации */
 #screen-auth .auth-card{
   position:relative;
-  z-index:20;
+  z-index:10;
   background: rgba(20, 45, 35, 0.45);
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
@@ -430,7 +432,7 @@ body.force-mobile #finalRight { order: 1; width: 100%; }
 
 /* правая карточка поверх фона */
 .final-card{
-  position:relative; z-index:3; overflow-wrap:anywhere;
+  position:relative; z-index:10; overflow-wrap:anywhere;
   pointer-events:auto;
   width:100%;
   border-radius:22px;
@@ -824,7 +826,7 @@ body.scene-intro .speech{display:block}
 .auth-card-wrap,
 #auth-overlay {
   position: relative;
-  z-index: 20;
+  z-index: 10;
 }
 
 /* === 2) КНОПКИ В ВЕРХНЕМ ХАБЕ (без .btn) === */
@@ -835,7 +837,7 @@ body.scene-intro .speech{display:block}
   padding:12px 20px;
   position:sticky;
   top:0;
-  z-index:100;
+  z-index:10;
   background:rgba(0,0,0,.15);
   backdrop-filter:blur(6px);
   -webkit-backdrop-filter:blur(6px);
@@ -875,7 +877,7 @@ body.scene-intro .speech{display:block}
 }
 
 /* Применить стекло к основным контейнерам */
-.card, .panel, .invite-card, .auth-card, .modal .card{
+.card, .panel, .invite-card, .auth-card, .modal .card, .final-card{
   background: rgba(0,0,0,.22);
   border: 1px solid rgba(255,255,255,.09);
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
@@ -883,20 +885,11 @@ body.scene-intro .speech{display:block}
   -webkit-backdrop-filter: blur(12px) saturate(120%);
 }
 
-/* Final card theme */
-.final-card{
-  background:rgba(15,48,32,.8);
-  border:1px solid #1e5a3f;
-  box-shadow:0 20px 60px rgba(0,0,0,.45);
-  backdrop-filter:blur(6px) saturate(120%);
-  -webkit-backdrop-filter:blur(6px) saturate(120%);
-}
+/* Светлый вариант финальной карточки */
 .bg-frog .final-card{
-  background:#f5fff9;
-  border:1px solid #bfe3d3;
-  box-shadow:0 10px 30px #083d2a15;
-  backdrop-filter:none;
-  -webkit-backdrop-filter:none;
+  background: rgba(255,255,255,.22);
+  border: 1px solid rgba(0,0,0,.09);
+  color: #082016;
 }
 
 /* === Dark native inputs (incl. date/time) === */
@@ -927,11 +920,13 @@ input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator{
   filter: invert(85%);
   opacity: .9;
+  color: var(--text);
 }
 input[type="date"]::-webkit-date-and-time-value,
 input[type="time"]::-webkit-date-and-time-value,
 input[type="datetime-local"]::-webkit-date-and-time-value{
   color: var(--text);
+  filter: invert(85%);
 }
 input:-webkit-autofill{
   -webkit-text-fill-color: var(--text);
@@ -953,4 +948,3 @@ input:-webkit-autofill{
 .edit-form textarea::placeholder { color: var(--muted) !important; }
 
 body.scene-intro, body.scene-final { overflow: hidden; }
-body:not(.scene-intro):not(.scene-final) { overflow: auto; }
