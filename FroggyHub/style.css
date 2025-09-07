@@ -66,12 +66,11 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 /* Фоновые чипы (за контентом, но поверх бэкграунда) */
-#fh-message-clouds{
+#fh-message-clouds {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  overflow: hidden;
 }
 
 /* Состояния пузыря */
@@ -151,8 +150,8 @@ body{
   }
 }
 
-/* Ensure UI elements stay above chips */
-.screen, .panel, .card, .modal{
+/* реальный UI поверх */
+.topbar, .fh-header, .screen, .panel, .card, .modal, .final-card {
   position: relative;
   z-index: 10;
 }
@@ -846,23 +845,18 @@ body.scene-intro .speech{display:block}
 }
 
 /* Header buttons */
-.topbar a, .topbar button,
-.fh-header a, .fh-header button {
-  -webkit-appearance: none;
-  appearance: none;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(0,0,0,.22);
-  border: 1px solid rgba(255,255,255,.10);
-  color: var(--text) !important;
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: 0 10px 24px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.06);
+.topbar a, .topbar button, .topbar input[type="button"], .topbar input[type="submit"],
+.fh-header a, .fh-header button, .fh-header input[type="button"], .fh-header input[type="submit"]{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:12px;
+  background: var(--glass);
+  border:1px solid var(--border);
+  color: var(--text); font-weight:600; text-decoration:none;
 }
 
 .topbar a:hover, .topbar button:hover,
-.fh-header a:hover, .fh-header button:hover {
+.fh-header a:hover, .fh-header button:hover{
   background: rgba(255,255,255,.10);
 }
 
@@ -877,7 +871,7 @@ body.scene-intro .speech{display:block}
 }
 
 /* Применить стекло к основным контейнерам */
-.card, .panel, .invite-card, .auth-card, .modal .card, .final-card{
+.card, .panel, .invite-card, .auth-card, .modal .card{
   background: rgba(0,0,0,.22);
   border: 1px solid rgba(255,255,255,.09);
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
@@ -885,11 +879,20 @@ body.scene-intro .speech{display:block}
   -webkit-backdrop-filter: blur(12px) saturate(120%);
 }
 
-/* Светлый вариант финальной карточки */
+/* По умолчанию — тёмное стекло */
+.final-card{
+  background: rgba(15,48,32,.8);
+  border: 1px solid #1e5a3f;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  backdrop-filter: blur(6px) saturate(120%);
+}
+
+/* Светлый вариант — только на светлом фоне страницы */
 .bg-frog .final-card{
-  background: rgba(255,255,255,.22);
-  border: 1px solid rgba(0,0,0,.09);
-  color: #082016;
+  background:#f5fff9;
+  border:1px solid #bfe3d3;
+  box-shadow:0 10px 30px #083d2a15;
+  backdrop-filter:none;
 }
 
 /* ==== UNIFIED "GLASS" INPUTS ACROSS THE APP ==== */
@@ -953,11 +956,40 @@ select:focus {
     0 0 0 1px rgba(255,255,255,.08) inset;
 }
 
-/* маленький «пилюльный» вариант (как поле кода в лобби) — применится к коротким инпутам */
-input.short, .pill-input {
-  padding: 6px 10px;
-  border-radius: 999px;
-  min-height: 30px;
+/* === GLASS PILL INPUT (универсальный компактный инпут) === */
+.pill-input{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:8px 12px; line-height:1;
+  border-radius:999px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+  backdrop-filter:blur(6px);
+  box-shadow:0 4px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
+  color:rgba(255,255,255,.90);
+  font:600 14px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+}
+.pill-input::placeholder{color:rgba(255,255,255,.65)}
+.pill-input:focus{
+  outline:2px solid var(--ring);
+  box-shadow:0 8px 24px rgba(0,0,0,.30);
+}
+
+/* Нативные date/time/select под тёмную тему */
+input[type="date"], input[type="time"], input[type="datetime-local"], select{
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  border-radius:10px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  filter: invert(85%); opacity:.9;
+}
+input:-webkit-autofill{
+  -webkit-text-fill-color: var(--text);
+  box-shadow: 0 0 0 100px var(--input-bg) inset !important;
 }
 
 /* Локально усиливаем в критичных местах, чтобы точно перебить наследования */
@@ -970,26 +1002,6 @@ input.short, .pill-input {
   background: rgba(0,0,0,.22) !important;
   border: 1px solid rgba(255,255,255,.10) !important;
   color: var(--text) !important;
-}
-
-/* Нативные иконки календаря/часов — делаем «светлыми» на тёмном фоне */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  filter: invert(85%);
-  opacity: .9;
-}
-
-/* Значение в полях date/time на Safari — тоже светлым */
-input[type="date"]::-webkit-date-and-time-value,
-input[type="time"]::-webkit-date-and-time-value,
-input[type="datetime-local"]::-webkit-date-and-time-value { color: var(--text); }
-
-/* Chrome autofill (жёлтый) — перекрываем под наш фон */
-input:-webkit-autofill {
-  -webkit-text-fill-color: var(--text);
-  box-shadow: 0 0 0 100px rgba(0,0,0,.22) inset !important;
-  transition: background-color 9999s ease-in-out 0s;
 }
 
 body.scene-intro, body.scene-final { overflow: hidden; }
