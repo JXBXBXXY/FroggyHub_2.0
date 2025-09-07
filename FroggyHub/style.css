@@ -1260,3 +1260,104 @@ input:focus, textarea:focus{ box-shadow: var(--focus-ring); border-color:transpa
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; }
 }
+/* ===========================
+   FROGGYHUB — SCROLL FIX PATCH
+   Класть В САМЫЙ НИЗ style.css
+   =========================== */
+
+/* 1) Разрешаем вертикальный скролл только при необходимости
+      и убираем горизонтальный (если чипы/анимации выпрыгивают) */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: 100svh !important;      /* корректная высота на мобилах */
+  overflow-x: hidden !important;       /* горизонтальный скролл — никогда */
+  overflow-y: auto !important;         /* вертикальный скролл — когда нужен */
+}
+
+/* 2) Иногда в теме встречался body{overflow:hidden}. Страхуемся. */
+body {
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch;   /* плавный скролл на iOS */
+}
+
+/* 3) Фикс для фиксированных больших блоков, чтобы они не выталкивали вьюпорт.
+      (если после создания события карточка длиннее экрана — страница теперь скроллится) */
+.final-wrap,
+.final-grid,
+.final-card,
+.screen .panel,
+.container {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 4) Если где-то задана высота в 100vh — смягчим на мобильных.
+      (Редко, но помогает от «обрезаний» контента под адресной строкой) */
+@media (max-width: 768px) {
+  .wrap,
+  .pond,
+  .final-wrap {
+    min-height: 100svh !important;
+    height: auto !important;
+  }
+}
+
+/* 5) Меню-дек внизу не должен перекрывать клики — сохраняем поведение,
+      но не даём ему создавать лишний горизонтальный скролл */
+.menu-deck {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: min(880px, 92vw) !important;
+  max-width: 100% !important;
+  will-change: transform;
+}
+
+/* 6) Фоновые чипы остаются за контентом и не влияют на скролл */
+#fh-message-clouds {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+/* 7) Контентные слои поверх */
+.topbar, .screen, .card, .panel, .auth-card, .container, .toast, .menu-deck {
+  position: relative;
+  z-index: 10;
+}
+
+/* 8) Защита от «переполнения» длинных текстов */
+.card, .panel, .final-card, .invite-card {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* 9) Если где-то явно блокировали скролл секции — разрешим прокрутку локально */
+#screen-hub,
+#screen-profile,
+#screen-wishlist,
+#screen-auth,
+#screen-home {
+  overflow: visible;          /* секции сами не режут скролл */
+}
+
+/* 10) Патч для iOS клавиатуры: когда инпуты внизу, чтобы всё было досягаемо */
+@supports (-webkit-touch-callout: none) {
+  .edit-form {
+    padding-bottom: max(80px, env(safe-area-inset-bottom));
+  }
+}
+
+/* 11) На случай, если была принудительная блокировка колёсика у body */
+body, main {
+  overscroll-behavior-y: contain; /* без резких «отбивок» на iOS/Safari */
+}
+
+/* 12) Мелкая косметика: чтобы тень/блюр не вызывали прокрутку по оси X */
+.card, .panel, .auth-card, .final-card {
+  contain: paint; /* локализуем эффекты в границах блока */
+}
