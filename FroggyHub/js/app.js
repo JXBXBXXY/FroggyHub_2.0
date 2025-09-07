@@ -69,27 +69,32 @@ function spawnChips(count=null){
     chips.push(c); el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
   });
 }
+// --- FIXED LOGIC BELOW ---
 function updateChips(){
   const m = 20;
   for (const c of chips){
     c.x += c.vx; c.y += c.vy;
+
     if (c.x <= m || c.x + c.w >= vw - m){
       c.vx *= -1;
       c.x = Math.max(m, Math.min(c.x, vw - c.w - m));
     }
     if (c.y <= m || c.y + c.h >= vh - m){
       c.vy *= -1;
-      c.y = Math.max(m, Math.min(c.y, vh - m));
+      // было: Math.min(c.y, vh - m)
+      c.y = Math.max(m, Math.min(c.y, vh - c.h - m));
     }
     c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
   }
-  for (let i=0;i<chips.length;i++) for (let j=i+1;j<chips.length;j++){
-    const a=chips[i], b=chips[j];
-    if (a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y){
-      [a.vx,b.vx] = [b.vx,a.vx];
-      [a.vy,b.vy] = [b.vy,a.vy];
+
+  for (let i = 0; i < chips.length; i++)
+    for (let j = i + 1; j < chips.length; j++){
+      const a = chips[i], b = chips[j];
+      if (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y){
+        [a.vx, b.vx] = [b.vx, a.vx];
+        [a.vy, b.vy] = [b.vy, a.vy];
+      }
     }
-  }
 }
 function tick(){ updateChips(); rafId=requestAnimationFrame(tick); }
 function startFH(){ cancelAnimationFrame(rafId); if (REDUCED_MOTION) return; spawnChips(); rafId=requestAnimationFrame(tick); }
