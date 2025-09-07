@@ -846,23 +846,23 @@ body.scene-intro .speech{display:block}
 }
 
 /* Header buttons */
-.topbar button,
-.fh-header button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+.topbar a, .topbar button,
+.fh-header a, .fh-header button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
   border-radius: 12px;
-  background: var(--glass);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.10);
+  color: var(--text) !important;
   font-weight: 600;
-  cursor: pointer;
   text-decoration: none;
+  box-shadow: 0 10px 24px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.06);
 }
 
-.topbar button:hover,
-.fh-header button:hover {
+.topbar a:hover, .topbar button:hover,
+.fh-header a:hover, .fh-header button:hover {
   background: rgba(255,255,255,.10);
 }
 
@@ -892,89 +892,104 @@ body.scene-intro .speech{display:block}
   color: #082016;
 }
 
-/* === GLOBAL DARK INPUT THEME === */
+/* ==== UNIFIED "GLASS" INPUTS ACROSS THE APP ==== */
 
-/* Base inputs */
+/* Сбрасываем браузерные особенности, чтобы везде было одинаково */
+input, textarea, select {
+  -webkit-appearance: none;
+  appearance: none;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: none;
+}
+
+/* Базовый вид инпута: тёмное стекло + мягкая тень (iOS/Chrome/Safari) */
 input[type="text"],
-input[type="password"],
 input[type="email"],
-input[type="number"],
+input[type="password"],
 input[type="search"],
 input[type="url"],
+input[type="number"],
 input[type="date"],
 input[type="time"],
 input[type="datetime-local"],
-textarea,
-select{
+select,
+textarea {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+
+  /* метрики идентичны кнопкам/чипам */
+  padding: 8px 12px;
+  border-radius: 12px;
+
+  /* стекло */
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  box-shadow: 0 10px 24px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.06);
+
+  /* типографика */
   color: var(--text);
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  line-height: 1.2;
+  min-height: 36px;         /* визуальный баланс с кнопками рядом */
+  font-size: 16px;          /* без автозума на iOS */
 }
 
-/* Focus ring + shadow */
+/* placeholder — приглушённый */
+input::placeholder,
+textarea::placeholder { color: var(--muted); opacity: .9; }
+
+/* фокус-состояние: кольцо + усилить стекло */
 input:focus,
 textarea:focus,
-select:focus{
+select:focus {
   outline: 2px solid var(--ring);
-  box-shadow: 0 6px 18px var(--shadow);
+  outline-offset: 2px;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.28),
+    0 0 0 1px rgba(255,255,255,.08) inset;
 }
 
-/* Placeholder tint */
-input::placeholder,
-textarea::placeholder{ color: var(--muted); }
-
-/* WebKit picker icons & value color */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator{
-  filter: invert(85%);
-  opacity: .9;
-}
-input[type="date"]::-webkit-date-and-time-value,
-input[type="time"]::-webkit-date-and-time-value,
-input[type="datetime-local"]::-webkit-date-and-time-value{
-  color: var(--text);
+/* маленький «пилюльный» вариант (как поле кода в лобби) — применится к коротким инпутам */
+input.short, .pill-input {
+  padding: 6px 10px;
+  border-radius: 999px;
+  min-height: 30px;
 }
 
-/* Autofill: keep dark */
-input:-webkit-autofill{
-  -webkit-text-fill-color: var(--text);
-  box-shadow: 0 0 0 100px var(--input-bg) inset !important;
-  transition: background-color 9999s ease-in-out 0s;
-}
-
-/* Always >=16px to prevent mobile zoom */
-input, textarea, select{ font-size:16px; }
-
-/* === ENFORCE IN CRITICAL AREAS (higher specificity) === */
-
-/* Edit form + Modals: force dark (helps if other rules try to override) */
+/* Локально усиливаем в критичных местах, чтобы точно перебить наследования */
 .edit-form input,
 .edit-form select,
 .edit-form textarea,
 .modal .card input,
 .modal .card select,
-.modal .card textarea{
-  background: var(--input-bg) !important;
+.modal .card textarea {
+  background: rgba(0,0,0,.22) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
   color: var(--text) !important;
-  border: 1px solid var(--input-border) !important;
 }
-.edit-form input::placeholder,
-.edit-form textarea::placeholder{
-  color: var(--muted) !important;
-}
-.edit-form input[type="date"]::-webkit-calendar-picker-indicator,
-.edit-form input[type="time"]::-webkit-calendar-picker-indicator,
-.edit-form input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+
+/* Нативные иконки календаря/часов — делаем «светлыми» на тёмном фоне */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   filter: invert(85%);
   opacity: .9;
 }
-.edit-form input[type="date"]::-webkit-date-and-time-value,
-.edit-form input[type="time"]::-webkit-date-and-time-value,
-.edit-form input[type="datetime-local"]::-webkit-date-and-time-value{
-  color: var(--text);
+
+/* Значение в полях date/time на Safari — тоже светлым */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value { color: var(--text); }
+
+/* Chrome autofill (жёлтый) — перекрываем под наш фон */
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  box-shadow: 0 0 0 100px rgba(0,0,0,.22) inset !important;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 body.scene-intro, body.scene-final { overflow: hidden; }
