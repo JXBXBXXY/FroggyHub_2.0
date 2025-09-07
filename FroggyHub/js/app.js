@@ -229,13 +229,21 @@ async function initEventAnalytics(){
   const { data: ev, error } = await supa.from('events').select('*').eq('code', code).single();
   if (error || !ev) { qs('#error')?.replaceChildren(document.createTextNode('Событие не найдено')); return; }
 
+  // получаем pid текущего пользователя
+  const sess = await getSession();
+  let myPid = null;
+  if (sess?.user?.id) {
+    const { data: prof } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
+    myPid = prof?.pid ?? null;
+  }
+
+  const isOwner = (myPid && ev.host_user_id === myPid) || p.owner === '1';
+
   qs('#eventTitle')?.replaceChildren(document.createTextNode(ev.title || 'Событие'));
   qs('#eventDate')?.replaceChildren(document.createTextNode(ev.date || '—'));
   qs('#eventTime')?.replaceChildren(document.createTextNode(ev.time || '—'));
   qs('#eventAddr')?.replaceChildren(document.createTextNode(ev.address || '—'));
 
-  const sess = await getSession();
-  const isOwner = !!(sess?.user?.id && ev.host_user_id === sess.user.id) || p.owner === '1'; // <— ВАЖНО
   qs('#editEventBtn')?.classList.toggle('hidden', !isOwner);
 
   renderRSVP(ev.id);
@@ -291,18 +299,26 @@ async function renderWishlist(event_id){
 async function initProfile(){
   if (!supa) return;
   const sess = await getSession(); if (!sess?.user?.id) return;
-  const uid = sess.user.id;
+
+  // берём pid
+  const { data: prof } = await supa.from('profiles').select('pid').eq('id', sess.user.id).single();
+  const myPid = prof?.pid;
+  if (!myPid) return;
+
   const today = new Date().toISOString().slice(0,10);
 
   const { data: mine } = await supa.from('events')
     .select('id,title,date,code')
-    .eq('host_user_id', uid)  // <— ВАЖНО
+    .eq('host_user_id', myPid)     // <-- pid, а не uuid
     .order('date', { ascending: true });
 
   const { data: guestIn } = await supa.from('rsvps')
     .select('event_id,events(id,title,date,code)')
-    .eq('user_id', uid)
+    .eq('user_id', sess.user.id)   // тут user_id = UUID — оставляем
     .order('created_at', { ascending: false });
+
+  // ... дальше без изменений
+}
 
   const container = qs('.container'); if (!container) return;
   const card=document.createElement('div'); card.className='card';
