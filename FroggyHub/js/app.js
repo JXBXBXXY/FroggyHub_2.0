@@ -63,10 +63,17 @@ function spawnChips(count=null){
   const n = count ?? Math.min(FH_MESSAGES.length, vw<420?10:vw<768?16:24);
   const arr = [...FH_MESSAGES].sort(()=>Math.random()-0.5).slice(0,n);
   arr.forEach(t=>{
-    const el=document.createElement('div'); el.className='fh-chip'; el.textContent=t; root.appendChild(el);
+    const el=document.createElement('div');
+    el.className='fh-chip';
+    el.textContent=t;
+    const x=rnd(20,vw-160), y=rnd(20,vh-60);
+    el.style.left=`${x}px`;
+    el.style.top=`${y}px`;
+    el.style.transform='translate3d(0,0,0)';
+    root.appendChild(el);
     const r=el.getBoundingClientRect();
-    const c={el, w:r.width||140, h:r.height||40, x:rnd(20,vw-160), y:rnd(20,vh-60), vx:rnd(-.08,.08), vy:rnd(-.08,.08)};
-    chips.push(c); el.style.transform=`translate3d(${c.x}px, ${c.y}px, 0)`;
+    const c={el, w:r.width||140, h:r.height||40, x, y, vx:rnd(-.08,.08), vy:rnd(-.08,.08)};
+    chips.push(c);
   });
 }
 // --- FIXED LOGIC BELOW ---
@@ -84,7 +91,8 @@ function updateChips(){
       // было: Math.min(c.y, vh - m)
       c.y = Math.max(m, Math.min(c.y, vh - c.h - m));
     }
-    c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
+    c.el.style.left = `${c.x}px`;
+    c.el.style.top  = `${c.y}px`;
   }
 
   for (let i = 0; i < chips.length; i++)
