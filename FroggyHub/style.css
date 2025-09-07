@@ -222,8 +222,8 @@ input:-webkit-autofill{
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   label{display:grid;gap:6px}
 
-.btn, button, [role="button"] {
-  cursor: pointer;
+[role="button"]{
+  cursor:pointer;
 }
 
 .btn[disabled] { cursor: not-allowed; }
@@ -856,7 +856,9 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   gap:.5rem; padding:8px 12px; line-height:1;
   border-radius:12px; border:1px solid rgba(255,255,255,.10);
   background:rgba(255,255,255,.08);
-  color:var(--text,#eaf7f1); font-weight:600; text-decoration:none;
+  color:var(--text,#eaf7f1); font-weight:600; cursor:pointer; text-decoration:none;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  box-shadow:0 4px 20px rgba(0,0,0,.25), inset 0 0 1px rgba(255,255,255,.06);
 }
 .btn:hover{ background:rgba(255,255,255,.12); }
 .btn--primary{ background:rgba(22,163,74,.22); border-color:rgba(190,255,220,.25); }
@@ -866,7 +868,7 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   .home-hero{ transform: translateY(4vh); }
   .join-row{
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
   }
   .btn, .pill-input{ width: min(420px, 92vw); align-self: center; }
 }
