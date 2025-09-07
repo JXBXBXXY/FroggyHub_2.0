@@ -302,7 +302,7 @@ async function toggleWishlist(id){
 async function load(){
   if(!eventId){ errorEl.textContent = 'Не указан id события'; return; }
   try{
-    const res = await fetch(`/.netlify/functions/get-event-analytics?id=${encodeURIComponent(eventId)}`, {
+    const res = await fetch(`/.netlify/functions/get-event-analytics-v2?id=${encodeURIComponent(eventId)}`, {
       headers: await authHeader()
     });
     if(!res.ok) throw new Error('Ошибка загрузки');
