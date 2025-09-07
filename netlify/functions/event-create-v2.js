@@ -1,46 +1,49 @@
-// netlify/functions/event-create-v2.js
-import { getServiceClient } from './_supabase.js';
-import { cors, ok, err, requireAuth } from './_auth.js';
+import jwt from 'jsonwebtoken';
+import { supabase } from './_supabase.js';
+import { getPidByUserUuid } from './_pid.js';
 
 export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors() };
-  if (event.httpMethod !== 'POST') return err('Method not allowed', 405);
-
-  const auth = await requireAuth(event);
-  if (!auth?.user?.sub) return err('Unauthorized', 401);
-
   try {
-    const { title, date, time, address, dress, bring, notes } = JSON.parse(event.body || '{}');
-    if (!title || !date || !time) return err('Missing required fields', 400);
-
-    const sb = getServiceClient();
-
-    let code;
-    for (let i = 0; i < 10; i++) {
-      code = Math.random().toString(36).slice(2, 8).toUpperCase();
-      const { data: exists } = await sb.from('events').select('id').eq('code', code).maybeSingle();
-      if (!exists) break;
+    if (event.httpMethod !== 'POST') {
+      return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
-    const { data: evt, error } = await sb
-      .from('events')
-      .insert({
-        code,
-        host_user_id: auth.user.sub,
-        title,
-        date,
-        time,
-        address: address || null,
-        dress: dress || null,
-        bring: bring || null,
-        notes: notes || null
-      })
-      .select('id, code, title, date, time, address, dress, bring, notes, host_user_id, created_at')
-      .single();
-    if (error) throw error;
+    const auth = JSON.parse(event.headers['x-auth'] || '{}'); // вы так уже делаете
+    if (!auth?.user?.sub) {
+      return { statusCode: 401, body: 'Unauthorized' };
+    }
 
-    return ok({ event: evt }, 201);
-  } catch (e) {
-    return err(e.message || 'Failed to create event', 500);
+    // 1) Маппим UUID пользователя → BIGINT pid
+    const hostPid = await getPidByUserUuid(auth.user.sub);
+
+    // 2) Достаём payload формы
+    const payload = JSON.parse(event.body || '{}');
+
+    // 3) Формируем запись для вставки (host_user_id — это pid!)
+    const row = {
+      title: payload.title ?? null,
+      date: payload.date ?? null,
+      time: payload.time ?? null,
+      address: payload.address ?? null,
+      notes: payload.notes ?? null,
+      dress: payload.dress ?? null,
+      bring: payload.bring ?? null,
+      code: payload.code ?? null,
+      host_user_id: hostPid, // <--- главное изменение
+      // ... если есть ещё поля — добавьте сюда
+    };
+
+    const { data, error } = await supabase.from('events').insert(row).select().single();
+    if (error) {
+      return { statusCode: 400, body: `Insert failed: ${error.message}` };
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ ok: true, event: data }),
+      headers: { 'content-type': 'application/json' }
+    };
+  } catch (err) {
+    return { statusCode: 500, body: `Server error: ${err.message}` };
   }
 }
