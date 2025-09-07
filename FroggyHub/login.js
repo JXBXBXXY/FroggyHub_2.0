@@ -5,7 +5,7 @@ async function handleLogin(evt) {
   const nickname = document.querySelector('#login-nickname')?.value?.trim();
   const password = document.querySelector('#login-password')?.value ?? '';
 
-  const res = await fetch('/.netlify/functions/local-login', {
+const res = await fetch('/.netlify/functions/local-login-v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nickname, password }),
