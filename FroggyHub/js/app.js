@@ -1,17 +1,28 @@
 import { supa, getSession, signIn, signUpWithNickname, signOut } from './api.js';
 
 const LINKS = {
-  home: '/index.html',
+  home: '/login.html',      // публичная точка входа
+  lobby: '/lobby.html',
   menu: '/lobby.html',
   profile: '/profile.html',
   settings: '/lobby.html',
   'event-edit': '/event-edit.html'
 };
+const normPath = () => {
+  let p = location.pathname || '/';
+  while (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+  return p || '/';
+};
+function goto(href){
+  if (!href) return;
+  // не навигируем, если уже там
+  const url = new URL(href, location.origin);
+  if (url.pathname === normPath() && url.search === location.search) return;
+  location.href = url.href;
+}
 const qs=(s,r=document)=>r.querySelector(s);
 const qsa=(s,r=document)=>Array.from(r.querySelectorAll(s));
-const path=()=>{let p=location.pathname;while(p.endsWith('/'))p=p.slice(0,-1);return p+'/';};
-const isPage=(name)=>path().endsWith(`/${name}`);
-function goto(h){ location.href=h; }
+const isPage=(name)=>normPath().endsWith(`/${name}`);
 function copy(t){ try{ navigator.clipboard?.writeText(t);}catch{} }
 
 /* ------------------ Cloud messages ------------------ */
@@ -77,15 +88,30 @@ function listMyEvents(user){const db=_db();return Object.values(db.events||{}).f
 function listGuestEvents(user){const db=_db();const codes=Object.entries(db.rsvp||{}).filter(([c,l])=>l.some(r=>r.name===user&&r.attend==='yes')).map(([c])=>c);return codes.map(c=>db.events?.[c]).filter(Boolean);}
 
 /* ------------------ Boot ------------------ */
+const REDIRECT_FLAG = 'fh_redirecting';
+function beginRedirectOnce() {
+  if (sessionStorage.getItem(REDIRECT_FLAG)) return false;
+  sessionStorage.setItem(REDIRECT_FLAG, '1');
+  // снимем флаг через тик event loop — после первой успешной загрузки
+  setTimeout(()=>sessionStorage.removeItem(REDIRECT_FLAG), 500);
+  return true;
+}
+
 async function boot(){
-  const session=await getSession();
-  const authed=!!session||JSON.parse(localStorage.getItem('fh_demo_session')||'false');
-  const AUTH_AVAILABLE=!!supa;
-  const p=path(); const isLogin=p.endsWith('/login.html');
-  if(AUTH_AVAILABLE){
-    if(authed&&isLogin){goto('/lobby.html');return;}
-    if(!authed&&!isLogin){goto('/login.html');return;}
-  }
+  const session = await getSession?.();
+  const authed = !!session || JSON.parse(localStorage.getItem('fh_demo_session') || 'false');
+  const AUTH_AVAILABLE = !!window.supa; // если нет supa — НЕ форсим редиректы
+  const p = normPath();
+  const onLogin = p.endsWith('/login.html');
+  // ГАРД: редиректим только один раз
+  const canRedirect = () => AUTH_AVAILABLE && beginRedirectOnce();
+
+  // Авторизован: логин открыт по ошибке → в лобби
+  if (authed && onLogin && canRedirect()) { goto(LINKS.lobby); return; }
+
+  // Не авторизован: любая не-логин страница → на логин
+  if (!authed && !onLogin && AUTH_AVAILABLE && beginRedirectOnce()) { goto(LINKS.home); return; }
+
   if(isPage('login.html')) initAuth();
   if(isPage('lobby.html')) initLobby();
   if(isPage('event-edit.html')) initEventEdit();
@@ -96,7 +122,7 @@ async function boot(){
   if(isPage('guest-summary.html')) initGuestSummary();
   if(isPage('profile.html')) initProfile();
 }
-document.addEventListener('DOMContentLoaded',()=>{boot().catch(console.error);});
+document.addEventListener('DOMContentLoaded', () => { boot().catch?.(console.error); });
 
 /* ------------------ Global navigation ------------------ */
 document.addEventListener('click',e=>{
