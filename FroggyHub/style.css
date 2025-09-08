@@ -921,3 +921,75 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   color: var(--text, #eaf7f1);
 }
 .topbar-right{ display: flex; gap: 8px; }
+
+/* ===== HERO: идеально по центру, «стеклянная» карточка ===== */
+.hero-center{
+  position: relative;
+  z-index: 10;                   /* выше чипов */
+  min-height: calc(100dvh - 96px); /* с запасом под топбар, если есть */
+  display: grid;
+  place-items: center;
+  transform: translateY(-4vh);   /* «чуть ниже середины» ощущается лучше */
+}
+
+.hero-card{
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 18px;
+  padding: 14px;
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  width: min(960px, 94vw);
+}
+
+.hero-row{
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* пилюльный инпут одинаковой высоты с кнопками */
+.hero-row .pill-input{
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  text-align: center;
+  width: min(360px, 38vw);
+}
+
+/* кнопки стекло (если где-то переопределили — вернём вид тут) */
+.hero-row .btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; padding:8px 12px; line-height:1;
+  border-radius:12px; border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
+  color:var(--text, #eaf7f1); font-weight:600; text-decoration:none;
+  cursor:pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 0 1px rgba(255,255,255,.06);
+}
+.hero-row .btn:hover{ background:rgba(255,255,255,.12); }
+.hero-row .btn.btn--primary{
+  background: rgba(22,163,74,.22);
+  border-color: rgba(190,255,220,.25);
+}
+
+/* адаптив: в столбик, всё по центру и одинаковой ширины */
+@media (max-width: 760px){
+  .hero-center{ transform: translateY(-2vh); }
+  .hero-row{
+    grid-auto-flow: row;
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .hero-row .btn,
+  .hero-row .pill-input{ width: min(420px, 92vw); }
+}
+
+/* убедимся, что облака-чипы не перекрывают UI */
+#fh-message-clouds{ z-index: 0; pointer-events: none; }
