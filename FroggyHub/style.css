@@ -1046,4 +1046,24 @@ header.topbar,
 #fh-message-clouds .bubble {
   pointer-events: auto;   /* remove if you want clouds fully non-interactive */
 }
+/* clouds: всегда самый нижний слой */
+#fh-message-clouds {
+  position: fixed;
+  inset: 0;
+  z-index: -1 !important;   /* теперь под всем UI */
+  pointer-events: none !important;
+}
 
+#fh-message-clouds * {
+  pointer-events: none !important;
+}
+
+/* UI-контейнеры всегда выше */
+header.topbar,
+.hero,
+.page,
+.page .card,
+.hero-box {
+  position: relative;
+  z-index: 10;
+}
