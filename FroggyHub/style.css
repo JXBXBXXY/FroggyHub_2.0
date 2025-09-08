@@ -812,7 +812,7 @@ body.scene-intro .speech{display:block}
 #screen-profile:not(.hidden),
 #screen-hub:not(.hidden) { display: block; }
 
-.hero, .hero-frog, .frog-hero, .hero .frog,
+.hero-frog, .frog-hero, .hero .frog,
 #hero, .hero-wrap, .hero-stump {
   display: none !important;
 }
@@ -942,4 +942,44 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   -webkit-backdrop-filter: blur(12px) saturate(120%);
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
   width: min(960px, 94vw);
+}
+
+.hero {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 60px); /* minus topbar height */
+  padding: 2rem;
+}
+
+.hero-box {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  padding: 2.5rem 3rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.hero-box .btn-large {
+  font-size: 1.2rem;
+  padding: 0.8rem 1.6rem;
+  border-radius: 1rem;
+}
+
+.join-block {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.join-block input {
+  padding: 0.7rem 1rem;
+  border-radius: 1rem;
+  border: none;
+  outline: none;
+  font-size: 1rem;
 }
