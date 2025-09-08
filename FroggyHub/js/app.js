@@ -9,7 +9,7 @@ const LINKS = {
 };
 const qs=(s,r=document)=>r.querySelector(s);
 const qsa=(s,r=document)=>Array.from(r.querySelectorAll(s));
-const path=()=>location.pathname.replace(/\/+$,'/');
+const path=()=>{let p=location.pathname;while(p.endsWith('/'))p=p.slice(0,-1);return p+'/';};
 const isPage=(name)=>path().endsWith(`/${name}`);
 function goto(h){ location.href=h; }
 function copy(t){ try{ navigator.clipboard?.writeText(t);}catch{} }
