@@ -829,26 +829,29 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 
 /* ===== Центрирование героя для главной/лобби ===== */
 
+
 .home-screen{
   min-height: calc(100dvh - 60px); /* учет топбара */
-  display: grid;
-  place-items: center;
+  display:grid;
+  place-items:center;
+  position:relative;
+  z-index:5; /* UI выше фоновых чипов */
 }
 .home-hero{
   display:flex; align-items:center; justify-content:center;
-  width: min(880px, 92vw);
-  transform: translateY(-5vh);
+  width:min(880px,92vw);
+  transform: translateY(4vh); /* чуть ниже середины */
 }
-.join-wrap.glassy.hero-card{
-  padding: 12px;
-  border-radius: 20px;
-  background: rgba(0,0,0,.22);
-  border: 1px solid rgba(255,255,255,.09);
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
-  box-shadow: 0 18px 40px rgba(0,0,0,.35);
-  position: relative;
-  z-index: 10; /* над чипами */
+.join-wrap.glassy{
+  padding:16px 20px;
+  border-radius:20px;
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.09);
+  backdrop-filter:blur(12px) saturate(120%);
+  -webkit-backdrop-filter:blur(12px) saturate(120%);
+  box-shadow:0 18px 40px rgba(0,0,0,.35);
+  position:relative;
+  z-index:6; /* над чипами */
 }
 
 /* Универсальная строка: 2 кнопки + инпут, по центру */
@@ -857,6 +860,7 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   display:flex;
   gap:12px;
   flex-wrap:wrap;
+  align-items:center;
   justify-content:center;
 }
 
@@ -878,9 +882,14 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 .pill-input:focus{ outline:2px solid var(--ring); outline-offset:2px; }
 
 @media (max-width: 720px){
-  .home-hero{ transform: translateY(-2vh); }
-  .join-row{ flex-direction: column; gap: 12px; }
-  .btn, .pill-input{ width: min(420px, 92vw); align-self: center; }
+  .join-row{
+    flex-direction:column;
+    gap:12px;
+  }
+  .btn, .pill-input{
+    width:min(420px,92vw);
+    align-self:center;
+  }
 }
 
 /* единый стиль для «строк/чипов» в облаках (белые таблетки) */
