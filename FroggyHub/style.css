@@ -1015,3 +1015,11 @@ body.scene-intro, body.scene-final { overflow: hidden; }
     width: 100%;
   }
 }
+
+.page.event-edit .card { max-width: 720px; margin: 2rem auto; padding: 1.5rem; }
+.page.event-edit .grid { display: grid; gap: 1rem; }
+.page.event-edit .actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1rem; }
+.page.event-edit input, .page.event-edit textarea {
+  width: 100%; border-radius: 12px; padding: .7rem 1rem; border: none; background: rgba(255,255,255,.08); color: #fff;
+}
+.page.event-edit .btn.primary { font-weight: 600; }
