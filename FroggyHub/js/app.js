@@ -160,11 +160,22 @@ async function boot() {
   const authed = !!session;
   setAuthState(authed);
 
-  // редиректы
-  if (authed && (path() === '/' || path().endsWith('/index.html'))) { goto(LINKS.menu); return; }
-  if (!authed && !(path() === '/' || path().endsWith('/index.html'))) { goto(LINKS.home); return; }
+  // --- Safe redirects ---
+  // If auth client is unavailable (no Supabase creds) — do NOT enforce redirects.
+  const AUTH_AVAILABLE = !!supa;
 
-  // роуты
+  // Authenticated users who land on the root should go to menu.
+  if (AUTH_AVAILABLE && authed && (path() === '/' || path().endsWith('/index.html'))) {
+    goto(LINKS.menu);
+    return;
+  }
+
+  // IMPORTANT:
+  // Do NOT redirect guests away from non-index pages.
+  // Each page already performs its own checks and shows alerts without navigation.
+  // (So we intentionally removed: if (!authed && not index) goto home;)
+
+  // --- Routes init as before ---
   if (isPage('lobby.html')) await initLobby();
 
   if (isPage('event-edit.html')) {
@@ -183,7 +194,7 @@ async function boot() {
 
   onAuthState((sess) => setAuthState(!!sess));
 }
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded', () => { boot().catch?.(console.error); });
 
 /* ------------------ Lobby (создать / присоединиться) ------------------ */
 async function initLobby(){
