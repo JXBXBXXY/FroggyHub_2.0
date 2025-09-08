@@ -15,11 +15,18 @@
   </header>
 
   <main id="home" class="home-screen">
-    <section class="home-hero">
-      <div class="home-card" role="group" aria-label="Создать или присоединиться">
-        <div class="join-row">
+    <section class="home-hero hero-center">
+      <div class="join-wrap glassy hero-card" role="group" aria-label="Создать или присоединиться">
+        <div class="join-row hero-row">
           <a class="btn btn--primary" data-link="event-edit">Создать событие</a>
-          <input id="joinCode" class="pill-input" inputmode="numeric" maxlength="6" placeholder="Введите 6-значный код" aria-label="Код приглашения" />
+          <input
+            id="joinCode"
+            class="pill-input"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="Введите 6-значный код"
+            aria-label="Код приглашения"
+          />
           <button id="btnJoin" class="btn" data-action="join">Присоединиться</button>
         </div>
       </div>
