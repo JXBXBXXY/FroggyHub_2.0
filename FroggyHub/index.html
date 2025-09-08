@@ -17,22 +17,21 @@
   </div>
 </header>
 
-<main class="hero" role="main" aria-label="Главная секция действий">
-  <div class="hero-box" aria-live="polite">
-    <button type="button" class="btn btn-large" data-link="event-edit" aria-label="Создать новое событие">
+<main class="hero" role="main" aria-label="Главные действия">
+  <div class="hero-glass" aria-live="polite">
+    <button type="button" class="btn btn-large" data-link="event-edit">
       Создать событие
     </button>
 
-    <div class="join-block" role="group" aria-label="Присоединиться по коду">
+    <div class="join-row" role="group" aria-label="Присоединиться по коду">
       <input
         type="text"
         id="join-code"
-        inputmode="text"
-        autocomplete="one-time-code"
         placeholder="Код события"
-        aria-label="Введите код события"
+        autocomplete="one-time-code"
+        aria-label="Код события"
       />
-      <button type="button" class="btn btn-large" data-action="join" aria-label="Присоединиться к событию">
+      <button type="button" class="btn btn-large" data-action="join">
         Присоединиться
       </button>
     </div>
