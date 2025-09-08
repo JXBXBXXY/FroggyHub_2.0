@@ -19,24 +19,14 @@
   <!-- фоновые сообщения -->
   <div id="fh-message-clouds" aria-hidden="true"></div>
 
-  <!-- HERO на главной -->
-  <main id="home" class="home-screen">
-    <section class="home-hero hero-center">
-      <div class="join-wrap glassy hero-card" role="group" aria-label="Создать или присоединиться">
-        <div class="join-row hero-row">
-          <a class="btn btn--primary" data-link="event-edit">Создать событие</a>
-          <input
-            id="joinCode"
-            class="pill-input"
-            inputmode="numeric"
-            maxlength="6"
-            placeholder="Введите 6-значный код"
-            aria-label="Код приглашения"
-          />
-          <button id="btnJoin" class="btn" data-action="join">Присоединиться</button>
-        </div>
+  <main class="hero">
+    <div class="hero-box">
+      <button class="btn btn-large" data-link="event-edit">Создать событие</button>
+      <div class="join-block">
+        <input type="text" id="join-code" placeholder="Код события" />
+        <button class="btn btn-large" data-action="join">Присоединиться</button>
       </div>
-    </section>
+    </div>
   </main>
 
   <!-- остальной код страницы, скрипты и т.д. оставь как есть -->
