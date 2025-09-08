@@ -7,18 +7,17 @@
   <link rel="stylesheet" href="style.css?v=glass-18">
 </head>
 <body class="guest bg-frog">
+<header class="topbar">
+  <a class="logo fh-logo" data-link="home">FroggyHub</a>
+  <div class="topbar-right">
+    <button class="btn" data-link="menu">Меню</button>
+    <button class="btn" data-link="profile">Профиль</button>
+    <button class="btn" data-link="settings">Настройки</button>
+    <button class="btn" data-action="logout">Выйти</button>
+  </div>
+</header>
   <!-- фоновые сообщения -->
   <div id="fh-message-clouds" aria-hidden="true"></div>
-
-  <!-- TOPBAR -->
-  <header class="topbar" data-auth-only>
-    <a class="logo fh-logo" data-link="home">FroggyHub</a>
-    <div class="topbar-right">
-      <button class="btn" data-link="menu">Меню</button>
-      <button class="btn" data-link="profile">Профиль</button>
-      <button class="btn" data-action="logout">Выйти</button>
-    </div>
-  </header>
 
   <!-- HERO на главной -->
   <main id="home" class="home-screen">
