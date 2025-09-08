@@ -1023,3 +1023,27 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   width: 100%; border-radius: 12px; padding: .7rem 1rem; border: none; background: rgba(255,255,255,.08); color: #fff;
 }
 .page.event-edit .btn.primary { font-weight: 600; }
+
+/* ---- Layering fix: clouds under UI ---- */
+#fh-message-clouds {
+  position: fixed;        /* cover the viewport as a decorative layer */
+  inset: 0;
+  z-index: 0;             /* base layer */
+  pointer-events: none;   /* do not block clicks on UI */
+}
+
+/* UI layers: always above clouds */
+header.topbar,
+.hero,
+.page .card,
+.hero-box {
+  position: relative;     /* create stacking context */
+  z-index: 10;            /* above clouds */
+}
+
+/* If individual message bubbles must stay interactive, opt-in: */
+#fh-message-clouds .msg,
+#fh-message-clouds .bubble {
+  pointer-events: auto;   /* remove if you want clouds fully non-interactive */
+}
+
