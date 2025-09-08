@@ -148,14 +148,6 @@ document.addEventListener('DOMContentLoaded',()=> setTimeout(startFH,100));
   });
 })();
 
-/* ------------------ Навигация верхних кнопок ------------------ */
-document.addEventListener('click',(e)=>{
-  const b=e.target.closest('[data-link]'); if (!b) return;
-  e.preventDefault();
-  const to = LINKS[b.getAttribute('data-link')];
-  if (to) goto(to);
-});
-
 /* ------------------ Logout ------------------ */
 document.addEventListener('click', async (e)=>{
   const b=e.target.closest('[data-action="logout"]'); if (!b) return;
@@ -509,4 +501,50 @@ async function initEventSummary(){
   toAnalBtn?.addEventListener('click', ()=>{
     location.href = `/event-analytics.html?code=${encodeURIComponent(code)}`;
   });
+}
+
+/* --- Navigation via data-link (no page reload) --- */
+document.addEventListener('click', (e) => {
+  const linkEl = e.target.closest('[data-link]');
+  if (linkEl) {
+    e.preventDefault();
+    const key = linkEl.getAttribute('data-link');
+    const href = LINKS[key];
+    if (href) goto(href);
+    return;
+  }
+
+  // Join by code button
+  const joinBtn = e.target.closest('[data-action="join"]');
+  if (joinBtn) {
+    e.preventDefault();
+    triggerJoinByCode();
+  }
+});
+
+// Handle Enter inside the join input without submitting a form
+document.addEventListener('keydown', (e) => {
+  const active = document.activeElement;
+  if (e.key === 'Enter' && active && active.id === 'join-code') {
+    e.preventDefault();
+    triggerJoinByCode();
+  }
+});
+
+// Safety: block any accidental form submits around the join UI
+document.addEventListener('submit', (e) => {
+  if (e.target.querySelector && e.target.querySelector('#join-code')) {
+    e.preventDefault();
+    triggerJoinByCode();
+  }
+});
+
+function triggerJoinByCode() {
+  const input = document.getElementById('join-code');
+  const code = input ? input.value.trim() : '';
+  if (!code) return;
+  if (typeof joinByCode === 'function') {
+    return joinByCode(code);
+  }
+  goto(`/event-summary.html?code=${encodeURIComponent(code)}`);
 }
