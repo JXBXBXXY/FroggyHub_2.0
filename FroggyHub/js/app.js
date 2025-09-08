@@ -179,10 +179,7 @@ async function boot() {
   if (isPage('lobby.html')) await initLobby();
 
   if (isPage('event-edit.html')) {
-    const form = qs('#editForm') || qs('form');
-    const saveBtn = qs('#saveEvent');
-    if (form) form.addEventListener('submit', async (e)=>{ e.preventDefault(); await initEventEdit(); });
-    if (saveBtn && !form) saveBtn.addEventListener('click', async (e)=>{ e.preventDefault(); await initEventEdit(); });
+    await initEventEdit();
   }
 
   if (isPage('wishlist-setup.html')) await initWishlistSetup();
@@ -213,52 +210,95 @@ async function initLobby(){
 }
 
 /* ------------------ Создание события ------------------ */
-function genCode(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<6;i++) s+=a[(Math.random()*a.length)|0]; return s; }
 
-async function initEventEdit(){
-  const sess = await getSession();
-  if (!sess?.user?.id) return alert('Нужна авторизация');
+function renderEventEditInto(target = document.body) {
+  const existed = qs('#editForm');
+  if (existed) return existed;
 
-  // 1) pid текущего пользователя
-  const { data: prof, error: profErr } = await supa
-    .from('profiles')
-    .select('pid')
-    .eq('id', sess.user.id)
-    .single();
-  if (profErr || !prof) return alert('Не удалось найти профиль пользователя');
+  const tpl = `
+  <main class="page event-edit">
+    <section class="card">
+      <h1>Создание события</h1>
+      <form id="editForm" autocomplete="off">
+        <div class="grid">
+          <label>Название
+            <input type="text" id="eventTitle" name="title" placeholder="Название события" required />
+          </label>
+          <label>Дата и время
+            <input type="datetime-local" id="eventDate" name="datetime" required />
+          </label>
+          <label>Место
+            <input type="text" id="eventPlace" name="place" placeholder="Адрес или ссылка" />
+          </label>
+          <label>Описание
+            <textarea id="eventDesc" name="desc" rows="3" placeholder="Кратко о событии"></textarea>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" data-link="menu">Отмена</button>
+          <button type="submit" class="btn primary" id="saveEvent">Сохранить</button>
+        </div>
+      </form>
+    </section>
+  </main>`;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = tpl.trim();
+  const main = wrap.firstElementChild;
+  // вставляем сразу после шапки
+  const header = qs('header.topbar');
+  if (header && header.parentNode) {
+    header.parentNode.insertBefore(main, header.nextSibling);
+  } else {
+    target.appendChild(main);
+  }
+  return main.querySelector('#editForm');
+}
 
-  // 2) валидация обязательных полей
-  const dateVal = qs('#editDate')?.value;
-  if (!dateVal) return alert('Выберите дату события');
+async function initEventEdit() {
+  // если формы нет — создать
+  let form = qs('#editForm') || renderEventEditInto(document.body);
+  if (!form) {
+    console.warn('[event-edit] form not found and failed to render');
+    return;
+  }
+  const saveBtn = qs('#saveEvent');
 
-  // Title: минимум 1–2 символа
-  const titleVal = qs('#editTitle')?.value?.trim() || '';
-  if (titleVal.length < 1) return alert('Введите название события (минимум 1 символ)');
+  // Если нужно — префилл (например, из query)
+  const q = new URLSearchParams(location.search);
+  if (q.get('title')) qs('#eventTitle').value = q.get('title');
+  // другие поля можно дополнить по необходимости
 
-  // 3) payload (host_user_id — bigint pid)
-  const payload = {
-    title:  titleVal,
-    date:   dateVal,
-    time:   qs('#editTime')?.value || null,
-    address:qs('#editAddress')?.value || '',
-    notes:  qs('#editNotes')?.value || '',
-    dress:  qs('#editDress')?.value || '',
-    bring:  qs('#editBring')?.value || '',
-    host_user_id: prof.pid
-  };
+  // Сабмит
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        title: qs('#eventTitle')?.value?.trim(),
+        datetime: qs('#eventDate')?.value,
+        place: qs('#eventPlace')?.value?.trim(),
+        desc: qs('#eventDesc')?.value?.trim(),
+      };
+      if (!payload.title || !payload.datetime) {
+        alert('Заполните название и дату/время');
+        return;
+      }
+      // saveEvent — существующая функция/эндпоинт (оставь как было, если уже есть)
+      const code = await saveEvent(payload); // должен вернуть код события
+      if (code) goto(`/event-summary.html?code=${encodeURIComponent(code)}`);
+    } catch (err) {
+      console.error('[event-edit] save failed', err);
+      alert('Не удалось сохранить событие');
+    }
+  });
 
-  const code = genCode();
-
-  const { data, error } = await supa
-    .from('events')
-    .insert([{ ...payload, code }])
-    .select('id, code')
-    .single();
-
-  if (error) return alert(error.message || 'Не удалось создать событие');
-
-  // ⇒ на шаг вишлиста
-  goto(`${LINKS['wishlist-setup']}?code=${encodeURIComponent(data.code)}`);
+  // На всякий — кнопка "Сохранить" кликает submit формы
+  if (saveBtn && !saveBtn.dataset.bound) {
+    saveBtn.dataset.bound = '1';
+    saveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      form.requestSubmit?.();
+    });
+  }
 }
 
 /* ------------------ Страница события (аналитика/только владелец) ------------------ */

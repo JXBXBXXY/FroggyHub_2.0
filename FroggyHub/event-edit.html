@@ -18,45 +18,40 @@
 </header>
   <div id="fh-message-clouds" aria-hidden="true"></div>
 
-  <main class="container" role="main" data-auth-only>
-    <form id="editForm" class="card grid edit-form" aria-describedby="editError">
-      <h1>Редактировать событие</h1>
+<main class="page event-edit">
+  <section class="card">
+    <h1>Создание события</h1>
 
-      <label>Название
-        <input id="editTitle" name="title" required aria-required="true" />
-      </label>
+    <form id="editForm" autocomplete="off">
+      <div class="grid">
+        <label>
+          Название
+          <input type="text" id="eventTitle" name="title" placeholder="Название события" required />
+        </label>
 
-      <label>Дата
-        <input id="editDate" name="date" type="date" required aria-required="true" />
-      </label>
+        <label>
+          Дата и время
+          <input type="datetime-local" id="eventDate" name="datetime" required />
+        </label>
 
-      <label>Время
-        <input id="editTime" name="time" type="time" required aria-required="true" />
-      </label>
+        <label>
+          Место
+          <input type="text" id="eventPlace" name="place" placeholder="Адрес или ссылка" />
+        </label>
 
-      <label>Адрес
-        <input id="editAddress" name="address" />
-      </label>
+        <label>
+          Описание
+          <textarea id="eventDesc" name="desc" rows="3" placeholder="Кратко о событии"></textarea>
+        </label>
+      </div>
 
-      <label>Заметки
-        <textarea id="editNotes" name="notes"></textarea>
-      </label>
-
-      <label>Дресс-код
-        <input id="editDress" name="dress" />
-      </label>
-
-      <label>Что взять
-        <input id="editBring" name="bring" />
-      </label>
-
-      <div class="save-row">
-        <button id="saveEvent" type="submit" class="btn btn--primary">Сохранить</button>
+      <div class="actions">
+        <button type="button" class="btn" data-link="menu">Отмена</button>
+        <button type="submit" class="btn primary" id="saveEvent">Сохранить</button>
       </div>
     </form>
-
-    <p id="editError" class="error" role="status" aria-live="polite"></p>
-  </main>
+  </section>
+</main>
 
   <div id="cookieCard" class="card" style="display:none" data-auth-only>
     <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
@@ -79,16 +74,6 @@
   <!-- Public env -->
   <script src="env.js"></script>
   <!-- App -->
-  <script type="module" src="js/app.js"></script>
-
-  <script>
-    // чтобы переходить к следующему шагу (wishlist)
-    document.getElementById('editForm')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      // app.js обработает сохранение → после удачи редирект
-      // если app.js ещё не обновлён — временный переход:
-      // window.location.href = "wishlist-setup.html";
-    });
-  </script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>
