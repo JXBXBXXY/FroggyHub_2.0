@@ -7,12 +7,16 @@
   <link rel="stylesheet" href="/style.css?v=glass-18">
 </head>
 <body class="guest">
+<header class="topbar">
+  <a class="logo fh-logo" data-link="home">FroggyHub</a>
+  <div class="topbar-right">
+    <button class="btn" data-link="menu">Меню</button>
+    <button class="btn" data-link="profile">Профиль</button>
+    <button class="btn" data-link="settings">Настройки</button>
+    <button class="btn" data-action="logout">Выйти</button>
+  </div>
+</header>
   <div id="fh-message-clouds" aria-hidden="true"></div>
-  <header class="topbar" data-auth-only>
-    <button data-link="menu">Меню</button>
-    <button data-link="profile">Профиль</button>
-    <button data-action="logout">Выйти</button>
-  </header>
 
   <!-- Центрированный hero-блок как на главной -->
   <main id="home" class="home-screen">
