@@ -18,13 +18,24 @@
 </header>
   <div id="fh-message-clouds" aria-hidden="true"></div>
 
-  <main class="fh-content" data-auth-only>
+  <main class="fh-content">
     <div class="container">
       <div class="card">
         <h2>Профиль</h2>
-        <div>Ник: <span id="profile-nickname"></span></div>
-        <div>Email: <span id="profile-email"></span></div>
-        <div>Создан: <span id="profile-created"></span></div>
+        <div class="avatar-block">
+          <img id="avatarPreview" class="avatar" alt="Аватар" />
+          <input type="file" id="avatarInput" accept="image/*" />
+        </div>
+        <h3>Мои события</h3>
+        <table class="tbl">
+          <thead><tr><th>Код</th><th>Название</th><th>Дата</th></tr></thead>
+          <tbody id="myEvents"></tbody>
+        </table>
+        <h3>Участвую</h3>
+        <table class="tbl">
+          <thead><tr><th>Код</th><th>Название</th><th>Дата</th></tr></thead>
+          <tbody id="guestEvents"></tbody>
+        </table>
       </div>
     </div>
   </main>

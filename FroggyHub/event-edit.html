@@ -24,30 +24,29 @@
 
     <form id="editForm" autocomplete="off">
       <div class="grid">
-        <label>
-          Название
-          <input type="text" id="eventTitle" name="title" placeholder="Название события" required />
+        <label>Название
+          <input type="text" id="eventTitle" required />
         </label>
-
-        <label>
-          Дата и время
-          <input type="datetime-local" id="eventDate" name="datetime" required />
+        <label>Дата события
+          <input type="date" id="eventDate" required />
         </label>
-
-        <label>
-          Место
-          <input type="text" id="eventPlace" name="place" placeholder="Адрес или ссылка" />
+        <label>Время начала
+          <input type="time" id="eventTime" required />
         </label>
-
-        <label>
-          Описание
-          <textarea id="eventDesc" name="desc" rows="3" placeholder="Кратко о событии"></textarea>
+        <label>Адрес
+          <input type="text" id="eventPlace" />
+        </label>
+        <label>Дресс-код
+          <input type="text" id="eventDress" />
+        </label>
+        <label>Комментарий
+          <textarea id="eventDesc" rows="3"></textarea>
         </label>
       </div>
 
       <div class="actions">
         <button type="button" class="btn" data-link="menu">Отмена</button>
-        <button type="submit" class="btn primary" id="saveEvent">Сохранить</button>
+        <button type="submit" class="btn primary" id="btnEditNext">Дальше</button>
       </div>
     </form>
   </section>

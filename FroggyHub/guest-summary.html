@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Итоги события</title>
+  <title>Спасибо</title>
   <link rel="stylesheet" href="/style.css?v=glass-18">
 </head>
 <body class="guest">
@@ -19,15 +19,10 @@
 <div id="fh-message-clouds" aria-hidden="true"></div>
 <main class="container">
   <div class="card summary-card">
-    <h1 id="sumTitle">Событие</h1>
-    <p><strong>Дата:</strong> <span id="sumDate">—</span></p>
-    <p><strong>Время:</strong> <span id="sumTime">—</span></p>
-    <p><strong>Адрес:</strong> <span id="sumPlace">—</span></p>
-    <p><strong>Дресс-код:</strong> <span id="sumDress">—</span></p>
-    <p><strong>Комментарий:</strong> <span id="sumDesc">—</span></p>
-    <h2>Вишлист</h2>
-    <div id="wlGrid" class="wl-grid"></div>
-    <div class="event-code">Код события: <span id="eventCode"></span> <button class="btn" id="copyCode">Скопировать код</button></div>
+    <h1>Спасибо!</h1>
+    <p>Имя: <span id="gsName"></span></p>
+    <p>Статус: <span id="gsAttend"></span></p>
+    <p id="gsGiftWrap">Ваш подарок: <span id="gsGift"></span></p>
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
