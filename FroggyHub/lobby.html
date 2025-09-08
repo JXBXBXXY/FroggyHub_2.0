@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Лобби — FroggyHub</title>
-<link rel="stylesheet" href="style.css?v=glass-16">
+  <link rel="stylesheet" href="/style.css?v=glass-17">
 </head>
 <body class="guest">
   <div id="fh-message-clouds" aria-hidden="true"></div>
@@ -14,16 +14,23 @@
     <button data-action="logout">Выйти</button>
   </header>
 
-  <main class="fh-content" data-auth-only>
-    <div class="container">
-      <div class="menu-grid">
-        <button data-link="event-edit" class="btn btn--primary">Создать событие</button>
+  <main id="home" class="home-screen">
+    <section class="home-hero">
+      <div class="home-card" role="group" aria-label="Создать или присоединиться">
         <div class="join-row">
-          <input id="joinCode" class="pill-input" type="text" maxlength="6" placeholder="Введите 6-значный код" />
-          <button id="btnJoin" class="btn btn--secondary">Присоединиться</button>
+          <a class="btn btn--primary" data-link="event-edit">Создать событие</a>
+          <input
+            id="joinCode"
+            class="pill-input"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="Введите 6-значный код"
+            aria-label="Код приглашения"
+          />
+          <button id="btnJoin" class="btn" data-action="join">Присоединиться</button>
         </div>
       </div>
-    </div>
+    </section>
   </main>
 
   <!-- Supabase client -->

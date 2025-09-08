@@ -826,24 +826,23 @@ body.scene-intro .speech{display:block}
 
 body.scene-intro, body.scene-final { overflow: hidden; }
 
-/* ===== Главная: центрирование блока ввода ===== */
+/* ===== Центрирование героя для главной/лобби ===== */
 .home-screen{
-  min-height: calc(100dvh - 60px); /* 60px — высота топбара, если другая — подставь свою */
-  display: grid;
-  place-items: center;              /* по центру по обеим осям */
+  min-height: calc(100dvh - 60px);
+  display:grid;
+  place-items:center;
+  position:relative;
+  z-index: 10; /* выше чипов */
 }
-
 .home-hero{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: min(880px, 92vw);
-  transform: translateY(6vh);       /* СДВИГ ВНИЗ: «чуть ниже середины» */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:min(880px, 92vw);
+  transform: translateY(6vh); /* «чуть ниже середины» */
 }
-
-/* Стеклянная плашка героя */
-.join-wrap.glassy{
-  padding: 12px;
+.home-card{
+  padding: 14px 16px;
   border-radius: 20px;
   background: rgba(0,0,0,.22);
   border: 1px solid rgba(255,255,255,.09);
@@ -852,12 +851,17 @@ body.scene-intro, body.scene-final { overflow: hidden; }
   box-shadow: 0 18px 40px rgba(0,0,0,.35);
 }
 
-/* ===== Главная: join-row ===== */
+/* Универсальная строка: 2 кнопки + инпут, по центру */
 .join-row{
   display:flex;
   gap:12px;
   flex-wrap:wrap;
+  align-items:center;
   justify-content:center;
+}
+.join-row .pill-input{
+  min-width: 220px;
+  text-align:center;
 }
 
 /* Инпут-пилюля компактный, но читабельный */
@@ -880,14 +884,27 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 .pill-input::placeholder{ color: rgba(234,247,241,.55); }
 .pill-input:focus{ outline: 2px solid var(--ring); outline-offset: 2px; }
 
-/* Мобильная адаптация: столбиком и по центру, блок остаётся «чуть ниже середины» */
+/* Кнопки – стекло (должно уже быть, дублируем на случай регресса) */
+.btn{
+  -webkit-appearance:none; appearance:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; padding:8px 12px; line-height:1;
+  border-radius:12px; border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.08);
+  color:var(--text, #eaf7f1); font-weight:600; text-decoration:none;
+  cursor:pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 0 1px rgba(255,255,255,.06);
+}
+.btn:hover{ background: rgba(255,255,255,.12); }
+.btn--primary{ background: rgba(22,163,74,.22); border-color: rgba(190,255,220,.25); }
+
+/* Мобилка: столбиком и всё по центру, карточка остаётся «чуть ниже середины» */
 @media (max-width: 720px){
   .home-hero{ transform: translateY(4vh); }
-  .join-row{
-    flex-direction: column;
-    gap: 12px;
-  }
-  .btn, .pill-input{ width: min(420px, 92vw); align-self: center; }
+  .join-row{ flex-direction: column; gap: 10px; }
+  .join-row .pill-input{ width: min(420px, 92vw); align-self: center; }
 }
 
 /* единый стиль для «строк/чипов» в облаках (белые таблетки) */
