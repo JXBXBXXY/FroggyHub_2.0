@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Итоги события</title>
+  <title>RSVP</title>
   <link rel="stylesheet" href="/style.css?v=glass-18">
 </head>
 <body class="guest">
@@ -18,16 +18,17 @@
 </header>
 <div id="fh-message-clouds" aria-hidden="true"></div>
 <main class="container">
-  <div class="card summary-card">
-    <h1 id="sumTitle">Событие</h1>
-    <p><strong>Дата:</strong> <span id="sumDate">—</span></p>
-    <p><strong>Время:</strong> <span id="sumTime">—</span></p>
-    <p><strong>Адрес:</strong> <span id="sumPlace">—</span></p>
-    <p><strong>Дресс-код:</strong> <span id="sumDress">—</span></p>
-    <p><strong>Комментарий:</strong> <span id="sumDesc">—</span></p>
-    <h2>Вишлист</h2>
-    <div id="wlGrid" class="wl-grid"></div>
-    <div class="event-code">Код события: <span id="eventCode"></span> <button class="btn" id="copyCode">Скопировать код</button></div>
+  <div class="card">
+    <form id="formRsvp">
+      <label>Имя
+        <input id="guestName" required />
+      </label>
+      <div class="rsvp-radio">
+        <label><input type="radio" name="attend" value="yes" required /> Иду</label>
+        <label><input type="radio" name="attend" value="no" required /> Не иду</label>
+      </div>
+      <button class="btn btn--primary" type="submit">Дальше</button>
+    </form>
   </div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

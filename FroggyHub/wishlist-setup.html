@@ -18,49 +18,33 @@
 </header>
   <div id="fh-message-clouds" aria-hidden="true"></div>
 
-  <main class="container" role="main" data-auth-only>
+  <main class="container" role="main">
     <div class="card">
-      <h1 id="wlTitle">Добавьте подарки к событию</h1>
-      <p class="hint">Сначала создайте событие, затем добавьте несколько позиций в вишлист. Гости смогут «занимать» эти позиции позже.</p>
-
-      <div class="grid">
-        <label>Новая позиция
-          <input id="giftInput" placeholder="Напр.: Безалкогольный сидр" />
-        </label>
-        <button id="giftAdd" class="btn btn--primary" aria-label="Добавить позицию">Добавить</button>
-      </div>
-
-      <div class="stats" style="margin-top: 1rem;">
-        <span class="badge free" id="giftFreeCount">0</span>
-        <span class="badge taken" id="giftTakenCount">0</span>
-      </div>
-
-      <ul id="giftList" class="wl-list" role="list" aria-live="polite" style="margin-top:1rem;"></ul>
-
+      <h1>Вишлист</h1>
+      <div id="wlGrid" class="wl-grid"></div>
       <div class="bar-actions" style="margin-top:1.5rem;">
+        <button class="btn" id="giftAdd">Добавить</button>
+        <span style="flex:1"></span>
         <button class="btn btn--ghost" id="giftSkip">Пропустить</button>
         <button class="btn btn--primary" id="giftNext">Далее</button>
       </div>
-
-      <p id="wlError" class="error" role="status" aria-live="polite"></p>
     </div>
   </main>
 
-  <div id="cookieCard" class="card" style="display:none" data-auth-only>
-    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
-      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
-    </svg>
-    <div class="cookieHeading">Cookies</div>
-    <div class="cookieDescription">
-      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
-    </div>
-    <div class="buttonContainer">
-      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+  <div id="giftModal" class="modal" hidden>
+    <div class="modal-card">
+      <h2>Новый предмет</h2>
+      <label>Название предмета
+        <input id="giftName" required />
+      </label>
+      <label>Ссылка
+        <input id="giftUrl" />
+      </label>
+      <div class="actions">
+        <button class="btn btn--primary" id="giftSave">Сохранить</button>
+      </div>
     </div>
   </div>
-
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden data-auth-only></div>
 
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
