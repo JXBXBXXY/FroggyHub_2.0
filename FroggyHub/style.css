@@ -1067,3 +1067,73 @@ header.topbar,
   position: relative;
   z-index: 10;
 }
+
+/* ===== Hero layout: center and slightly below middle ===== */
+.hero {
+  position: relative;
+  min-height: 100vh;                 /* full viewport */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  z-index: 10;                       /* above clouds */
+}
+
+.hero-glass {
+  /* glassmorphism card */
+  background: rgba(20, 30, 25, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.12);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+
+  width: min(680px, 92vw);
+  padding: 1.8rem 2rem;
+
+  /* place slightly below the center */
+  transform: translateY(6vh);        /* << move ~6% viewport below */
+}
+
+/* CTA sizes */
+.hero-glass .btn-large {
+  font-size: 1.18rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: 14px;
+}
+
+/* input + button row */
+.join-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.join-row input {
+  flex: 1 1 auto;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: none;
+  outline: none;
+  font-size: 1.05rem;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+/* Mobile: stack vertically, full width */
+@media (max-width: 640px) {
+  .hero { padding: 1.25rem; }
+  .hero-glass { padding: 1.25rem 1.1rem; transform: translateY(4vh); }
+  .join-row { flex-direction: column; gap: 0.75rem; }
+  .join-row input, .join-row .btn-large { width: 100%; }
+}
+
+/* Make sure clouds are below UI everywhere */
+#fh-message-clouds { position: fixed; inset: 0; z-index: -1 !important; pointer-events: none !important; }
+#fh-message-clouds * { pointer-events: none !important; }
