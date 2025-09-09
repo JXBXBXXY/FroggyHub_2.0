@@ -160,10 +160,14 @@ function initAuth(){
 
 /* ------------------ Lobby ------------------ */
 function initLobby(){
-  qs('#btnJoin')?.addEventListener('click',()=>{
-    const code=qs('#joinCode')?.value.trim();
+  const joinInput=qs('#join-code');
+  const join=()=>{
+    const code=joinInput?.value.trim();
     if(code&&code.length>=6) goto(`/rsvp.html?code=${encodeURIComponent(code)}`);
-  });
+  };
+  qs('[data-link="event-edit"]')?.addEventListener('click',e=>{e.preventDefault();goto(LINKS['event-edit']);});
+  qs('[data-action="join"]')?.addEventListener('click',join);
+  joinInput?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();join();}});
 }
 
 /* ------------------ Event Edit ------------------ */
