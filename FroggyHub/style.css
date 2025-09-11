@@ -950,10 +950,6 @@ header.topbar,
   .join-row input, .join-row .btn-large { width: 100%; }
 }
 
-/* Make sure clouds are below UI everywhere */
-#fh-message-clouds { position: fixed; inset: 0; z-index: -1 !important; pointer-events: none !important; }
-#fh-message-clouds * { pointer-events: none !important; }
-
 /* === FH CTA: центрированный стеклянный блок в лобби === */
 .fh-cta{
   min-height: calc(100dvh - 60px); /* учёт высоты топбара */
@@ -1008,7 +1004,6 @@ main.hero, main.home-screen {
   width: min(92vw, 680px);
   margin: 0 auto;
 }
-#fh-message-clouds { z-index: -1 !important; pointer-events: none !important; }
 /* --- FIX: force hero to center (override duplicates) --- */
 main.hero{
   display: flex !important;
@@ -1032,4 +1027,38 @@ main.hero .hero-glass{
 }
 
 /* гарантируем, что облака под UI */
-#fh-message-clouds { z-index: -1 !important; pointer-events: none !important; }
+#fh-message-clouds {
+  position: fixed;
+  inset: 0;
+  z-index: -1 !important;
+  pointer-events: none !important;
+}
+#fh-message-clouds * { pointer-events: none !important; }
+
+.hub, .chat-container {
+  min-height: calc(100vh - 60px);
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.hub-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  width: min(480px, 92vw);
+  margin: 0 auto;
+  padding: 2rem;
+
+  background: rgba(20,30,25,.45);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  transform: translateY(20vh); /* чуть ниже середины */
+  z-index: 10;
+}
