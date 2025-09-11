@@ -284,6 +284,21 @@ else {
     else if (to === 'settings') location.hash = '#settings'; // якорь
   });
 
+  // --- Переключение экранов (делегирование по data-go)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-go]');
+    if (!btn) return;
+    const to = btn.getAttribute('data-go');
+    const target = document.querySelector(`#screen-${to}`);
+    if (!target) return;
+    document.querySelectorAll('.screen').forEach(s => {
+      s.classList.remove('visible');
+      s.hidden = true;
+    });
+    target.hidden = false;
+    target.classList.add('visible');
+  });
+
   // --- Кнопки действий (делегирование)
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
@@ -341,7 +356,7 @@ else {
   (function bubbles() {
     const root = document.querySelector('.fh-bubbles');
     if (!root) return;
-
+    root.innerHTML = '';
     spawnBubbles(root, desiredBubbleCount());
 
     window.addEventListener('resize', debounce(() => {
