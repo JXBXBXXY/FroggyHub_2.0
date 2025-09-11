@@ -1009,3 +1009,27 @@ main.hero, main.home-screen {
   margin: 0 auto;
 }
 #fh-message-clouds { z-index: -1 !important; pointer-events: none !important; }
+/* --- FIX: force hero to center (override duplicates) --- */
+main.hero{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: calc(100vh - 60px) !important; /* учитываем высоту топбара */
+  padding: 2rem;
+}
+
+main.hero .hero-glass{
+  width: min(680px, 92vw);
+  background: rgba(20,30,25,.45);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 1.6rem 2rem;
+  transform: translateY(6vh); /* чуть ниже середины */
+  position: relative; z-index: 10;
+}
+
+/* гарантируем, что облака под UI */
+#fh-message-clouds { z-index: -1 !important; pointer-events: none !important; }
