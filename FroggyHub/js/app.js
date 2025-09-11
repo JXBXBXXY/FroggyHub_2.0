@@ -98,18 +98,12 @@ function desiredBubbleCount(){
 }
 function debounce(fn,wait){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),wait);};}
 
+// перед новым циклом — очищаем контейнер пузырей, затем спавним
 (()=>{
-  const root=document.querySelector('.fh-bubbles');
-  if(root) root.innerHTML='';
-  if(!root) return;
-
-  spawnBubbles(root,desiredBubbleCount());
-
-  window.addEventListener('resize',debounce(()=>{
-    if(!document.body.contains(root)) return;
-    root.innerHTML='';
-    spawnBubbles(root,desiredBubbleCount());
-  },200));
+  const root = document.querySelector('.fh-bubbles');
+  if (root) root.innerHTML = '';
+  if (!root) return;
+  spawnBubbles(root, desiredBubbleCount());
 })();
 /* ------------------ Demo polyfills ------------------ */
 function genCode(len=6){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<len;i++) s+=a[(Math.random()*a.length)|0];return s;}
