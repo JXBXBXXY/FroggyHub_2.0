@@ -195,7 +195,7 @@ input:-webkit-autofill{
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  #fh-message-clouds, .fh-chip {
+  .fh-bubbles, .fh-chip {
     animation: none !important;
     transition: none !important;
   }
@@ -216,7 +216,7 @@ input:-webkit-autofill{
 #auth-overlay,
 .fh-auth {
   position: relative;
-  z-index: 10;
+  z-index: 5;
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -227,7 +227,7 @@ input:-webkit-autofill{
 /* стеклянная карточка авторизации */
 #screen-auth .auth-card{
   position:relative;
-  z-index:10;
+  z-index:5;
   background: rgba(20, 45, 35, 0.45);
   backdrop-filter: blur(14px) saturate(120%);
   -webkit-backdrop-filter: blur(14px) saturate(120%);
@@ -949,10 +949,24 @@ main.hero{
   .join-row input, .join-row .btn{ width:100%; }
 }
 
-/* фоновое облако — всегда ниже UI */
-#fh-message-clouds{
-  position:fixed; inset:0;
-  z-index:-1 !important;
-  pointer-events:none !important;
+/* слой с пузырями — ВСЕГДА за UI */
+.fh-bubbles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
 }
-#fh-message-clouds *{ pointer-events:none !important; }
+.fh-bubbles * { pointer-events: none; }
+
+/* экраны выше пузырей */
+#screen-auth,
+#screen-home { position: relative; z-index: 2; }
+
+/* карточка авторизации ещё выше */
+#screen-auth .card,
+#auth-overlay,
+.fh-auth {
+  position: relative;
+  z-index: 5;
+}

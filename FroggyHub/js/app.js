@@ -40,38 +40,75 @@ const FH_MESSAGES=[
   "У кого есть карты?","Привезу геймпад","Я за хлопьями",
   "Я возьму сок","Приеду на час раньше","Кто возьмёт кофе?","Где паркуемся? 🅿️"
 ];
-let fhRoot=null,chips=[],rafId=0,vw=0,vh=0;
-const REDUCED_MOTION = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-const rnd=(a,b)=>Math.random()*(b-a)+a;
-function ensureFH(){
-  if(!fhRoot){
-    fhRoot=document.getElementById('fh-message-clouds')||(()=>{const d=document.createElement('div');d.id='fh-message-clouds';d.setAttribute('aria-hidden','true');d.style.pointerEvents='none';document.body.prepend(d);return d;})();
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function pickMessage(used){
+  const pool = FH_MESSAGES.filter(m=>!used.has(m));
+  const msg = (pool.length?pool:FH_MESSAGES)[Math.floor(Math.random()* (pool.length?pool.length:FH_MESSAGES.length))];
+  used.add(msg);
+  return msg;
+}
+function rectsOverlap(a,b){
+  return !(a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom);
+}
+function clampToContainer(r, c){
+  r.left=Math.max(0,Math.min(r.left,c.width-r.width));
+  r.top=Math.max(0,Math.min(r.top,c.height-r.height));
+  r.right=r.left+r.width; r.bottom=r.top+r.height; return r;
+}
+function overlapsAny(r,list){return list.some(o=>rectsOverlap(r,o));}
+function findNonOverlappingPosition(container, el, placed){
+  const c=container.getBoundingClientRect();
+  const r={width:el.offsetWidth,height:el.offsetHeight,left:0,top:0};
+  for(let i=0;i<80;i++){
+    r.left=Math.random()*c.width; r.top=Math.random()*c.height; clampToContainer(r,c);
+    if(!overlapsAny(r,placed)) return {x:r.left,y:r.top,rect:{...r}};
   }
-  return fhRoot;
+  return {x:r.left,y:r.top,rect:{...r}};
 }
-function spawnChips(count=null){
-  const root=ensureFH(); if(!root) return; root.innerHTML=''; chips=[];
-  vw=innerWidth; vh=innerHeight;
-  const n=count??Math.min(FH_MESSAGES.length,vw<420?10:vw<768?16:24);
-  const arr=[...FH_MESSAGES].sort(()=>Math.random()-0.5).slice(0,n);
-  arr.forEach(t=>{const el=document.createElement('div');el.className='fh-chip';el.textContent=t;const x=rnd(20,vw-160),y=rnd(20,vh-60);el.style.left=`${x}px`;el.style.top=`${y}px`;el.style.transform='translate3d(0,0,0)';root.appendChild(el);const r=el.getBoundingClientRect();const c={el,w:r.width||140,h:r.height||40,x,y,vx:rnd(-.08,.08),vy:rnd(-.08,.08)};chips.push(c);});
+function lifeCycle(bubble, anchor){
+  requestAnimationFrame(()=>bubble.classList.add('fh-bubble--in'));
+  const stay=4000+Math.random()*4000;
+  setTimeout(()=>{
+    bubble.classList.add('fh-bubble--out');
+    bubble.addEventListener('transitionend',()=>{
+      bubble.remove();
+      if(document.body.contains(anchor)) spawnBubbles(anchor,1);
+    },{once:true});
+  },stay);
 }
-function updateChips(){
-  const m=20;
-  for(const c of chips){
-    c.x+=c.vx; c.y+=c.vy;
-    if(c.x<=m||c.x+c.w>=vw-m){c.vx*=-1;c.x=Math.max(m,Math.min(c.x,vw-c.w-m));}
-    if(c.y<=m||c.y+c.h>=vh-m){c.vy*=-1;c.y=Math.max(m,Math.min(c.y,vh-c.h-m));}
-    c.el.style.left=`${c.x}px`; c.el.style.top=`${c.y}px`;
+function spawnBubbles(container,count){
+  if(prefersReduced) return;
+  const placed=[]; const used=new Set();
+  for(let i=0;i<count;i++){
+    const el=document.createElement('div');
+    el.className='fh-bubble';
+    el.textContent=pickMessage(used);
+    container.appendChild(el);
+    const pos=findNonOverlappingPosition(container,el,placed);
+    el.style.left=pos.x+'px';
+    el.style.top=pos.y+'px';
+    placed.push(pos.rect);
+    lifeCycle(el,container);
   }
-  for(let i=0;i<chips.length;i++) for(let j=i+1;j<chips.length;j++){const a=chips[i],b=chips[j];if(a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y){[a.vx,b.vx]=[b.vx,a.vx];[a.vy,b.vy]=[b.vy,a.vy];}}
 }
-function tick(){updateChips();rafId=requestAnimationFrame(tick);} 
-function startFH(){cancelAnimationFrame(rafId);if(REDUCED_MOTION) return;spawnChips();rafId=requestAnimationFrame(tick);} 
-addEventListener('resize',()=>{clearTimeout(startFH._t);startFH._t=setTimeout(()=>spawnChips(chips.length),250);});
-document.addEventListener('visibilitychange',()=>document.hidden?cancelAnimationFrame(rafId):startFH());
-setTimeout(startFH,100);
+function desiredBubbleCount(){
+  const w=innerWidth;return Math.min(FH_MESSAGES.length,w<420?10:w<768?16:24);
+}
+function debounce(fn,wait){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),wait);};}
 
+(()=>{
+  const root=document.querySelector('.fh-bubbles');
+  if(!root) return;
+
+  root.innerHTML='';
+  spawnBubbles(root,desiredBubbleCount());
+
+  window.addEventListener('resize',debounce(()=>{
+    if(!document.body.contains(root)) return;
+    root.innerHTML='';
+    spawnBubbles(root,desiredBubbleCount());
+  },200));
+})();
 /* ------------------ Demo polyfills ------------------ */
 function genCode(len=6){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<len;i++) s+=a[(Math.random()*a.length)|0];return s;}
 function _db(){return JSON.parse(localStorage.getItem('fh_demo_db')||'{}');}
