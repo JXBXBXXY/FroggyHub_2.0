@@ -176,12 +176,9 @@ input:-webkit-autofill{
 .tbl th,.tbl td{ padding:4px 8px; border-bottom:1px solid rgba(255,255,255,.1); }
 @media (max-width:640px){ .wl-grid{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); } }
 
-/* Respect reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-  .fh-bubbles {
-    animation: none !important;
-    transition: none !important;
-  }
+/* уважение к reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .fh-bubbles, .fh-chip{ animation:none !important; transition:none !important; }
 }
 
 /* Плавные появление/исчезновение экранов */
@@ -897,24 +894,24 @@ header.topbar,
   display:flex;
   justify-content:center;
   align-items:center;
-  min-height:calc(100vh - 60px); /* учёт топбара */
+  min-height:calc(100vh - 60px); /* с учётом топбара */
   padding:2rem;
   position:relative;
-  z-index:1; /* выше слоя пузырей */
+  z-index:2; /* выше пузырей */
 }
 
 .hero-glass{
   width:min(680px, 92vw);
-  margin:auto;
+  margin:0 auto;
   border-radius:20px;
   background:rgba(20,30,25,.45);
-  backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 20px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+  box-shadow:20px 60px 0 rgba(0,0,0,.05), inset 0 1px 0 rgba(255,255,255,.05);
   padding:1.6rem 2rem;
-  position:relative;
-  z-index:2; /* над фоном, но под модалками */
+  position:relative; /* важен контекст, но без transform/translate */
+  z-index:2;
 }
 
 .join-row{
@@ -939,11 +936,10 @@ header.topbar,
   .join-row input, .join-row .btn{ width:100%; }
 }
 
-/* Слой пузырей — всегда за UI */
-.fh-bubbles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
+/* Слой пузырей – всегда позади UI */
+.fh-bubbles{
+  position:fixed; inset:0;
+  pointer-events:none;
+  z-index:1;        /* ниже .hero/.hero-glass и любого контента */
+  overflow:hidden;
 }
