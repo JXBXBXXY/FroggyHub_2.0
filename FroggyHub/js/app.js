@@ -330,13 +330,13 @@ else {
     const root = document.querySelector('.fh-bubbles');
     if (!root) return;
 
+    root.innerHTML = '';
     spawnBubbles(root, desiredBubbleCount());
 
     window.addEventListener('resize', debounce(() => {
-      const box = document.querySelector('.fh-bubbles');
-      if (!box) return;
-      box.innerHTML = '';
-      spawnBubbles(box, desiredBubbleCount());
+      if (!root) return;
+      root.innerHTML = '';
+      spawnBubbles(root, desiredBubbleCount());
     }, 200));
   })();
 

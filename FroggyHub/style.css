@@ -37,7 +37,7 @@
 }
 
 *{box-sizing:border-box}
-html,body{height:100%;overflow-x:hidden}
+html,body{min-height:100%;overflow-x:hidden}
 body{
   margin:0;
   background:radial-gradient(120% 120% at 50% 30%, var(--bg-dark2), var(--bg-dark));
@@ -45,19 +45,42 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 
-/* Контейнер для фона с пузырями */
+/* ==== Bubbles layer (всегда на фоне, за UI) ==== */
 .fh-bubbles {
   position: fixed;
   inset: 0;
-  pointer-events: none;
-  z-index: 1;
   overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
-#screen-auth,
-#screen-home {
+/* ==== UI выше пузырьков ==== */
+.topbar,
+.topbar-right {
+  position: relative;
+  z-index: 3;
+}
+
+#screen-home,
+#screen-home .panel,
+#screen-home .hero-glass,
+#screen-home .join-row,
+#screen-home .menu-deck {
   position: relative;
   z-index: 2;
+}
+
+/* Высота главного экрана: во всю высоту, с учётом топбара, если нужно */
+main.hero,
+#screen-home {
+  min-height: 100vh;
+}
+
+/* (Важно) Убрать старые стили, относящиеся к .hero-frog, .frog, .stump */
+.hero-frog,
+.hero .frog,
+.hero .stump {
+  display: none !important;
 }
 
 /* Состояния пузыря */
