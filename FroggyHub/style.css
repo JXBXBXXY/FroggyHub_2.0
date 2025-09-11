@@ -824,19 +824,7 @@ button:not([disabled]){ cursor:pointer; }
 
 /* Центровка лягушки, модалок и куки */
 .hero{position:relative;display:flex;justify-content:center;align-items:flex-end;margin:40px 0 0}
-.hero .stump{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:min(220px,35vw);z-index:1;pointer-events:none}
-.hero .frog{position:relative;z-index:2;width:min(520px,72vw);max-width:90vw;height:auto;pointer-events:none}
-/* Герой: лягушка на пне */
-.hero-frog{
-  width:clamp(var(--frog-hero-min), 38vw, var(--frog-hero-max));
-  margin-inline:auto;
-}
-.hero-frog .frog{
-  width:100%;max-width:none;height:auto;pointer-events:none;
-}
-.hero-frog .stump{
-  transform:translateX(-50%) scale(1.05);
-}
+/* homepage: removed frog/stump visuals */
 .modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:saturate(1.2) blur(6px);z-index:50}
 .modal[hidden]{display:none}
 .modal .card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 20px;min-width:min(560px,92vw);color:#fff}
