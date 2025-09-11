@@ -884,157 +884,6 @@ header.topbar,
   z-index: 10;
 }
 
-/* ===== Hero layout: center and slightly below middle ===== */
-.hero {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100dvh - 60px);
-  padding: 2rem;
-  z-index: 10;                       /* above clouds */
-}
-
-.hero-glass {
-  /* glassmorphism card */
-  background: rgba(20, 30, 25, 0.45);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.12);
-
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.2rem;
-
-  width: min(680px, 92vw);
-  padding: 1.8rem 2rem;
-
-  /* place slightly below the center */
-  transform: translateY(6vh);        /* << move ~6% viewport below */
-}
-
-/* CTA sizes */
-.hero-glass .btn-large {
-  font-size: 1.18rem;
-  padding: 0.85rem 1.6rem;
-  border-radius: 14px;
-}
-
-/* input + button row */
-.join-row {
-  display: flex;
-  align-items: stretch;
-  gap: 0.8rem;
-  width: 100%;
-}
-
-.join-row input {
-  flex: 1 1 auto;
-  padding: 0.85rem 1rem;
-  border-radius: 14px;
-  border: none;
-  outline: none;
-  font-size: 1.05rem;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-}
-
-/* Mobile: stack vertically, full width */
-@media (max-width: 640px) {
-  .hero { padding: 1.25rem; }
-  .hero-glass { padding: 1.25rem 1.1rem; transform: translateY(4vh); }
-  .join-row { flex-direction: column; gap: 0.75rem; }
-  .join-row input, .join-row .btn-large { width: 100%; }
-}
-
-/* === FH CTA: центрированный стеклянный блок в лобби === */
-.fh-cta{
-  min-height: calc(100dvh - 60px); /* учёт высоты топбара */
-  display: grid;
-  place-items: center;
-  position: relative;
-  z-index: 10; /* выше фоновых облаков */
-}
-.fh-cta .cta-card{
-  width: min(680px, 92vw);
-  padding: 1.8rem 2rem;
-  border-radius: 20px;
-  background: rgba(20,30,25,.45);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,.12);
-  box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  transform: translateY(6vh); /* чуть ниже середины */
-}
-.fh-cta .join-row{
-  display: flex;
-  gap: .8rem;
-  width: 100%;
-  align-items: stretch;
-}
-.fh-cta .join-row input{
-  flex: 1 1 auto;
-  padding: .85rem 1rem;
-  border-radius: 14px;
-  border: none;
-  outline: none;
-  font-size: 1.05rem;
-  background: rgba(255,255,255,.08);
-  color: #fff;
-}
-@media (max-width: 640px){
-  .fh-cta .cta-card{ padding: 1.25rem 1.1rem; transform: translateY(4vh); }
-  .fh-cta .join-row{ flex-direction: column; gap: .75rem; }
-  .fh-cta .join-row input, .fh-cta .join-row .btn{ width: 100%; }
-}
-/* Safety center for lobby CTA */
-main.hero, main.home-screen {
-  min-height: calc(100vh - 60px);
-  display: grid;
-  place-items: center;
-}
-.hero-glass, .hero-card {
-  max-width: 680px;
-  width: min(92vw, 680px);
-  margin: 0 auto;
-}
-/* --- FIX: force hero to center (override duplicates) --- */
-main.hero{
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-height: calc(100vh - 60px) !important; /* учитываем высоту топбара */
-  padding: 2rem;
-}
-
-main.hero .hero-glass{
-  width: min(680px, 92vw);
-  background: rgba(20,30,25,.45);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  padding: 1.6rem 2rem;
-  transform: translateY(6vh); /* чуть ниже середины */
-  position: relative; z-index: 10;
-}
-
-/* гарантируем, что облака под UI */
-#fh-message-clouds {
-  position: fixed;
-  inset: 0;
-  z-index: -1 !important;
-  pointer-events: none !important;
-}
-#fh-message-clouds * { pointer-events: none !important; }
-
 .hub, .chat-container {
   min-height: calc(100vh - 60px);
   display: grid;
@@ -1093,6 +942,11 @@ main.hero{
   flex:1 1 auto; padding:.85rem 1rem;
   border-radius:14px; border:none; outline:none;
   background:rgba(255,255,255,.08); color:#fff;
+}
+
+@media (max-width:640px){
+  .join-row{ flex-direction:column; gap:.75rem; }
+  .join-row input, .join-row .btn{ width:100%; }
 }
 
 /* фоновое облако — всегда ниже UI */
