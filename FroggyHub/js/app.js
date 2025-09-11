@@ -1,5 +1,7 @@
 import { supa, getSession, signIn, signUpWithNickname, signOut } from './api.js';
 
+console.log('[FH] app.js start');
+
 const LINKS = {
   home: '/login.html',      // публичная точка входа
   lobby: '/lobby.html',
