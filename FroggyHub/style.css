@@ -859,10 +859,8 @@ body.scene-intro, body.scene-final { overflow: hidden; }
 .page.event-edit .btn.primary { font-weight: 600; }
 /* UI-контейнеры всегда выше */
 header.topbar,
-.hero,
 .page,
-.page .card,
-.hero-glass {
+.page .card {
   position: relative;
   z-index: 10;
 }
@@ -894,28 +892,29 @@ header.topbar,
   transform: translateY(20vh); /* чуть ниже середины */
   z-index: 10;
 }
-/* === FINAL OVERRIDE: center lobby CTA and keep clouds behind === */
-main.hero{
+/* === FINAL OVERRIDES: center lobby CTA and keep bubbles behind === */
+.hero{
   display:flex;
   justify-content:center;
   align-items:center;
-  min-height:calc(100vh - 60px);
+  min-height:calc(100vh - 60px); /* учёт топбара */
   padding:2rem;
+  position:relative;
+  z-index:1; /* выше слоя пузырей */
 }
 
 .hero-glass{
-  width:min(680px,92vw);
-  margin:0 auto;
+  width:min(680px, 92vw);
+  margin:auto;
   border-radius:20px;
   background:rgba(20,30,25,.45);
   backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+  box-shadow:0 20px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
   padding:1.6rem 2rem;
-  transform:translateY(6vh);
   position:relative;
-  z-index:10;
+  z-index:2; /* над фоном, но под модалками */
 }
 
 .join-row{
@@ -923,6 +922,7 @@ main.hero{
   gap:.8rem;
   width:100%;
   align-items:stretch;
+  margin-top:.8rem;
 }
 .join-row input{
   flex:1 1 auto;
@@ -939,24 +939,11 @@ main.hero{
   .join-row input, .join-row .btn{ width:100%; }
 }
 
-/* слой с пузырями — ВСЕГДА за UI */
+/* Слой пузырей — всегда за UI */
 .fh-bubbles {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
   overflow: hidden;
-}
-.fh-bubbles * { pointer-events: none; }
-
-/* экраны выше пузырей */
-#screen-auth,
-#screen-home { position: relative; z-index: 2; }
-
-/* карточка авторизации ещё выше */
-#screen-auth .card,
-#auth-overlay,
-.fh-auth {
-  position: relative;
-  z-index: 5;
 }
