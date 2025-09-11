@@ -997,4 +997,15 @@ header.topbar,
   .fh-cta .join-row{ flex-direction: column; gap: .75rem; }
   .fh-cta .join-row input, .fh-cta .join-row .btn{ width: 100%; }
 }
-
+/* Safety center for lobby CTA */
+main.hero, main.home-screen {
+  min-height: calc(100vh - 60px);
+  display: grid;
+  place-items: center;
+}
+.hero-glass, .hero-card {
+  max-width: 680px;
+  width: min(92vw, 680px);
+  margin: 0 auto;
+}
+#fh-message-clouds { z-index: -1 !important; pointer-events: none !important; }
