@@ -100,9 +100,9 @@ function debounce(fn,wait){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=
 
 (()=>{
   const root=document.querySelector('.fh-bubbles');
+  if(root) root.innerHTML='';
   if(!root) return;
 
-  root.innerHTML='';
   spawnBubbles(root,desiredBubbleCount());
 
   window.addEventListener('resize',debounce(()=>{
