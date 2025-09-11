@@ -284,6 +284,18 @@ else {
     else if (to === 'settings') location.hash = '#settings'; // якорь
   });
 
+  // --- Кнопки действий (делегирование)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const act = btn.getAttribute('data-action');
+    if (act === 'create' && typeof startCreateFlow === 'function') {
+      startCreateFlow();
+    } else if (act === 'join' && typeof joinByCode === 'function') {
+      joinByCode();
+    }
+  });
+
   // --- Обработчики форм логина/регистрации
   (function bindAuth() {
     const loginForm  = document.querySelector('#loginForm');
