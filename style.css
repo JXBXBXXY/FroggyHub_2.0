@@ -45,12 +45,15 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 
+main.hero{min-height:100vh;}
+
 /* Контейнер для фона с пузырями */
 .fh-bubbles {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  overflow: hidden;
 }
 
 #screen-auth,
@@ -73,10 +76,15 @@ body{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: .75rem 1rem;
-  z-index: 3;
+  padding: 12px 1rem;
+  z-index: 30;
   pointer-events: auto;
 }
+
+/* Hide old hero images to avoid 404 */
+.hero-frog,
+.hero .frog,
+.hero .stump{display:none!important;}
 
 /* Состояния пузыря */
 .fh-bubble {
@@ -306,13 +314,15 @@ a.btn{ color:inherit; }
 .auth-head{
   display:flex; align-items:center; gap:12px; margin-bottom:12px;
 }
-.auth-avatar img{
-  width:56px; height:56px; border-radius:50%; display:block;
+.auth-avatar{
+  width:56px; height:56px; border-radius:50%;
   box-shadow:0 0 0 2px rgba(255,255,255,.08) inset;
+  background:rgba(255,255,255,.08);
 }
 .avatar{
   width:64px; height:64px; border-radius:50%; display:block;
   object-fit:cover;
+  background:rgba(255,255,255,.08);
 }
 .auth-title h2{ margin:0 0 6px 0; }
 .auth-steps{
@@ -563,7 +573,7 @@ body.scene-intro .speech{display:block}
 /* === Analytics page === */
 .ea-list, .wl-list{list-style:none;margin:0;padding:0;}
 .ea-item{display:grid;grid-template-columns:64px 1fr 120px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
-.ea-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;}
+.ea-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.08);}
 .ea-status{text-align:right;}
 .wl-item{display:grid;grid-template-columns:1fr 200px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
 .wl-claimed{display:flex;align-items:center;gap:8px;}
@@ -703,7 +713,7 @@ body.scene-intro .speech{display:block}
 .frog-stump {
   width: 320px;
   height: 220px;
-  background: url('/assets/stump.png') center/contain no-repeat;
+  /* background removed: missing stump.png */
   opacity: .95;
 }
 
