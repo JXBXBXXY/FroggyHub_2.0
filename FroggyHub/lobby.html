@@ -16,33 +16,30 @@
     <button class="btn" data-action="logout">Выйти</button>
   </div>
 </header>
-  <div id="fh-message-clouds" aria-hidden="true"></div>
+<div id="fh-message-clouds" aria-hidden="true"></div>
 
-  <!-- Центрированный hero-блок как на главной -->
-  <main id="home" class="home-screen">
-    <section class="home-hero">
-      <div class="join-wrap glassy hero-card" role="group" aria-label="Создать или присоединиться">
-        <div class="join-row hero-row">
-          <a class="btn btn--primary" data-link="event-edit">Создать событие</a>
-          <input
-            id="joinCode"
-            class="pill-input"
-            inputmode="numeric"
-            maxlength="6"
-            placeholder="Введите 6-значный код"
-            aria-label="Код приглашения"
-          />
-          <button id="btnJoin" class="btn" data-action="join">Присоединиться</button>
-        </div>
-      </div>
-    </section>
-  </main>
+<main class="fh-cta" role="main" aria-label="Главные действия">
+  <div class="cta-card">
+    <button type="button" class="btn btn--primary" data-link="event-edit">Создать событие</button>
+    <div class="join-row">
+      <input
+        id="join-code"
+        class="pill-input"
+        inputmode="numeric"
+        maxlength="6"
+        placeholder="Введите 6-значный код"
+        aria-label="Код приглашения"
+      />
+      <button id="btnJoin" class="btn" data-action="join">Присоединиться</button>
+    </div>
+  </div>
+</main>
 
-  <!-- Supabase client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Public env -->
-  <script src="/env.js"></script>
-  <!-- App -->
-  <script type="module" src="/js/app.js"></script>
+<!-- Supabase client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Public env -->
+<script src="/env.js"></script>
+<!-- App -->
+<script type="module" src="/js/app.js"></script>
 </body>
 </html>

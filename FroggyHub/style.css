@@ -953,3 +953,48 @@ header.topbar,
 /* Make sure clouds are below UI everywhere */
 #fh-message-clouds { position: fixed; inset: 0; z-index: -1 !important; pointer-events: none !important; }
 #fh-message-clouds * { pointer-events: none !important; }
+
+/* === FH CTA: центрированный стеклянный блок в лобби === */
+.fh-cta{
+  min-height: calc(100dvh - 60px); /* учёт высоты топбара */
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 10; /* выше фоновых облаков */
+}
+.fh-cta .cta-card{
+  width: min(680px, 92vw);
+  padding: 1.8rem 2rem;
+  border-radius: 20px;
+  background: rgba(20,30,25,.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  transform: translateY(6vh); /* чуть ниже середины */
+}
+.fh-cta .join-row{
+  display: flex;
+  gap: .8rem;
+  width: 100%;
+  align-items: stretch;
+}
+.fh-cta .join-row input{
+  flex: 1 1 auto;
+  padding: .85rem 1rem;
+  border-radius: 14px;
+  border: none;
+  outline: none;
+  font-size: 1.05rem;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+@media (max-width: 640px){
+  .fh-cta .cta-card{ padding: 1.25rem 1.1rem; transform: translateY(4vh); }
+  .fh-cta .join-row{ flex-direction: column; gap: .75rem; }
+  .fh-cta .join-row input, .fh-cta .join-row .btn{ width: 100%; }
+}
+
