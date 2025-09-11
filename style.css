@@ -65,26 +65,23 @@ main.hero{min-height:100vh;}
 .fh-content {
   position: relative;
   z-index: 2;
+  padding-top: 60px;
 }
 
 .topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   width: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 12px 1rem;
   z-index: 30;
   pointer-events: auto;
 }
-
-/* Hide old hero images to avoid 404 */
-.hero-frog,
-.hero .frog,
-.hero .stump{display:none!important;}
+.topbar > * { flex: 1; text-align: center; }
+.topbar .logo { text-align: left; }
 
 /* Состояния пузыря */
 .fh-bubble {
@@ -713,7 +710,7 @@ body.scene-intro .speech{display:block}
 .frog-stump {
   width: 320px;
   height: 220px;
-  /* background removed: missing stump.png */
+  background: url('assets/stump.png') center/contain no-repeat;
   opacity: .95;
 }
 
@@ -795,7 +792,7 @@ body.scene-intro .speech{display:block}
 }
 
 /* Menu */
-.menu-deck{position:fixed; left:50%; transform:translateX(-50%); bottom:8vh; width:min(880px,92vw);}
+.menu-deck{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(880px,92vw);}
 .menu-grid{display:grid; grid-template-columns:1fr auto; gap:12px;}
 .join-row{display:grid; gap:12px; grid-template-columns:1fr auto;}
 @media (max-width:600px){

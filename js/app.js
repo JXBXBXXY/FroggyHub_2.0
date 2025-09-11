@@ -274,40 +274,39 @@ else {
     if (hash !== '#home') location.hash = '#home';
   }
 
-  // --- Навигационные кнопки (делегирование)
+  // --- Навигация и действия (делегирование)
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-link]');
-    if (!btn) return;
-    const to = btn.getAttribute('data-link');
-    if (to === 'home') location.hash = '#home';
-    else if (to === 'profile') location.hash = '#profile';   // сейчас просто якорь, UI можно расширять
-    else if (to === 'settings') location.hash = '#settings'; // якорь
-  });
+    const linkBtn = e.target.closest('[data-link]');
+    if (linkBtn) {
+      const to = linkBtn.getAttribute('data-link');
+      if (to === 'home') location.hash = '#home';
+      else if (to === 'profile') location.hash = '#profile';
+      else if (to === 'settings') location.hash = '#settings';
+      return;
+    }
 
-  // --- Переключение экранов (делегирование по data-go)
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-go]');
-    if (!btn) return;
-    const to = btn.getAttribute('data-go');
-    const target = document.querySelector(`#screen-${to}`);
-    if (!target) return;
-    document.querySelectorAll('.screen').forEach(s => {
-      s.classList.remove('visible');
-      s.hidden = true;
-    });
-    target.hidden = false;
-    target.classList.add('visible');
-  });
+    const goBtn = e.target.closest('[data-go]');
+    if (goBtn) {
+      const to = goBtn.getAttribute('data-go');
+      const target = document.querySelector(`#screen-${to}`);
+      if (!target) return;
+      document.querySelectorAll('.screen').forEach(s => {
+        s.classList.remove('visible');
+        s.hidden = true;
+      });
+      target.hidden = false;
+      target.classList.add('visible');
+      return;
+    }
 
-  // --- Кнопки действий (делегирование)
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const act = btn.getAttribute('data-action');
-    if (act === 'create' && typeof startCreateFlow === 'function') {
-      startCreateFlow();
-    } else if (act === 'join' && typeof joinByCode === 'function') {
-      joinByCode();
+    const actionBtn = e.target.closest('[data-action]');
+    if (actionBtn) {
+      const act = actionBtn.getAttribute('data-action');
+      if (act === 'create' && typeof startCreateFlow === 'function') {
+        startCreateFlow();
+      } else if (act === 'join' && typeof joinByCode === 'function') {
+        joinByCode();
+      }
     }
   });
 

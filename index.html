@@ -14,20 +14,16 @@
   <div class="fh-bubbles" aria-hidden="true"></div>
   <!-- Шапка -->
   <nav class="topbar">
-    <div class="topbar-left">
       <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
-    </div>
-    <div class="topbar-right">
       <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden type="button">Меню</button>
       <button id="nav-profile" class="btn btn-sm btn-ghost" data-link="profile" type="button">Профиль</button>
       <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings" type="button">Настройки</button>
-    </div>
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="screen container" role="main">
     <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-head">
-        <div class="auth-avatar"><!-- image removed: frog_idle.png missing --></div>
+        <div class="auth-avatar"><img src="assets/frog_idle.png" alt="Froggy"></div>
 
         <div class="auth-title">
           <h2>Вход / Регистрация</h2>
@@ -85,7 +81,6 @@
 
   <!-- ЭКРАН МЕНЮ -->
   <section id="screen-home" class="screen visible" role="main">
-    <!-- hero frog removed to avoid 404 -->
     <div class="menu-deck">
       <div class="panel">
         <div class="menu-grid">
@@ -118,7 +113,7 @@
       <h2>Выберите из списка</h2>
       <div id="join-wish-box" class="wish-grid"></div>
       <div class="row end">
-        <button id="btn-join-final" class="btn btn-primary" type="button">Далее</button>
+        <button id="btn-join-final" class="btn btn-primary" data-go="app" type="button">Далее</button>
       </div>
     </div>
   </section>
@@ -186,7 +181,9 @@
           <div class="days" id="bigClockDays">0 дней</div>
         </div>
 
-        <!-- stump and frog images removed to avoid 404 -->
+        <!-- Пень и лягушка -->
+        <img id="stumpImg" class="stump" src="assets/stump.png" alt="Пень">
+        <div id="frog" class="frog-sticker"><img id="frogImg" src="assets/frog_idle.png" alt="Frog"></div>
 
         <!-- ФИНАЛЬНАЯ РАСКЛАДКА: ДВЕ КОЛОНКИ -->
         <div id="finalLayout" class="final-layout" hidden>
