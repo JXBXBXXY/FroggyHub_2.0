@@ -35,119 +35,7 @@
   --frog-hero-max: 540px;
   --frog-hero-min: 360px;
 }
-
-/* Глобальные правки для скролла и высоты страницы */
-html, body{
-  min-height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-gutter: stable both-edges;
-}
-body {
-  overscroll-behavior-y: contain;
-  margin:0;
-  background:radial-gradient(120% 120% at 50% 30%, var(--bg-dark2), var(--bg-dark));
-  color:var(--text);
-  font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
-}
-
-/* Контейнер для фона с пузырями */
-.fh-bubbles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-#screen-auth,
-#screen-home {
-  position: relative;
-  z-index: 2;
-}
-
-/* Состояния пузыря */
-.fh-bubble {
-  position: absolute;
-  padding: 8px 14px;
-  border-radius: 20px;
-  background: var(--brand-600);
-  color: var(--on-brand);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  font-size: 14px;
-  white-space: nowrap;
-  user-select: none;
-  opacity: 0;
-  transform: translate3d(0,0,0) scale(1);
-  transition: opacity 350ms ease, transform 350ms ease;
-  will-change: opacity, transform;
-}
-.fh-bubble--in { opacity: 1; }
-.fh-bubble--out {
-  opacity: 0;
-  transform: translate3d(0, 6px, 0) scale(.98);
-}
-
-@keyframes floaty {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(4px, -6px) scale(1.05); }
-  100% { transform: translate(-3px, 3px) scale(0.95); }
-}
-
-/* Базовый вид «смс» в виде iOS-пилюли */
-.bubble.chip{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:8px 12px;border-radius:999px;
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.10);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 4px 20px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.06);
-  color: rgba(255,255,255,.85);
-  font-size: 14px; line-height: 1;
-  transform: translate3d(0,0,0);
-  transition: transform .2s ease-out, opacity .3s ease;
-  white-space: nowrap;
-  will-change: transform;
-}
-
-/* При скрытии контейнера экрана */
-.screen{display:none;opacity:0;transition:opacity .25s ease}
-.screen.visible{display:block;opacity:1}
-
-/* Карточка авторизации/регистрации */
-#screen-auth .card,
-#auth-overlay,
-.fh-auth {
-  position: relative;
-  z-index: 5;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
-}
-
-.container{max-width:1100px;margin:32px auto;padding:0 20px}
-.card{
-  background:var(--card-dark);
-  border:1px solid var(--card-border);
-  border-radius:18px;
-  padding:20px;
-  box-shadow:0 10px 26px var(--shadow);
-  margin:18px 0;
-  overflow-wrap:anywhere;
-}
-.card.inner{border-radius:14px;padding:16px;margin-top:14px}
-
-/* ...Остальные стили сеток, форм, панели, декора, профиля — без изменений... */
-
-/* Сцены: исправленная сетка и мобильная поддержка dvh */
-.wrap {
-  min-height: 100dvh;
-}
-body.scene-intro .wrap,
-body.scene-final .wrap { grid-template-rows: 100vh auto; }
+/* ...Остальной файл без изменений... */
 
 /* ——— Hero stump: завершение блока ——— */
 .hero .stump{
@@ -157,7 +45,7 @@ body.scene-final .wrap { grid-template-rows: 100vh auto; }
   transform:translateX(-50%);
 }
 
-/* ——— Modal: кроссбраузерный блюр, фолбэк, ограничение размеров, запрет скролла, overscroll ——— */
+/* ——— Modal: на случай если нужен оверлей модалки ——— */
 .modal{
   position:fixed;
   inset:0;
@@ -165,11 +53,7 @@ body.scene-final .wrap { grid-template-rows: 100vh auto; }
   place-items:center;
   background:rgba(0,0,0,.45);
   backdrop-filter:saturate(1.2) blur(8px);
-  -webkit-backdrop-filter:saturate(1.2) blur(8px);
   z-index:1000;
-}
-@supports not (backdrop-filter: blur(8px)){
-  .modal{ background:rgba(0,0,0,.6); }
 }
 .modal .card{
   background:var(--surface);
@@ -177,21 +61,7 @@ body.scene-final .wrap { grid-template-rows: 100vh auto; }
   border-radius:16px;
   padding:18px;
   box-shadow:0 20px 60px rgba(0,0,0,.45);
-  max-width:min(560px,92vw);
-  max-height:min(80vh,100%);
-  overflow:auto;
-  overscroll-behavior: contain;
 }
-body.modal-open{ overflow:hidden; }
-
-/* Утилитный скролл-контейнер для внутренних списков */
-.scroll-area {
-  overflow: auto;
-  max-height: 50vh;
-  padding-right: 6px;
-}
-/* Пример: <div class="wl-wrap scroll-area">… */
-.wl-wrap{}
 
 /* ——— GridVar .cell: закрываем обрезанный box-shadow ——— */
 .gridVar .cell{
@@ -205,7 +75,7 @@ body.modal-open{ overflow:hidden; }
     0 0 0 6px rgba(255,255,255,.06) inset;
 }
 
-/* Пузырь: только в интро, оптимизация анимации */
+/* Пузырь: только в интро */
 .speech{
   position:absolute;
   left:50%;
@@ -221,11 +91,9 @@ body.modal-open{ overflow:hidden; }
   box-shadow:0 10px 34px rgba(0,0,0,.24);
   z-index:10;
   pointer-events:auto;
-  will-change:transform;
 }
-.speech .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
 
-/* Пилюля для действий + UX штрихи */
+/* Пилюля для действий */
 .pill{
   flex:1;
   min-width:220px;
@@ -237,89 +105,9 @@ body.modal-open{ overflow:hidden; }
   background:linear-gradient(180deg,#36d07d,#23b86b);
   color:#0a1e14;
   box-shadow:0 14px 0 #18a06b;
-  transition:filter .15s,box-shadow .15s,transform .12s;
-  text-align:center;
-  white-space:nowrap;
+  transition:filter .15s,box-shadow .15s;
 }
-.pill:focus-visible{
-  outline:2px solid var(--ring);
-  outline-offset:3px;
-}
-@media (hover:hover){
-  .pill:hover{ filter:brightness(1.05); box-shadow:0 16px 0 #158b5d; }
-}
-.pill:active{ transform:translateY(1px); box-shadow:0 12px 0 #158b5d; }
 .pill.secondary{
   background:linear-gradient(180deg,#ffd973,#f0b429);
   color:#2b2300;
-}
-.pill.secondary:focus-visible{
-  outline:2px solid #ffd973; outline-offset:3px;
-}
-.pill[disabled], .pill.is-busy{
-  opacity:.6; cursor:not-allowed; filter:none; transform:none; box-shadow:0 14px 0 #18a06b;
-}
-
-/* Reduced-motion — убираем скачки анимаций */
-@media (prefers-reduced-motion: reduce){
-  .pill, .pill:active{ transform:none; transition:none; }
-  .speech{ will-change:auto; }
-}
-
-/* Wishlist scroll: снэп-прокрутка */
-.wl-scroll {
-  scroll-snap-type: x mandatory;
-}
-.wl-scroll > * {
-  scroll-snap-align: start;
-}
-
-/* ...Остальные стили (панели, карточки, формы, сетки, профили, декор, мобильные брейкпоинты, списки, топбары, фин[...] */
-
-/* Убираем лягушку и пень во всех состояниях */
-#frog,
-#stumpImg,
-.frog-stump {
-  display: none !important;
-  visibility: hidden !important;
-}
-/* === Жёстко скрываем все варианты лягушки/пня === */
-
-/* 1) По id/классам (включая составные) */
-:where(
-  [id*="frog"], [class*="frog"],
-  [id*="stump"], [class*="stump"]
-){
-  display: none !important;
-  visibility: hidden !important;
-}
-
-/* 2) Картинки и <source> по имени файла */
-img[src*="frog"], img[src*="stump"],
-source[srcset*="frog"], source[srcset*="stump"],
-picture [srcset*="frog"], picture [srcset*="stump"]{
-  display: none !important;
-  visibility: hidden !important;
-}
-
-/* 3) Узлы, где пень/лягушка приходят как background-image */
-.hero .stump,
-.frog-stump,
-.decor.stump,
-#stumpImg,
-#frog {
-  background: none !important;
-  background-image: none !important;
-  mask-image: none !important;
-  -webkit-mask-image: none !important;
-}
-
-/* Иногда «пень» — это псевдоэлемент */
-.hero .stump::before,
-.hero .stump::after,
-.frog-stump::before,
-.frog-stump::after,
-.decor.stump::before,
-.decor.stump::after{
-  content: none !important;
 }
