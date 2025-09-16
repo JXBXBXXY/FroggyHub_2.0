@@ -4,48 +4,68 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Хаб</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css" />
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-  <div id="mini-profile" style="position:absolute;top:10px;right:10px;text-align:right;">
-    Ник: <span id="mp-nick"></span>, Создан: <span id="mp-created"></span>
-    <button id="hub-logout" data-logout data-action="logout" class="btn btn--ghost btn--sm">Выйти</button>
-  </div>
-  <main class="container" role="main">
-    <div class="card" style="max-width:760px;margin:40px auto">
-      <h1>Хаб</h1>
-      <div class="grid">
-        <div class="card inner">
-          <a class="btn btn--primary" href="/event-edit.html" data-action="create">Создать событие</a>
-        </div>
-        <div class="card inner">
-          <h3>Войти в ивент</h3>
-          <div class="row2">
-            <input data-input="join-code" placeholder="Код или ссылка" />
-            <button class="btn btn--primary" data-action="join">Присоединиться</button>
+  <div class="fh-bg background-layer" aria-hidden="true"></div>
+  <div class="fh-bubbles bg-bubbles" aria-hidden="true"></div>
+
+  <nav class="topbar">
+    <div class="inner">
+      <div class="topbar-left">
+        <a href="/" class="logo" data-route="home">FroggyHub</a>
+      </div>
+      <div class="topbar-right">
+        <a class="btn btn-sm btn-ghost" href="/" data-route="home">Меню</a>
+        <button class="btn btn-sm btn-ghost" type="button" data-route="profile" data-href="/profile.html">Профиль</button>
+        <button class="btn btn-sm btn-ghost" type="button" data-route="settings">Настройки</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="fh-content">
+    <div id="mini-profile" style="position:absolute;top:10px;right:10px;text-align:right;">
+      Ник: <span id="mp-nick"></span>, Создан: <span id="mp-created"></span>
+      <button id="hub-logout" data-logout data-action="logout" class="btn btn--ghost btn--sm" type="button">Выйти</button>
+    </div>
+
+    <div class="container" role="main">
+      <div class="card" style="max-width:760px;margin:40px auto">
+        <h1>Хаб</h1>
+        <div class="grid">
+          <div class="card inner">
+            <a class="btn btn--primary" href="/event-edit.html" data-action="create">Создать событие</a>
+          </div>
+          <div class="card inner">
+            <h3>Войти в ивент</h3>
+            <div class="row2">
+              <input data-input="join-code" placeholder="Код или ссылка" />
+              <button class="btn btn--primary" data-action="join" type="button">Присоединиться</button>
+            </div>
           </div>
         </div>
+        <section>
+          <h2>Мои ивенты</h2>
+          <ul id="my-events"></ul>
+        </section>
       </div>
-      <section>
-        <h2>Мои ивенты</h2>
-        <ul id="my-events"></ul>
-      </section>
     </div>
   </main>
-  <script type="module" src="./js/app.js"></script>
+
+  <script type="module" src="/js/app.js"></script>
   <div id="cookieCard" class="card" style="display:none">
     <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
       <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
     </svg>
     <div class="cookieHeading">Cookies</div>
     <div class="cookieDescription">
-      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использова�[...]
+      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
     </div>
     <div class="buttonContainer">
-      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+      <button class="btn btn--primary acceptButton" id="cookieAccept" type="button">Ок</button>
+      <button class="btn btn--ghost declineButton" id="cookieDecline" type="button">Только необходимые</button>
     </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

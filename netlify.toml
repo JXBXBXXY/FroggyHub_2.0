@@ -2,9 +2,3 @@
   publish = "."
   command = ""
   functions = "netlify/functions"
-
-# SPA routing (опционально; оставь, если нужны прямые урлы без #)
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
