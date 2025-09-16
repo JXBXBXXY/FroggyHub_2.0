@@ -288,22 +288,19 @@ else {
   function bindAuth() {
     if (window.FH.__authBound) return;        // защита от повтора
     window.FH.__authBound = true;
-
     const loginForm  = document.querySelector('#loginForm');
     const signupForm = document.querySelector('#signupForm');
-
     async function handle(form, kind) {
       if (!form) return;
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const fd = new FormData(form);
-        const rawLogin = (fd.get('nickname') || '').toString().trim();
+        const nickname = (fd.get('nickname') || '').toString().trim();
         const password = (fd.get('password') || '').toString();
-        if (!rawLogin || !password) return;
+        if (!nickname || !password) return;
 
         // поддержка и email, и ника (ник -> <nick>@local)
-        const email = rawLogin.includes('@') ? rawLogin : `${rawLogin}@local`;
-
+        const email = nickname.includes('@') ? nickname : `${nickname}@local`;
         try {
           const supa = getSupabase();
           let ok = false, session = null;
@@ -330,6 +327,28 @@ else {
     }
     handle(loginForm, 'login');
     handle(signupForm, 'signup');
+
+    // --- Страховка: если кнопки не type="submit", дожимаем сабмит программно
+    // Работает для кнопок с data-action="login"/"signup" или классами .js-login/.js-signup
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action="login"], [data-action="signup"], .js-login, .js-signup');
+      if (!btn) return;
+
+      // определяем, какую форму сабмитить
+      const isLogin = btn.matches('[data-action="login"], .js-login');
+      const form = btn.closest('form') || (isLogin ? loginForm : signupForm);
+      if (!form) return;
+
+      // не меняем визуал, просто инициируем submit, чтобы сработали наши обработчики выше
+      ev.preventDefault();
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        // полифилл для старых браузеров
+        const evt = new Event('submit', { bubbles: true, cancelable: true });
+        form.dispatchEvent(evt);
+      }
+    });
   }
 
   // ---- Фоновые «смс» (сетка + локальные орбиты)
@@ -350,8 +369,8 @@ else {
   // --- Старт
   // Делаем привязки строго после готовности DOM, чтобы формы точно существовали
   document.addEventListener('DOMContentLoaded', () => {
-    bindAuth();
-    route();
+    bindAuth(); // навешиваем обработчики форм
+    route();    // и сразу роутим
   });
   window.addEventListener('hashchange', route);
 }
