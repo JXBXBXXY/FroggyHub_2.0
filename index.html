@@ -1,488 +1,793 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title>FroggyHub — события и вишлисты</title>
   <link rel="stylesheet" href="/style.css">
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
-</head>
-<body class="scene-intro">
-  <div class="fh-bg background-layer" aria-hidden="true"></div>
-  <div class="fh-bubbles bg-bubbles" aria-hidden="true"></div>
-
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+ </head>
+ <body class="scene-intro">
+  <div aria-hidden="true" class="fh-bg background-layer">
+  </div>
+  <div aria-hidden="true" class="fh-bubbles bg-bubbles">
+  </div>
   <nav class="topbar">
-    <div class="inner">
-      <div class="topbar-left">
-        <a href="/" class="logo" data-route="home">FroggyHub</a>
-      </div>
-      <div class="topbar-right">
-        <a class="btn btn-sm btn-ghost" href="/" data-route="home">Меню</a>
-        <button class="btn btn-sm btn-ghost" type="button" data-route="profile">Профиль</button>
-        <button class="btn btn-sm btn-ghost" type="button" data-route="settings">Настройки</button>
-      </div>
+   <div class="inner">
+    <div class="topbar-left">
+     <a class="logo" data-route="home" href="/">
+      FroggyHub
+     </a>
     </div>
+    <div class="topbar-right">
+     <a class="btn btn-sm btn-ghost" data-route="home" href="/">
+      Меню
+     </a>
+     <button class="btn btn-sm btn-ghost" data-route="profile" type="button">
+      Профиль
+     </button>
+     <button class="btn btn-sm btn-ghost" data-route="settings" type="button">
+      Настройки
+     </button>
+    </div>
+   </div>
   </nav>
-
-  <main class="fh-content">
-  <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
-  <section id="screen-auth" class="screen container" role="main">
-    <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
-      <div class="auth-head">
-        <div class="auth-avatar"><img src="/assets/frog_idle.png" alt="Froggy"></div>
-
-        <div class="auth-title">
-          <h2>Вход / Регистрация</h2>
-          <div id="authSteps" class="auth-steps">
-            <span class="chip chip-on" data-step="1">Шаг 1</span>
-            <span class="chip" data-step="profile">Профиль</span>
-          </div>
-        </div>
+  <main class="fh-content screen container" id="screen-auth" role="main">
+   <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
+    <div class="auth-head">
+     <div class="auth-avatar">
+      <img alt="Froggy" src="/assets/frog_idle.png"/>
+     </div>
+     <div class="auth-title">
+      <h2>
+       Вход / Регистрация
+      </h2>
+      <div class="auth-steps" id="authSteps">
+       <span class="chip chip-on" data-step="1">
+        Шаг 1
+       </span>
+       <span class="chip" data-step="profile">
+        Профиль
+       </span>
       </div>
-
-      <div class="tabs" role="tablist" aria-label="Auth">
-        <button id="tab-login" class="tab is-active" role="tab" aria-controls="pane-login" aria-selected="true" type="button">Войти</button>
-        <button id="tab-register" class="tab" role="tab" aria-controls="pane-register" aria-selected="false" type="button">Регистрация</button>
-      </div>
-
-      <section id="pane-login" class="pane" role="tabpanel" aria-labelledby="tab-login">
-        <form id="loginForm" class="grid" novalidate>
-          <label>Никнейм
-            <input id="login-nickname" name="nickname" type="text" placeholder="Никнейм" required autocomplete="username">
-          </label>
-          <label>Пароль
-            <input id="login-password" name="password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
-          </label>
-            <button id="login-btn" class="btn btn-primary btn-xl w-100" type="submit">Войти</button>
-            <button id="showReset" class="btn btn--ghost w-full" type="button" data-forgot="false">Забыли пароль?</button>
-          <div id="resetPassBlock" class="grid is-hidden">
-            <label>Новый пароль
-              <input id="resetPass" type="password" minlength="4" autocomplete="new-password">
-            </label>
-            <label>Повторите пароль
-              <input id="resetPass2" type="password" minlength="4" autocomplete="new-password">
-            </label>
-          </div>
-          <div id="login-status" aria-live="polite"></div>
-        </form>
-      </section>
-
-      <section id="pane-register" class="pane is-hidden" role="tabpanel" aria-labelledby="tab-register">
-        <form id="signupForm" class="grid" novalidate>
-          <label>Имя / Никнейм
-            <input id="signup-nickname" name="nickname" required minlength="2" autocomplete="nickname">
-          </label>
-          <label>Пароль
-            <input id="signup-password" name="password" type="password" required minlength="4" autocomplete="new-password">
-          </label>
-          <label>Повтор пароля
-            <input id="signup-password2" name="password2" type="password" required minlength="4" autocomplete="new-password">
-          </label>
-            <button id="signup-btn" class="btn btn-primary btn-xl w-100" type="submit">Зарегистрироваться</button>
-          <div id="reg-status" aria-live="polite"></div>
-        </form>
-      </section>
+     </div>
     </div>
-  </section>
-
-  <!-- ЭКРАН МЕНЮ -->
-  <section id="screen-home" class="screen visible" role="main">
-    <div class="menu-deck">
-      <div class="panel">
-        <div class="menu-grid">
-          <button id="create-event" class="btn btn-primary" data-route="app" data-mode="create" data-action="create" type="button">
-            Создать событие
-          </button>
-
-          <form id="join-form" class="join-row" autocomplete="off">
-            <input id="join-code" class="input" inputmode="numeric" maxlength="6"
-                   placeholder="Введите 6-значный код">
-            <button id="join-btn" class="btn" data-action="join" type="button">Присоединиться</button>
-          </form>
-        </div>
-      </div>
+    <div aria-label="Auth" class="tabs" role="tablist">
+     <button aria-controls="pane-login" aria-selected="true" class="tab is-active" id="tab-login" role="tab" type="button">
+      Войти
+     </button>
+     <button aria-controls="pane-register" aria-selected="false" class="tab" id="tab-register" role="tab" type="button">
+      Регистрация
+     </button>
     </div>
-  </section>
-
-  <section id="screen-join-name" class="screen" hidden>
-    <div class="panel">
-      <h2>Как к вам обращаться?</h2>
-      <form id="form-join-name" class="row">
-        <input id="jnick" class="input" placeholder="Никнейм" required>
-        <button class="btn btn-primary" type="submit">Далее</button>
-      </form>
-    </div>
-  </section>
-
-  <section id="screen-join-wishlist" class="screen" hidden>
-    <div class="panel">
-      <h2>Выберите из списка</h2>
-      <div id="join-wish-box" class="wish-grid"></div>
-      <div class="row end">
-        <button id="btn-join-final" class="btn btn-primary" data-route="app" type="button">Далее</button>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ЭКРАНЫ СОЗДАНИЯ СОБЫТИЯ -->
-
-<section id="screen-create-conditions" class="screen" hidden>
-  <div class="panel">
-    <h2 id="create-title">Параметры встречи</h2>
-    <form id="form-create-1" class="stack">
-      <label>Название <input id="c-title" class="input" placeholder=""></label>
-      <label>Дата <input id="c-date" type="date" class="input"></label>
-      <label>Время <input id="c-time" type="time" class="input"></label>
-      <label id="label-place">Место проведения <input id="c-place" class="input" placeholder=""></label>
-      <div class="row end">
-        <button type="button" class="btn" data-route="home">Назад</button>
-        <button class="btn btn-primary" type="submit">Далее</button>
-      </div>
-    </form>
-  </div>
-</section>
-
-<section id="screen-create-reqs" class="screen" hidden>
-  <div class="panel">
-    <h2>Требования для гостей</h2>
-    <form id="form-create-2" class="stack">
-      <label>Dress-code <input id="r-dress" class="input" placeholder="Напр.: smart casual"></label>
-      <label>Что взять <input id="r-bring" class="input" placeholder="К примеру: ноутбук/презентация"></label>
-      <label>Комментарий <input id="r-comment" class="input" placeholder="Доп. сведения для гостей"></label>
-      <div class="row end">
-        <button type="button" class="btn" data-route="create-conditions">Назад</button>
-        <button class="btn btn-primary" type="submit">Далее</button>
-      </div>
-    </form>
-  </div>
-</section>
-
-<section id="screen-wishlist" class="screen" hidden>
-  <div class="panel">
-    <h2>Wishlist</h2>
-  <form id="form-wish-add" class="row">
-    <input id="w-title" class="input" placeholder="Название/тема">
-    <input id="w-url" class="input" placeholder="Ссылка (необязательно)">
-    <button class="btn" type="submit">Добавить</button>
-  </form>
-    <div id="wishlist-box" class="wish-grid"></div>
-    <form id="form-create-final" class="row end">
-      <button type="button" class="btn" data-route="create-reqs">Назад</button>
-      <button type="submit" id="btn-create-final" class="btn btn-primary">Далее</button>
-    </form>
-  </div>
-</section>
-
-  <!-- ЭКРАН 3: ПРУД + ФИНАЛ -->
-  <section id="screen-app" class="container" hidden>
-    <div class="wrap" id="root" hidden>
-      <section class="pond" id="pond">
-        <div class="ripples" aria-hidden="true"></div>
-        <div class="pads" id="pads"></div>
-
-        <!-- БОЛЬШИЕ ЧАСЫ (в финале переезжают в левую колонку) -->
-        <div id="bigClock" class="big-clock" hidden>
-          <div class="hm" id="bigClockHM">00:00</div>
-          <div class="days" id="bigClockDays">0 дней</div>
-        </div>
-
-        <!-- Пень и лягушка -->
-        <img id="stumpImg" class="stump" src="/assets/stump.png" alt="Пень">
-        <div id="frog" class="frog-sticker"><img id="frogImg" src="/assets/frog_idle.png" alt="Frog"></div>
-
-        <!-- ФИНАЛЬНАЯ РАСКЛАДКА: ДВЕ КОЛОНКИ -->
-        <div id="finalLayout" class="final-layout" hidden>
-          <div id="finalLeft" class="final-left" aria-hidden="false"></div>
-          <div id="finalRight" class="final-right">
-            <div class="final-card">
-              <header class="final-header">
-                <div class="title" id="fTitle">Событие</div>
-                <!-- chips были лишними — скрываем -->
-                <div class="final-chips" id="fChips" hidden>
-                  <span class="chip" id="fDateChip">—</span>
-                  <span class="chip" id="fTimeChip">—</span>
-                  <span class="chip" id="fAddrChip">—</span>
-                </div>
-              </header>
-
-              <section class="final-main">
-                <div class="tagline" id="fNotes">Описание / детали.</div>
-
-                <div class="meta">
-                  <div class="meta-item">Дресс-код: <strong id="fDress">—</strong></div>
-                  <div class="meta-item">Что взять: <strong id="fBring">—</strong></div>
-                </div>
-
-                <div class="wl-block">
-                  <div class="wl-head">
-                    <h3>Wishlist</h3>
-                    <div class="wl-legend">
-                      <span class="pill-mini">🟢 свободно</span>
-                      <span class="pill-mini">🔒 занято</span>
-                    </div>
-                  </div>
-                  <div id="fWishlist" class="wl-scroll"></div>
-                </div>
-
-                <div class="dashboard">
-                  <div class="db-card" id="fStats"></div>
-                  <div class="db-card" id="fShare"></div>
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-
-        <!-- Подсказки (только для интро) -->
-        <div class="speech" id="speech">
-          <div id="speechText"><strong>Фрогги:</strong> Готовы начать?</div>
-          <div class="actions" id="speechActions">
-          <button class="pill" data-next="create" data-requires-auth data-action="create" type="button">🧪 Создать</button>
-          <button class="pill secondary" data-next="join" data-action="join" type="button">🎉 Присоединиться</button>
-          </div>
-        </div>
-      </section>
-
-      <!-- НИЖНЯЯ ПАНЕЛЬ / ШАГИ -->
-      <section class="panel" id="slides">
-        <!-- СОЗДАТЬ: форма события -->
-        <section id="slide-create-1" hidden>
-          <div class="bubble">
-            <div class="bubble-head">Фрогги:</div>
-            <div class="bubble-body">Название, дата, время, адрес.</div>
-          </div>
-          <form id="formCreate" class="grid brick">
-            <label>Название события <input id="eventTitle" required /></label>
-            <div class="row2">
-              <label>Дата <input id="eventDate" type="date" required /></label>
-              <label>Время <input id="eventTime" type="time" required /></label>
-            </div>
-            <label>Адрес <input id="eventAddress" placeholder="Улица, дом, город" /></label>
-            <button class="btn btn--primary" type="submit">Далее</button>
-          </form>
-        </section>
-
-        <!-- СОЗДАТЬ: вишлист -->
-        <section id="slide-create-wishlist" hidden>
-          <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Добавьте пожелания.</div></div>
-          <div class="wl-wrap"><div id="wlGrid" class="gridVar"></div></div>
-          <div class="bar-actions">
-            <button class="btn btn--primary" id="addItem" type="button">Добавить</button>
-            <button class="btn btn--ghost" id="clearWL" type="button">Очистить</button>
-            <button class="btn btn--primary" id="toDetails" type="button">Далее</button>
-          </div>
-          <dialog id="cellEditor" aria-modal="true" role="dialog">
-            <form method="dialog" class="editor">
-              <h3>Редактор</h3>
-              <label>Название <input id="cellTitle" /></label>
-              <label>Ссылка <input id="cellUrl" placeholder="https://..." /></label>
-              <menu>
-                <button value="cancel" class="btn btn--ghost" type="submit">Отмена</button>
-                <button id="saveCell" value="default" class="btn btn--primary" type="submit">Сохранить</button>
-              </menu>
-            </form>
-          </dialog>
-        </section>
-
-        <!-- СОЗДАТЬ: доп. условия -->
-        <section id="slide-create-details" hidden>
-          <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Дресс-код, что взять, комментарии.</div></div>
-          <form id="formDetails" class="grid brick">
-            <label>Дресс-код <input id="eventDress" /></label>
-            <label>Что взять <input id="eventBring" /></label>
-            <label>Как пройти / комментарии <textarea id="eventNotes" rows="3"></textarea></label>
-            <button class="btn btn--primary" type="submit" data-requires-auth>Сгенерировать код</button>
-          </form>
-          <p id="createEventStatus" class="error" role="status" aria-live="polite"></p>
-        </section>
-
-        <!-- СОЗДАТЬ: админ -->
-        <section id="slide-admin" hidden>
-          <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Поделитесь кодом.</div></div>
-          <div class="codeRow">
-            <span id="eventCodeText">Код: <strong id="eventCode" data-code>—</strong></span>
-            <button class="btn btn--ghost btn--sm" id="copyInviteBtn" data-owner-only type="button">Скопировать приглашение</button>
-            <a id="analyticsLink" class="btn btn--ghost btn--sm" href="#" hidden>Аналитика события</a>
-          </div>
-          <p id="codeExpire" class="hint"></p>
-          <h3>Вишлист</h3>
-          <ul id="adminGifts" class="list"></ul>
-          <div class="bar-actions"><button class="btn btn--primary" id="finishCreate" type="button">Далее</button></div>
-        </section>
-
-        <!-- ПРИСОЕДИНИТЬСЯ: код -->
-        <section id="slide-join-code" hidden>
-          <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Введите код.</div></div>
-          <div class="grid" style="place-items:center">
-            <input id="joinCodeInput" placeholder="Например: 345812" style="max-width:260px;text-align:center" inputmode="numeric" pattern="\d*" autocomplete="one-time-code" maxlength="6" />
-            <button class="btn btn--primary" id="joinCodeBtn" disabled type="button">Проверить</button>
-            <div id="joinCodeError" class="error" role="status" aria-live="polite"></div>
-          </div>
-        </section>
-
-        <!-- ПРИСОЕДИНИТЬСЯ: имя + RSVP -->
-        <section id="slide-join-1" hidden>
-          <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Ваше имя и статус участия.</div></div>
-          <form id="formJoin" class="grid brick">
-            <label>Имя <input id="guestName" required /></label>
-            <div class="btn-group">
-              <button type="button" class="btn btn--primary" data-rsvp="yes">Иду</button>
-              <button type="button" class="btn btn--ghost" data-rsvp="maybe">Возможно</button>
-              <button type="button" class="btn btn--ghost" data-rsvp="no">Не иду</button>
-            </div>
-            <button id="toGuestWishlist" class="btn btn--primary" type="button">Выбрать подарок</button>
-          </form>
-        </section>
-
-        <!-- ПРИСОЕДИНИТЬСЯ: вишлист гостя -->
-        <section id="slide-join-wishlist" hidden>
-          <div class="bubble"><div class="bubble-head">Фрогги:</div><div class="bubble-body">Выберите один пункт.</div></div>
-          <div id="guestGifts" class="wishlist-grid"></div>
-          <div class="bar-actions">
-            <button class="btn btn--ghost" id="skipWishlist" type="button">Пропустить</button>
-            <button class="btn btn--primary" id="toGuestFinal" type="button">Готово</button>
-          </div>
-        </section>
-      </section>
-    </div>
-  </section>
-
-  <section id="screen-final" class="screen" hidden>
-    <div class="final-wrap">
-      <!-- ЛЕВАЯ КОЛОНКА: детали и шаринг -->
-      <article id="final-left" class="final-card">
-        <div class="final-head">
-          <h2 id="final-title">Событие</h2>
-          <div class="final-code">
-            <span>Код: <b id="final-code">—</b></span>
-            <button id="btn-copy-invite" class="btn btn-chip" data-owner-only type="button">Скопировать приглашение</button>
-          </div>
-        </div>
-
-        <div class="final-details">
-          <div class="row">
-            <span class="label">Когда:</span>
-            <span id="final-when" class="value">—</span>
-          </div>
-          <div class="row">
-            <span class="label">Адрес:</span>
-            <span id="final-address" class="value">—</span>
-          </div>
-          <div class="row">
-            <span class="label">Дресс-код:</span>
-            <span id="final-dress" class="value">—</span>
-          </div>
-          <div class="row">
-            <span class="label">Что взять:</span>
-            <span id="final-bring" class="value">—</span>
-          </div>
-          <div class="row">
-            <span class="label">Комментарий:</span>
-            <span id="final-comment" class="value">—</span>
-          </div>
-          <div class="row" id="final-picked-row" hidden>
-            <span class="label">Вы выбрали:</span>
-            <span id="final-picked" class="value">—</span>
-          </div>
-        </div>
-
-        <div class="final-actions">
-          <button class="btn" data-route="home" type="button">Вернуться в меню</button>
-        </div>
-      </article>
-
-      <!-- ПРАВАЯ КОЛОНКА: превью приглашения + wishlist -->
-      <aside id="final-right" class="final-card" hidden>
-        <div class="invite-title" id="invite-title">Событие</div>
-
-        <div class="invite-meta">
-          <span class="chip" id="chip-date">—</span>
-          <span class="chip" id="chip-time" hidden>—</span>
-          <span class="chip" id="chip-place" hidden>—</span>
-        </div>
-
-        <div class="invite-desc" id="invite-desc">Описание / детали.</div>
-
-        <div class="invite-subtitle">Wishlist</div>
-        <ul id="invite-wishlist" class="chips"></ul>
-
-        <div class="invite-legend">
-          <span class="dot free"></span> свободно
-          <span class="dot taken"></span> занято
-        </div>
-      </aside>
-    </div>
-  </section>
-
-  <!-- ЭКРАН: ПРОФИЛЬ -->
-  <section id="screen-profile" class="screen" hidden>
-    <div class="container">
-      <div class="panel profile-card">
-        <div class="profile-head">
-          <div>
-            <img id="avatar-img" class="avatar" src="/assets/frog_idle.png" alt="">
-            <input id="avatar-file" type="file" accept="image/*" hidden>
-            <button id="avatar-upload" class="btn btn-sm" type="button">Загрузить аватар</button>
-          </div>
-          <div id="profile-nick" class="nick-chip">—</div>
-        </div>
-
-        <div class="profile-grid">
-          <div>
-            <h3>Скоро</h3>
-            <div id="profile-upcoming" class="events-col"></div>
-          </div>
-          <div>
-            <h3>Прошедшие</h3>
-            <div id="profile-past" class="events-col"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div id="sessionBanner" role="status" aria-live="polite" hidden>Сессия истекла, войдите снова</div>
-  <dialog id="otpModal">
-    <form method="dialog" class="grid">
-      <p>Войти по ссылке</p>
-      <label>Почта
-        <input id="otpEmail" type="email" required>
+    <section aria-labelledby="tab-login" class="pane" id="pane-login" role="tabpanel">
+     <form class="grid" id="loginForm" novalidate="">
+      <label>
+       Никнейм
+       <input autocomplete="username" id="login-nickname" name="nickname" placeholder="Никнейм" required="" type="text"/>
       </label>
-      <div class="row2">
-        <button class="btn btn--primary" id="otpSendBtn" type="button">Отправить</button>
-        <button class="btn btn--ghost" value="cancel" type="submit">Отмена</button>
+      <label>
+       Пароль
+       <input autocomplete="current-password" id="login-password" minlength="4" name="password" placeholder="••••••••" required="" type="password"/>
+      </label>
+      <button class="btn btn-primary btn-xl w-100" id="login-btn" type="submit">
+       Войти
+      </button>
+      <button class="btn btn--ghost w-full" data-forgot="false" id="showReset" type="button">
+       Забыли пароль?
+      </button>
+      <div class="grid is-hidden" id="resetPassBlock">
+       <label>
+        Новый пароль
+        <input autocomplete="new-password" id="resetPass" minlength="4" type="password"/>
+       </label>
+       <label>
+        Повторите пароль
+        <input autocomplete="new-password" id="resetPass2" minlength="4" type="password"/>
+       </label>
       </div>
-      <p id="otpStatus" class="hint" aria-live="polite"></p>
+      <div aria-live="polite" id="login-status">
+      </div>
+     </form>
+    </section>
+    <section aria-labelledby="tab-register" class="pane is-hidden" id="pane-register" role="tabpanel">
+     <form class="grid" id="signupForm" novalidate="">
+      <label>
+       Имя / Никнейм
+       <input autocomplete="nickname" id="signup-nickname" minlength="2" name="nickname" required=""/>
+      </label>
+      <label>
+       Пароль
+       <input autocomplete="new-password" id="signup-password" minlength="4" name="password" required="" type="password"/>
+      </label>
+      <label>
+       Повтор пароля
+       <input autocomplete="new-password" id="signup-password2" minlength="4" name="password2" required="" type="password"/>
+      </label>
+      <button class="btn btn-primary btn-xl w-100" id="signup-btn" type="submit">
+       Зарегистрироваться
+      </button>
+      <div aria-live="polite" id="reg-status">
+      </div>
+     </form>
+    </section>
+   </div>
+  </main>
+  <section class="screen visible fh-content" id="screen-home" role="main">
+   <div class="menu-deck">
+    <div class="panel">
+     <div class="menu-grid">
+      <button class="btn btn-primary" data-action="create" data-mode="create" data-route="app" id="create-event" type="button">
+       Создать событие
+      </button>
+      <form autocomplete="off" class="join-row" id="join-form">
+       <input class="input" id="join-code" inputmode="numeric" maxlength="6" placeholder="Введите 6-значный код"/>
+       <button class="btn" data-action="join" id="join-btn" type="button">
+        Присоединиться
+       </button>
+      </form>
+     </div>
+    </div>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-join-name">
+   <div class="panel">
+    <h2>
+     Как к вам обращаться?
+    </h2>
+    <form class="row" id="form-join-name">
+     <input class="input" id="jnick" placeholder="Никнейм" required=""/>
+     <button class="btn btn-primary" type="submit">
+      Далее
+     </button>
     </form>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-join-wishlist">
+   <div class="panel">
+    <h2>
+     Выберите из списка
+    </h2>
+    <div class="wish-grid" id="join-wish-box">
+    </div>
+    <div class="row end">
+     <button class="btn btn-primary" data-route="app" id="btn-join-final" type="button">
+      Далее
+     </button>
+    </div>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-create-conditions">
+   <div class="panel">
+    <h2 id="create-title">
+     Параметры встречи
+    </h2>
+    <form class="stack" id="form-create-1">
+     <label>
+      Название
+      <input class="input" id="c-title" placeholder=""/>
+     </label>
+     <label>
+      Дата
+      <input class="input" id="c-date" type="date"/>
+     </label>
+     <label>
+      Время
+      <input class="input" id="c-time" type="time"/>
+     </label>
+     <label id="label-place">
+      Место проведения
+      <input class="input" id="c-place" placeholder=""/>
+     </label>
+     <div class="row end">
+      <button class="btn" data-route="home" type="button">
+       Назад
+      </button>
+      <button class="btn btn-primary" type="submit">
+       Далее
+      </button>
+     </div>
+    </form>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-create-reqs">
+   <div class="panel">
+    <h2>
+     Требования для гостей
+    </h2>
+    <form class="stack" id="form-create-2">
+     <label>
+      Dress-code
+      <input class="input" id="r-dress" placeholder="Напр.: smart casual"/>
+     </label>
+     <label>
+      Что взять
+      <input class="input" id="r-bring" placeholder="К примеру: ноутбук/презентация"/>
+     </label>
+     <label>
+      Комментарий
+      <input class="input" id="r-comment" placeholder="Доп. сведения для гостей"/>
+     </label>
+     <div class="row end">
+      <button class="btn" data-route="create-conditions" type="button">
+       Назад
+      </button>
+      <button class="btn btn-primary" type="submit">
+       Далее
+      </button>
+     </div>
+    </form>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-wishlist">
+   <div class="panel">
+    <h2>
+     Wishlist
+    </h2>
+    <form class="row" id="form-wish-add">
+     <input class="input" id="w-title" placeholder="Название/тема"/>
+     <input class="input" id="w-url" placeholder="Ссылка (необязательно)"/>
+     <button class="btn" type="submit">
+      Добавить
+     </button>
+    </form>
+    <div class="wish-grid" id="wishlist-box">
+    </div>
+    <form class="row end" id="form-create-final">
+     <button class="btn" data-route="create-reqs" type="button">
+      Назад
+     </button>
+     <button class="btn btn-primary" id="btn-create-final" type="submit">
+      Далее
+     </button>
+    </form>
+   </div>
+  </section>
+  <section class="container fh-content" hidden="" id="screen-app">
+   <div class="wrap" hidden="" id="root">
+    <section class="pond" id="pond">
+     <div aria-hidden="true" class="ripples">
+     </div>
+     <div class="pads" id="pads">
+     </div>
+     <!-- БОЛЬШИЕ ЧАСЫ (в финале переезжают в левую колонку) -->
+     <div class="big-clock" hidden="" id="bigClock">
+      <div class="hm" id="bigClockHM">
+       00:00
+      </div>
+      <div class="days" id="bigClockDays">
+       0 дней
+      </div>
+     </div>
+     <!-- Пень и лягушка -->
+     <img alt="Пень" class="stump" id="stumpImg" src="/assets/stump.png"/>
+     <div class="frog-sticker" id="frog">
+      <img alt="Frog" id="frogImg" src="/assets/frog_idle.png"/>
+     </div>
+     <!-- ФИНАЛЬНАЯ РАСКЛАДКА: ДВЕ КОЛОНКИ -->
+     <div class="final-layout" hidden="" id="finalLayout">
+      <div aria-hidden="false" class="final-left" id="finalLeft">
+      </div>
+      <div class="final-right" id="finalRight">
+       <div class="final-card">
+        <header class="final-header">
+         <div class="title" id="fTitle">
+          Событие
+         </div>
+         <!-- chips были лишними — скрываем -->
+         <div class="final-chips" hidden="" id="fChips">
+          <span class="chip" id="fDateChip">
+           —
+          </span>
+          <span class="chip" id="fTimeChip">
+           —
+          </span>
+          <span class="chip" id="fAddrChip">
+           —
+          </span>
+         </div>
+        </header>
+        <section class="final-main">
+         <div class="tagline" id="fNotes">
+          Описание / детали.
+         </div>
+         <div class="meta">
+          <div class="meta-item">
+           Дресс-код:
+           <strong id="fDress">
+            —
+           </strong>
+          </div>
+          <div class="meta-item">
+           Что взять:
+           <strong id="fBring">
+            —
+           </strong>
+          </div>
+         </div>
+         <div class="wl-block">
+          <div class="wl-head">
+           <h3>
+            Wishlist
+           </h3>
+           <div class="wl-legend">
+            <span class="pill-mini">
+             🟢 свободно
+            </span>
+            <span class="pill-mini">
+             🔒 занято
+            </span>
+           </div>
+          </div>
+          <div class="wl-scroll" id="fWishlist">
+          </div>
+         </div>
+         <div class="dashboard">
+          <div class="db-card" id="fStats">
+          </div>
+          <div class="db-card" id="fShare">
+          </div>
+         </div>
+        </section>
+       </div>
+      </div>
+     </div>
+     <!-- Подсказки (только для интро) -->
+     <div class="speech" id="speech">
+      <div id="speechText">
+       <strong>
+        Фрогги:
+       </strong>
+       Готовы начать?
+      </div>
+      <div class="actions" id="speechActions">
+       <button class="pill" data-action="create" data-next="create" data-requires-auth="" type="button">
+        🧪 Создать
+       </button>
+       <button class="pill secondary" data-action="join" data-next="join" type="button">
+        🎉 Присоединиться
+       </button>
+      </div>
+     </div>
+    </section>
+    <!-- НИЖНЯЯ ПАНЕЛЬ / ШАГИ -->
+    <section class="panel" id="slides">
+     <!-- СОЗДАТЬ: форма события -->
+     <section hidden="" id="slide-create-1">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Название, дата, время, адрес.
+       </div>
+      </div>
+      <form class="grid brick" id="formCreate">
+       <label>
+        Название события
+        <input id="eventTitle" required=""/>
+       </label>
+       <div class="row2">
+        <label>
+         Дата
+         <input id="eventDate" required="" type="date"/>
+        </label>
+        <label>
+         Время
+         <input id="eventTime" required="" type="time"/>
+        </label>
+       </div>
+       <label>
+        Адрес
+        <input id="eventAddress" placeholder="Улица, дом, город"/>
+       </label>
+       <button class="btn btn--primary" type="submit">
+        Далее
+       </button>
+      </form>
+     </section>
+     <!-- СОЗДАТЬ: вишлист -->
+     <section hidden="" id="slide-create-wishlist">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Добавьте пожелания.
+       </div>
+      </div>
+      <div class="wl-wrap">
+       <div class="gridVar" id="wlGrid">
+       </div>
+      </div>
+      <div class="bar-actions">
+       <button class="btn btn--primary" id="addItem" type="button">
+        Добавить
+       </button>
+       <button class="btn btn--ghost" id="clearWL" type="button">
+        Очистить
+       </button>
+       <button class="btn btn--primary" id="toDetails" type="button">
+        Далее
+       </button>
+      </div>
+      <dialog aria-modal="true" id="cellEditor" role="dialog">
+       <form class="editor" method="dialog">
+        <h3>
+         Редактор
+        </h3>
+        <label>
+         Название
+         <input id="cellTitle"/>
+        </label>
+        <label>
+         Ссылка
+         <input id="cellUrl" placeholder="https://..."/>
+        </label>
+        <menu>
+         <button class="btn btn--ghost" type="submit" value="cancel">
+          Отмена
+         </button>
+         <button class="btn btn--primary" id="saveCell" type="submit" value="default">
+          Сохранить
+         </button>
+        </menu>
+       </form>
+      </dialog>
+     </section>
+     <!-- СОЗДАТЬ: доп. условия -->
+     <section hidden="" id="slide-create-details">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Дресс-код, что взять, комментарии.
+       </div>
+      </div>
+      <form class="grid brick" id="formDetails">
+       <label>
+        Дресс-код
+        <input id="eventDress"/>
+       </label>
+       <label>
+        Что взять
+        <input id="eventBring"/>
+       </label>
+       <label>
+        Как пройти / комментарии
+        <textarea id="eventNotes" rows="3"></textarea>
+       </label>
+       <button class="btn btn--primary" data-requires-auth="" type="submit">
+        Сгенерировать код
+       </button>
+      </form>
+      <p aria-live="polite" class="error" id="createEventStatus" role="status">
+      </p>
+     </section>
+     <!-- СОЗДАТЬ: админ -->
+     <section hidden="" id="slide-admin">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Поделитесь кодом.
+       </div>
+      </div>
+      <div class="codeRow">
+       <span id="eventCodeText">
+        Код:
+        <strong data-code="" id="eventCode">
+         —
+        </strong>
+       </span>
+       <button class="btn btn--ghost btn--sm" data-owner-only="" id="copyInviteBtn" type="button">
+        Скопировать приглашение
+       </button>
+       <a class="btn btn--ghost btn--sm" hidden="" href="#" id="analyticsLink">
+        Аналитика события
+       </a>
+      </div>
+      <p class="hint" id="codeExpire">
+      </p>
+      <h3>
+       Вишлист
+      </h3>
+      <ul class="list" id="adminGifts">
+      </ul>
+      <div class="bar-actions">
+       <button class="btn btn--primary" id="finishCreate" type="button">
+        Далее
+       </button>
+      </div>
+     </section>
+     <!-- ПРИСОЕДИНИТЬСЯ: код -->
+     <section hidden="" id="slide-join-code">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Введите код.
+       </div>
+      </div>
+      <div class="grid" style="place-items:center">
+       <input autocomplete="one-time-code" id="joinCodeInput" inputmode="numeric" maxlength="6" pattern="\d*" placeholder="Например: 345812" style="max-width:260px;text-align:center"/>
+       <button class="btn btn--primary" disabled="" id="joinCodeBtn" type="button">
+        Проверить
+       </button>
+       <div aria-live="polite" class="error" id="joinCodeError" role="status">
+       </div>
+      </div>
+     </section>
+     <!-- ПРИСОЕДИНИТЬСЯ: имя + RSVP -->
+     <section hidden="" id="slide-join-1">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Ваше имя и статус участия.
+       </div>
+      </div>
+      <form class="grid brick" id="formJoin">
+       <label>
+        Имя
+        <input id="guestName" required=""/>
+       </label>
+       <div class="btn-group">
+        <button class="btn btn--primary" data-rsvp="yes" type="button">
+         Иду
+        </button>
+        <button class="btn btn--ghost" data-rsvp="maybe" type="button">
+         Возможно
+        </button>
+        <button class="btn btn--ghost" data-rsvp="no" type="button">
+         Не иду
+        </button>
+       </div>
+       <button class="btn btn--primary" id="toGuestWishlist" type="button">
+        Выбрать подарок
+       </button>
+      </form>
+     </section>
+     <!-- ПРИСОЕДИНИТЬСЯ: вишлист гостя -->
+     <section hidden="" id="slide-join-wishlist">
+      <div class="bubble">
+       <div class="bubble-head">
+        Фрогги:
+       </div>
+       <div class="bubble-body">
+        Выберите один пункт.
+       </div>
+      </div>
+      <div class="wishlist-grid" id="guestGifts">
+      </div>
+      <div class="bar-actions">
+       <button class="btn btn--ghost" id="skipWishlist" type="button">
+        Пропустить
+       </button>
+       <button class="btn btn--primary" id="toGuestFinal" type="button">
+        Готово
+       </button>
+      </div>
+     </section>
+    </section>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-final">
+   <div class="final-wrap">
+    <!-- ЛЕВАЯ КОЛОНКА: детали и шаринг -->
+    <article class="final-card" id="final-left">
+     <div class="final-head">
+      <h2 id="final-title">
+       Событие
+      </h2>
+      <div class="final-code">
+       <span>
+        Код:
+        <b id="final-code">
+         —
+        </b>
+       </span>
+       <button class="btn btn-chip" data-owner-only="" id="btn-copy-invite" type="button">
+        Скопировать приглашение
+       </button>
+      </div>
+     </div>
+     <div class="final-details">
+      <div class="row">
+       <span class="label">
+        Когда:
+       </span>
+       <span class="value" id="final-when">
+        —
+       </span>
+      </div>
+      <div class="row">
+       <span class="label">
+        Адрес:
+       </span>
+       <span class="value" id="final-address">
+        —
+       </span>
+      </div>
+      <div class="row">
+       <span class="label">
+        Дресс-код:
+       </span>
+       <span class="value" id="final-dress">
+        —
+       </span>
+      </div>
+      <div class="row">
+       <span class="label">
+        Что взять:
+       </span>
+       <span class="value" id="final-bring">
+        —
+       </span>
+      </div>
+      <div class="row">
+       <span class="label">
+        Комментарий:
+       </span>
+       <span class="value" id="final-comment">
+        —
+       </span>
+      </div>
+      <div class="row" hidden="" id="final-picked-row">
+       <span class="label">
+        Вы выбрали:
+       </span>
+       <span class="value" id="final-picked">
+        —
+       </span>
+      </div>
+     </div>
+     <div class="final-actions">
+      <button class="btn" data-route="home" type="button">
+       Вернуться в меню
+      </button>
+     </div>
+    </article>
+    <!-- ПРАВАЯ КОЛОНКА: превью приглашения + wishlist -->
+    <aside class="final-card" hidden="" id="final-right">
+     <div class="invite-title" id="invite-title">
+      Событие
+     </div>
+     <div class="invite-meta">
+      <span class="chip" id="chip-date">
+       —
+      </span>
+      <span class="chip" hidden="" id="chip-time">
+       —
+      </span>
+      <span class="chip" hidden="" id="chip-place">
+       —
+      </span>
+     </div>
+     <div class="invite-desc" id="invite-desc">
+      Описание / детали.
+     </div>
+     <div class="invite-subtitle">
+      Wishlist
+     </div>
+     <ul class="chips" id="invite-wishlist">
+     </ul>
+     <div class="invite-legend">
+      <span class="dot free">
+      </span>
+      свободно
+      <span class="dot taken">
+      </span>
+      занято
+     </div>
+    </aside>
+   </div>
+  </section>
+  <section class="screen fh-content" hidden="" id="screen-profile">
+   <div class="container">
+    <div class="panel profile-card">
+     <div class="profile-head">
+      <div>
+       <img alt="" class="avatar" id="avatar-img" src="/assets/frog_idle.png"/>
+       <input accept="image/*" hidden="" id="avatar-file" type="file"/>
+       <button class="btn btn-sm" id="avatar-upload" type="button">
+        Загрузить аватар
+       </button>
+      </div>
+      <div class="nick-chip" id="profile-nick">
+       —
+      </div>
+     </div>
+     <div class="profile-grid">
+      <div>
+       <h3>
+        Скоро
+       </h3>
+       <div class="events-col" id="profile-upcoming">
+       </div>
+      </div>
+      <div>
+       <h3>
+        Прошедшие
+       </h3>
+       <div class="events-col" id="profile-past">
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </section>
+  <div aria-live="polite" hidden="" id="sessionBanner" role="status">
+   Сессия истекла, войдите снова
+  </div>
+  <dialog id="otpModal">
+   <form class="grid" method="dialog">
+    <p>
+     Войти по ссылке
+    </p>
+    <label>
+     Почта
+     <input id="otpEmail" required="" type="email"/>
+    </label>
+    <div class="row2">
+     <button class="btn btn--primary" id="otpSendBtn" type="button">
+      Отправить
+     </button>
+     <button class="btn btn--ghost" type="submit" value="cancel">
+      Отмена
+     </button>
+    </div>
+    <p aria-live="polite" class="hint" id="otpStatus">
+    </p>
+   </form>
   </dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-
-  <div id="typeModal" class="modal" hidden>
-    <div class="modal-backdrop" data-close></div>
-    <div class="modal-box">
-      <h3 class="modal-title">Какой тип встречи вы планируете создать?</h3>
-      <div class="modal-actions row">
-        <button class="btn btn-primary" data-type="business" type="button">Деловая</button>
-        <button class="btn btn-primary" data-type="party" type="button">Праздничная</button>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-close type="button">Отмена</button>
-      </div>
-    </div>
+  <div aria-live="polite" class="toast" hidden="" id="toast" role="status">
   </div>
-
-  <div id="cookie-banner" class="cookie" hidden>
-    <div class="cookie__text">
-      Мы используем cookies, чтобы сайт работал стабильнее. Продолжая, вы принимаете использование cookies.
+  <div class="modal" hidden="" id="typeModal">
+   <div class="modal-backdrop" data-close="">
+   </div>
+   <div class="modal-box">
+    <h3 class="modal-title">
+     Какой тип встречи вы планируете создать?
+    </h3>
+    <div class="modal-actions row">
+     <button class="btn btn-primary" data-type="business" type="button">
+      Деловая
+     </button>
+     <button class="btn btn-primary" data-type="party" type="button">
+      Праздничная
+     </button>
     </div>
-    <div class="cookie__actions">
-      <button id="cookie-accept" class="btn btn-primary btn-sm" type="button">Принять</button>
+    <div class="modal-footer">
+     <button class="btn btn-secondary" data-close="" type="button">
+      Отмена
+     </button>
     </div>
+   </div>
   </div>
-</main>
-<script type="module" src="/js/app.js"></script>
-</body>
+  <div class="cookie" hidden="" id="cookie-banner">
+   <div class="cookie__text">
+    Мы используем cookies, чтобы сайт работал стабильнее. Продолжая, вы принимаете использование cookies.
+   </div>
+   <div class="cookie__actions">
+    <button class="btn btn-primary btn-sm" id="cookie-accept" type="button">
+     Принять
+    </button>
+   </div>
+  </div>
+  <div class="bottom-bar">
+   <button class="btn btn-primary" data-action="create" type="button">
+    Создать событие
+   </button>
+   <input placeholder="Введите 6-значный код" type="text"/>
+   <button class="btn" data-action="join" type="button">
+    Присоединиться
+   </button>
+  </div>
+  <script type="module" src="/js/app.js"></script>
+ </body>
 </html>
