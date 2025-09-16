@@ -11,21 +11,26 @@
 </head>
 <body class="scene-intro">
   <main class="fh-content">
+  <div class="fh-bg background-layer" aria-hidden="true"></div>
   <div class="fh-bubbles bg-bubbles" aria-hidden="true"></div>
   <!-- Шапка -->
   <nav class="topbar">
     <div class="inner">
-      <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
-      <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden type="button">Меню</button>
-      <button id="nav-profile" class="btn btn-sm btn-ghost" data-link="profile" type="button">Профиль</button>
-      <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings" type="button">Настройки</button>
+      <div class="topbar-left">
+        <a href="#" class="logo" data-route="home">FroggyHub</a>
+      </div>
+      <div class="topbar-right">
+        <a href="#auth" class="btn btn-sm btn-ghost" data-route="auth">Войти</a>
+        <button class="btn btn-sm btn-ghost" data-route="profile">Профиль</button>
+        <button class="btn btn-sm btn-ghost" data-route="settings">Настройки</button>
+      </div>
     </div>
   </nav>
   <!-- ЭКРАН 1: ВХОД / РЕГИСТРАЦИЯ -->
   <section id="screen-auth" class="screen container" role="main">
     <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-head">
-        <div class="auth-avatar"><img src="assets/frog_idle.png" alt="Froggy"></div>
+        <div class="auth-avatar"><img src="./assets/frog_idle.png" alt="Froggy"></div>
 
         <div class="auth-title">
           <h2>Вход / Регистрация</h2>
