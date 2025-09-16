@@ -4,42 +4,61 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Редактирование события</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css" />
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-  <main class="container" role="main">
-    <form id="editForm" class="card grid edit-form" aria-describedby="editError">
-      <h1>Редактировать событие</h1>
-      <label>Название
-        <input id="editTitle" required aria-required="true" />
-      </label>
-      <label>Дата
-        <input id="editDate" type="date" required aria-required="true" />
-      </label>
-      <label>Время
-        <input id="editTime" type="time" required aria-required="true" />
-      </label>
-      <label>Адрес
-        <input id="editAddress" />
-      </label>
-      <label>Заметки
-        <textarea id="editNotes"></textarea>
-      </label>
-      <label>Дресс-код
-        <input id="editDress" />
-      </label>
-      <label>Что взять
-        <input id="editBring" />
-      </label>
-      <div class="save-row">
-        <button id="saveEvent" type="submit" class="btn btn--primary">Сохранить</button>
+  <div class="fh-bg background-layer" aria-hidden="true"></div>
+  <div class="fh-bubbles bg-bubbles" aria-hidden="true"></div>
+
+  <nav class="topbar">
+    <div class="inner">
+      <div class="topbar-left">
+        <a href="/" class="logo" data-route="home">FroggyHub</a>
       </div>
-    </form>
-    <p id="editError" class="error" role="status" aria-live="polite"></p>
+      <div class="topbar-right">
+        <a class="btn btn-sm btn-ghost" href="/" data-route="home">Меню</a>
+        <button class="btn btn-sm btn-ghost" type="button" data-route="profile" data-href="/profile.html">Профиль</button>
+        <button class="btn btn-sm btn-ghost" type="button" data-route="settings">Настройки</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="fh-content">
+    <div class="container" role="main">
+      <form id="editForm" class="card grid edit-form" aria-describedby="editError">
+        <h1>Редактировать событие</h1>
+        <label>Название
+          <input id="editTitle" required aria-required="true" />
+        </label>
+        <label>Дата
+          <input id="editDate" type="date" required aria-required="true" />
+        </label>
+        <label>Время
+          <input id="editTime" type="time" required aria-required="true" />
+        </label>
+        <label>Адрес
+          <input id="editAddress" />
+        </label>
+        <label>Заметки
+          <textarea id="editNotes"></textarea>
+        </label>
+        <label>Дресс-код
+          <input id="editDress" />
+        </label>
+        <label>Что взять
+          <input id="editBring" />
+        </label>
+        <div class="save-row">
+          <button id="saveEvent" type="submit" class="btn btn--primary">Сохранить</button>
+        </div>
+      </form>
+      <p id="editError" class="error" role="status" aria-live="polite"></p>
+    </div>
   </main>
-  <script type="module" src="./js/app.js"></script>
+
+  <script type="module" src="/js/app.js"></script>
   <div id="cookieCard" class="card" style="display:none">
     <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
       <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
@@ -49,8 +68,8 @@
       Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
     </div>
     <div class="buttonContainer">
-      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+      <button class="btn btn--primary acceptButton" id="cookieAccept" type="button">Ок</button>
+      <button class="btn btn--ghost declineButton" id="cookieDecline" type="button">Только необходимые</button>
     </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
