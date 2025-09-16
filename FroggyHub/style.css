@@ -283,3 +283,43 @@ body.modal-open{ overflow:hidden; }
   display: none !important;
   visibility: hidden !important;
 }
+/* === Жёстко скрываем все варианты лягушки/пня === */
+
+/* 1) По id/классам (включая составные) */
+:where(
+  [id*="frog"], [class*="frog"],
+  [id*="stump"], [class*="stump"]
+){
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* 2) Картинки и <source> по имени файла */
+img[src*="frog"], img[src*="stump"],
+source[srcset*="frog"], source[srcset*="stump"],
+picture [srcset*="frog"], picture [srcset*="stump"]{
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* 3) Узлы, где пень/лягушка приходят как background-image */
+.hero .stump,
+.frog-stump,
+.decor.stump,
+#stumpImg,
+#frog {
+  background: none !important;
+  background-image: none !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
+/* Иногда «пень» — это псевдоэлемент */
+.hero .stump::before,
+.hero .stump::after,
+.frog-stump::before,
+.frog-stump::after,
+.decor.stump::before,
+.decor.stump::after{
+  content: none !important;
+}
