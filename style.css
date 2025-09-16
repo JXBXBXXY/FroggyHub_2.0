@@ -45,6 +45,11 @@ body{
   font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
 }
 
+main, .screen, .topbar {
+  position: relative;
+  z-index: 1;
+}
+
 main.hero{min-height:100vh;}
 
 /* Контейнер для фона с пузырями */
@@ -54,6 +59,12 @@ main.hero{min-height:100vh;}
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+}
+
+.background-layer,
+.bg-bubbles {
+  pointer-events: none;
+  z-index: 0;
 }
 
 #screen-auth,
@@ -69,19 +80,37 @@ main.hero{min-height:100vh;}
 }
 
 .topbar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   width: 100%;
+  z-index: 1000;
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: rgba(0,0,0,.15);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.topbar .inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
-  padding: 12px 1rem;
-  z-index: 30;
-  pointer-events: auto;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
 }
-.topbar > * { flex: 1; text-align: center; }
-.topbar .logo { text-align: left; }
+.topbar .inner > * {
+  flex: 1;
+  text-align: center;
+}
+.topbar .logo {
+  text-align: left;
+  font-weight: 800;
+  letter-spacing: .3px;
+  color: #cdeed9;
+  text-decoration: none;
+}
 
 /* Состояния пузыря */
 .fh-bubble {
@@ -771,12 +800,15 @@ body.scene-intro .speech{display:block}
 .wl-taken { background:#ffe3e3; color:#7a1c1c; }
 
 /* Top bar */
-.topbar{
-  position: sticky; top: 0; z-index: 50;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 16px;
-  background:rgba(0,0,0,.15); backdrop-filter:blur(6px);
-  border-bottom:1px solid rgba(255,255,255,.06);
+.topbar {
+  background: rgba(0,0,0,.15);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.topbar .inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .topbar .logo{ font-weight:800; letter-spacing:.3px; color:#cdeed9; text-decoration:none; }
 .topbar-right{ display:flex; gap:8px; }
