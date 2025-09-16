@@ -1,11 +1,10 @@
 [build]
-  # Сборка не нужна — это статический фронт
-  command = ""
   publish = "."
+  command = ""
   functions = "netlify/functions"
 
-# Если у тебя есть SPA-роутинг, раскомментируй блок ниже
-# [[redirects]]
-#   from = "/*"
-#   to = "/index.html"
-#   status = 200
+# SPA routing (опционально; оставь, если нужны прямые урлы без #)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
