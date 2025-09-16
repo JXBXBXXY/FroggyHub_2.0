@@ -30,12 +30,12 @@
   <nav class="topbar">
     <div class="inner">
       <div class="topbar-left">
-        <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
+        <a href="#" id="logo" class="logo" data-route="home">FroggyHub</a>
       </div>
       <div class="topbar-right">
-        <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
-        <button id="nav-profile" class="btn btn-sm btn-ghost" data-link="profile">Профиль</button>
-        <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings">Настройки</button>
+        <button id="nav-menu" class="btn btn-sm btn-ghost" data-route="home" hidden>Меню</button>
+        <button id="nav-profile" class="btn btn-sm btn-ghost" data-route="profile">Профиль</button>
+        <button id="nav-settings" class="btn btn-sm btn-ghost" data-route="settings" data-role="settings">Настройки</button>
       </div>
     </div>
   </nav>
@@ -44,7 +44,7 @@
     <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
       <div class="auth-head">
         <div class="auth-avatar">
-          <img src="./assets/frog_idle.png" alt="Froggy" />
+          <img src="./assets/frog_idle.png" alt="Froggy" decoding="async" fetchpriority="low" />
         </div>
 
         <div class="auth-title">
