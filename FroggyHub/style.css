@@ -918,4 +918,3 @@ button:not([disabled]){ cursor:pointer; }
 #screen-auth:not(.hidden),
 #screen-profile:not(.hidden),
 #screen-hub:not(.hidden) { display: block; }
-вот весь CSS 
