@@ -1,9 +1,0 @@
-{
-  "name": "froggyhub-static",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Static site; tests are intentionally noop.",
-  "scripts": {
-    "test": "echo \"No tests for static site\" && exit 0"
-  }
-}
