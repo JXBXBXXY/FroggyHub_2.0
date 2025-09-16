@@ -285,30 +285,37 @@ else {
   });
 
   // --- Обработчики форм логина/регистрации
-  (function bindAuth() {
+  function bindAuth() {
+    if (window.FH.__authBound) return;        // защита от повтора
+    window.FH.__authBound = true;
+
     const loginForm  = document.querySelector('#loginForm');
     const signupForm = document.querySelector('#signupForm');
+
     async function handle(form, kind) {
       if (!form) return;
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const fd = new FormData(form);
-        const nickname = (fd.get('nickname') || '').toString().trim();
+        const rawLogin = (fd.get('nickname') || '').toString().trim();
         const password = (fd.get('password') || '').toString();
-        if (!nickname || !password) return;
+        if (!rawLogin || !password) return;
+
+        // поддержка и email, и ника (ник -> <nick>@local)
+        const email = rawLogin.includes('@') ? rawLogin : `${rawLogin}@local`;
 
         try {
           const supa = getSupabase();
           let ok = false, session = null;
 
           if (kind === 'login') {
-            const { data, error } = await supa.auth.signInWithPassword({ email: `${nickname}@local`, password });
+            const { data, error } = await supa.auth.signInWithPassword({ email, password });
             if (!error) { ok = true; session = data.session; }
           } else {
-            const { data, error } = await supa.auth.signUp({ email: `${nickname}@local`, password });
+            const { data, error } = await supa.auth.signUp({ email, password });
             if (!error) {
               // повторный вход для единообразия
-              const r = await supa.auth.signInWithPassword({ email: `${nickname}@local`, password });
+              const r = await supa.auth.signInWithPassword({ email, password });
               session = r.data.session; ok = !r.error;
             }
           }
@@ -323,7 +330,7 @@ else {
     }
     handle(loginForm, 'login');
     handle(signupForm, 'signup');
-  })();
+  }
 
   // ---- Фоновые «смс» (сетка + локальные орбиты)
   (function bubbles() {
@@ -341,7 +348,10 @@ else {
   })();
 
   // --- Старт
-  document.addEventListener('DOMContentLoaded', route);
+  // Делаем привязки строго после готовности DOM, чтобы формы точно существовали
+  document.addEventListener('DOMContentLoaded', () => {
+    bindAuth();
+    route();
+  });
   window.addEventListener('hashchange', route);
 }
-
