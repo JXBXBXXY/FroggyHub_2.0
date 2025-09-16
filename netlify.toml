@@ -1,7 +1,7 @@
 [build]
   # Сборка не нужна — это статический фронт
   command = ""
-  publish = "FroggyHub"
+  publish = "."
   functions = "netlify/functions"
 
 # Если у тебя есть SPA-роутинг, раскомментируй блок ниже

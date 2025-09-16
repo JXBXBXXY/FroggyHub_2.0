@@ -237,77 +237,359 @@ else {
     try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {}
   };
 
-  // --- Экраны
-  const $auth = document.querySelector('#screen-auth');
-  const $home = document.querySelector('#screen-home');
+  // --- Роутинг и навигация
+  const screenNodes = Array.from(document.querySelectorAll('[id^="screen-"]'));
+  const screenMap = new Map();
+  for (const node of screenNodes) {
+    if (!(node instanceof HTMLElement)) continue;
+    const id = node.id || '';
+    if (!id.startsWith('screen-')) continue;
+    const key = id.slice(7).toLowerCase();
+    if (!screenMap.has(key)) screenMap.set(key, node);
+  }
+  let currentRoute = '';
 
-  const show = ($el) => { [$auth,$home].forEach(x=>x&&x.classList.remove('visible')); $el && $el.classList.add('visible'); };
+  const ACTION_FUNCTIONS = {
+    logout: ['logout'],
+    create: ['create', 'createEvent', 'startCreateFlow'],
+    join: ['join', 'joinEvent', 'joinByCode'],
+    save: ['save', 'saveEvent', 'saveChanges'],
+    refresh: ['refresh', 'refreshData', 'reload'],
+    back: ['back', 'goBack', 'navigateBack'],
+  };
 
-  // --- Простенький роутер
-  async function route() {
-    const hash = (location.hash || '#auth').toLowerCase();
-    const supa = getSupabase();
+  const normalizeRoute = (value) => {
+    if (typeof value !== 'string') return '';
+    return value.trim().replace(/^#/, '').toLowerCase();
+  };
+
+  const getHashRoute = () => normalizeRoute(location.hash.slice(1));
+
+  const getRouteCandidate = (el) => {
+    if (!el || !(el instanceof HTMLElement)) return '';
+    const { dataset } = el;
+    if (dataset?.route) return dataset.route;
+    if (dataset?.nav) return dataset.nav;
+    if (dataset?.link) return dataset.link;
+    if (dataset?.go) return dataset.go;
+    const href = el.getAttribute('href');
+    if (href && href.startsWith('#')) return href.slice(1);
+    return '';
+  };
+
+  const getElementLabel = (el) => {
+    if (!el) return '';
+    const aria = el.getAttribute?.('aria-label');
+    if (aria) return aria.trim();
+    const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) return text;
+    const title = el.getAttribute?.('title');
+    return title ? title.trim() : '';
+  };
+
+  function updateActiveNav(route) {
+    const interactive = document.querySelectorAll('a, button, [role="button"]');
+    interactive.forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const candidate = normalizeRoute(getRouteCandidate(el));
+      const isActive = candidate && candidate === route;
+      el.classList.toggle('active', isActive);
+      if (isActive) el.setAttribute('aria-current', 'page');
+      else el.removeAttribute('aria-current');
+    });
+  }
+
+  function navigateTo(route) {
+    const desired = normalizeRoute(route);
+    let nextRoute = desired;
+    let target = desired ? screenMap.get(desired) : null;
+
+    if (!target) {
+      if (screenMap.has('home')) {
+        nextRoute = 'home';
+        target = screenMap.get('home');
+      } else if (screenMap.has('auth')) {
+        nextRoute = 'auth';
+        target = screenMap.get('auth');
+      } else {
+        const first = screenMap.entries().next().value;
+        if (first) {
+          nextRoute = first[0];
+          target = first[1];
+        } else {
+          nextRoute = '';
+        }
+      }
+    }
+
+    screenMap.forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      node.hidden = true;
+      node.classList.remove('visible');
+    });
+
+    if (target instanceof HTMLElement) {
+      target.hidden = false;
+      if (target.classList.contains('screen')) target.classList.add('visible');
+      else target.classList.remove('hidden');
+    }
+
+    currentRoute = nextRoute;
+    updateActiveNav(currentRoute);
+
+    const baseUrl = `${location.pathname}${location.search}`;
+    const hashUrl = currentRoute ? `${baseUrl}#${currentRoute}` : baseUrl;
+    history.replaceState(null, '', hashUrl);
+    window.onRouteChange?.(currentRoute);
+    return currentRoute;
+  }
+
+  function ensureBackgroundGuards() {
+    document.querySelectorAll('.background-layer, .bg-bubbles').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      if (!el.style.pointerEvents) el.style.pointerEvents = 'none';
+      if (!el.style.zIndex) el.style.zIndex = '0';
+    });
+  }
+
+  function autoAttachDataAttributes() {
+    const interactive = document.querySelectorAll('a, button, [role="button"]');
+    interactive.forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const label = getElementLabel(el).toLowerCase();
+      if (!el.dataset.route && !el.dataset.nav) {
+        if (label === 'профиль') el.dataset.route = 'profile';
+        else if (label === 'настройки') el.dataset.route = 'settings';
+        else if (label === 'меню' || label === 'froggyhub' || el.classList.contains('logo')) el.dataset.route = 'home';
+      }
+      if (!el.dataset.action) {
+        if (label === 'создать событие') el.dataset.action = 'create';
+        else if (label === 'присоединиться') el.dataset.action = 'join';
+        else if (label === 'выйти') el.dataset.action = 'logout';
+      }
+    });
+  }
+
+  function logInteractiveElements() {
+    const rows = [];
+    const interactive = document.querySelectorAll('a, button, [role="button"]');
+    interactive.forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      const label = getElementLabel(el);
+      const route = normalizeRoute(getRouteCandidate(el));
+      const action = el.dataset.action || '';
+      const href = el.dataset.href || el.getAttribute('href') || '';
+      const tag = el.tagName.toLowerCase() + (el.id ? `#${el.id}` : '');
+      if (route || action || href) {
+        rows.push({ element: tag, label, route, action, href });
+      } else {
+        const isButton = el.tagName === 'BUTTON';
+        const btnType = isButton ? (el.getAttribute('type') || 'submit').toLowerCase() : '';
+        if (!isButton || (btnType !== 'submit' && btnType !== 'reset')) {
+          console.warn('Interactive element without route/action', el);
+        }
+      }
+    });
+    if (rows.length) {
+      console.info('Interactive elements summary:');
+      console.table(rows);
+    }
+  }
+
+  function invokeGlobalAction(action, el) {
+    const candidates = ACTION_FUNCTIONS[action];
+    if (!candidates) return false;
+    for (const name of candidates) {
+      const fn = window[name];
+      if (typeof fn === 'function') {
+        fn.call(window, el);
+        return true;
+      }
+    }
+    console.warn(`No handler for action "${action}"`, el);
+    return false;
+  }
+
+  function handleAction(action, el) {
+    if (!action || !el) return false;
+    const normalized = action.toLowerCase();
+    const targetSelector = el.dataset.target;
+    const target = targetSelector ? document.querySelector(targetSelector) : null;
+
+    switch (normalized) {
+      case 'open-modal': {
+        const modal = target || el.closest('dialog');
+        if (modal instanceof HTMLDialogElement) {
+          modal.showModal();
+        } else if (modal instanceof HTMLElement) {
+          modal.hidden = false;
+          modal.classList.remove('hidden');
+        } else {
+          console.warn('Target not found for open-modal', el);
+        }
+        return true;
+      }
+      case 'close-modal': {
+        const modal = target || el.closest('dialog');
+        if (modal instanceof HTMLDialogElement) {
+          modal.close();
+        } else if (modal instanceof HTMLElement) {
+          modal.hidden = true;
+          modal.classList.remove('visible');
+          modal.classList.remove('active');
+        } else {
+          console.warn('Target not found for close-modal', el);
+        }
+        return true;
+      }
+      case 'toggle': {
+        if (target instanceof HTMLElement) {
+          target.hidden = !target.hidden;
+        } else {
+          el.classList.toggle('active');
+        }
+        return true;
+      }
+      case 'copy': {
+        const sourceText = el.dataset.copy
+          || (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target.value : target?.textContent)
+          || (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : el.textContent);
+        const text = (sourceText || '').toString().trim();
+        if (!text) {
+          console.warn('Nothing to copy', el);
+          return true;
+        }
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).catch((err) => console.warn('Copy failed', err));
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); }
+          catch (err) { console.warn('Copy failed', err); }
+          document.body.removeChild(ta);
+        }
+        return true;
+      }
+      case 'logout':
+      case 'create':
+      case 'join':
+      case 'save':
+      case 'refresh':
+      case 'back':
+        return invokeGlobalAction(normalized, el);
+      default:
+        console.warn('Unknown action', action, el);
+        return false;
+    }
+  }
+
+  function handleDocumentClick(event) {
+    if (event.defaultPrevented || event.button !== 0) return;
+    const el = event.target.closest('a, button, [role="button"]');
+    if (!el || !(el instanceof HTMLElement)) return;
+    if (el.matches('[disabled], [aria-disabled="true"]')) return;
+
+    const action = el.dataset.action;
+    if (action) {
+      const handled = handleAction(action, el);
+      if (handled) {
+        event.preventDefault();
+        return;
+      }
+    }
+
+    const dataHref = el.dataset.href;
+    if (dataHref) {
+      event.preventDefault();
+      if (dataHref.startsWith('#')) navigateTo(dataHref.slice(1));
+      else window.location.assign(dataHref);
+      return;
+    }
+
+    const routeCandidate = getRouteCandidate(el);
+    if (routeCandidate) {
+      if (screenMap.size > 0) {
+        navigateTo(routeCandidate);
+        event.preventDefault();
+      }
+      return;
+    }
+
+    const href = el.getAttribute('href');
+    if (href && href.startsWith('#')) {
+      if (screenMap.size > 0) {
+        event.preventDefault();
+        navigateTo(href.slice(1));
+      }
+    }
+  }
+
+  function handleKeydown(event) {
+    if (event.defaultPrevented) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const el = event.target;
+    if (!(el instanceof HTMLElement)) return;
+    if (el.getAttribute('role') !== 'button') return;
+    if (el.matches('[disabled], [aria-disabled="true"]')) return;
+    event.preventDefault();
+    el.click();
+  }
+
+  async function route(preferredRoute) {
+    const supaClient = getSupabase();
     let session = getSavedSession();
+    let routeHint = normalizeRoute(preferredRoute);
 
-    // быстрая проверка
-    if (!session && supa?.auth) {
+    if (!session && supaClient?.auth) {
       const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 1500);
+      const timer = setTimeout(() => ctrl.abort(), 1500);
       try {
-        const { data } = await supa.auth.getSession({ signal: ctrl.signal });
+        const { data } = await supaClient.auth.getSession({ signal: ctrl.signal });
         session = data?.session || null;
-      } catch { /* таймаут/ошибка – игнор */ }
-      clearTimeout(t);
+      } catch { /* ignore */ }
+      clearTimeout(timer);
       if (session) setSavedSession({ user: session.user, access_token: session.access_token });
     }
 
     const authed = !!session;
+    window.FH.session = session || null;
 
     if (!authed) {
-      show($auth);
-      location.hash = '#auth';
+      setSavedSession(null);
+      const fallback = routeHint && routeHint !== 'home' ? routeHint : 'auth';
+      navigateTo(fallback);
       return;
     }
 
-    // авторизованы
-    show($home);
-    if (hash !== '#home') location.hash = '#home';
+    let targetRoute = routeHint;
+    if (!targetRoute || targetRoute === 'auth') targetRoute = 'home';
+    if (targetRoute && !screenMap.has(targetRoute)) {
+      targetRoute = screenMap.has('home') ? 'home' : targetRoute;
+    }
+    navigateTo(targetRoute);
   }
 
-  // --- Навигация и действия (делегирование)
-  document.addEventListener('click', (e) => {
-    const linkBtn = e.target.closest('[data-link]');
-    if (linkBtn) {
-      const to = linkBtn.getAttribute('data-link');
-      if (to === 'home') location.hash = '#home';
-      else if (to === 'profile') location.hash = '#profile';
-      else if (to === 'settings') location.hash = '#settings';
-      return;
-    }
+  document.addEventListener('click', handleDocumentClick);
+  document.addEventListener('keydown', handleKeydown, true);
 
-    const goBtn = e.target.closest('[data-go]');
-    if (goBtn) {
-      const to = goBtn.getAttribute('data-go');
-      const target = document.querySelector(`#screen-${to}`);
-      if (!target) return;
-      document.querySelectorAll('.screen').forEach(s => {
-        s.classList.remove('visible');
-        s.hidden = true;
-      });
-      target.hidden = false;
-      target.classList.add('visible');
-      return;
-    }
+  const onDomReady = () => {
+    ensureBackgroundGuards();
+    autoAttachDataAttributes();
+    logInteractiveElements();
+    const initialRoute = getHashRoute();
+    route(initialRoute);
+  };
 
-    const actionBtn = e.target.closest('[data-action]');
-    if (actionBtn) {
-      const act = actionBtn.getAttribute('data-action');
-      if (act === 'create' && typeof startCreateFlow === 'function') {
-        startCreateFlow();
-      } else if (act === 'join' && typeof joinByCode === 'function') {
-        joinByCode();
-      }
-    }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', onDomReady);
+  else onDomReady();
+
+  window.addEventListener('hashchange', () => {
+    route(getHashRoute());
   });
 
   // --- Обработчики форм логина/регистрации
@@ -324,25 +606,24 @@ else {
         if (!nickname || !password) return;
 
         try {
-          const supa = getSupabase();
+          const supaClient = getSupabase();
           let ok = false, session = null;
 
           if (kind === 'login') {
-            const { data, error } = await supa.auth.signInWithPassword({ email: `${nickname}@local`, password });
+            const { data, error } = await supaClient.auth.signInWithPassword({ email: `${nickname}@local`, password });
             if (!error) { ok = true; session = data.session; }
           } else {
-            const { data, error } = await supa.auth.signUp({ email: `${nickname}@local`, password });
+            const { data, error } = await supaClient.auth.signUp({ email: `${nickname}@local`, password });
             if (!error) {
-              // повторный вход для единообразия
-              const r = await supa.auth.signInWithPassword({ email: `${nickname}@local`, password });
+              const r = await supaClient.auth.signInWithPassword({ email: `${nickname}@local`, password });
               session = r.data.session; ok = !r.error;
             }
           }
 
           if (ok && session) {
             setSavedSession({ user: session.user, access_token: session.access_token });
-            location.hash = '#home'; // триггерит route()
-            await route();
+            navigateTo('home');
+            await route('home');
           }
         } catch (err) { /* можно показать тост */ }
       });
@@ -365,9 +646,5 @@ else {
       spawnBubbles(box, desiredBubbleCount());
     }, 200));
   })();
-
-  // --- Старт
-  document.addEventListener('DOMContentLoaded', route);
-  window.addEventListener('hashchange', route);
 }
 
