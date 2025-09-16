@@ -35,7 +35,8 @@
   --frog-hero-max: 540px;
   --frog-hero-min: 360px;
 }
-/* ...Остальной файл без изменений... */
+
+/* ...остальные существующие стили без изменений... */
 
 /* ——— Hero stump: завершение блока ——— */
 .hero .stump{
@@ -62,6 +63,8 @@
   padding:18px;
   box-shadow:0 20px 60px rgba(0,0,0,.45);
 }
+/* Запрет скролла фона при открытой модалке */
+body.modal-open{ overflow:hidden; }
 
 /* ——— GridVar .cell: закрываем обрезанный box-shadow ——— */
 .gridVar .cell{
@@ -75,7 +78,7 @@
     0 0 0 6px rgba(255,255,255,.06) inset;
 }
 
-/* Пузырь: только в интро */
+/* Пузырь: только в интро, оптимизация анимации */
 .speech{
   position:absolute;
   left:50%;
@@ -91,9 +94,11 @@
   box-shadow:0 10px 34px rgba(0,0,0,.24);
   z-index:10;
   pointer-events:auto;
+  will-change:transform;
 }
+.speech .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
 
-/* Пилюля для действий */
+/* Пилюля для действий + UX штрихи */
 .pill{
   flex:1;
   min-width:220px;
@@ -105,9 +110,20 @@
   background:linear-gradient(180deg,#36d07d,#23b86b);
   color:#0a1e14;
   box-shadow:0 14px 0 #18a06b;
-  transition:filter .15s,box-shadow .15s;
+  transition:filter .15s,box-shadow .15s,transform .12s;
 }
+.pill:focus-visible{
+  outline:2px solid var(--ring);
+  outline-offset:3px;
+}
+@media (hover:hover){
+  .pill:hover{ filter:brightness(1.05); box-shadow:0 16px 0 #158b5d; }
+}
+.pill:active{ transform:translateY(1px); box-shadow:0 12px 0 #158b5d; }
 .pill.secondary{
   background:linear-gradient(180deg,#ffd973,#f0b429);
   color:#2b2300;
+}
+.pill.secondary:focus-visible{
+  outline:2px solid #ffd973; outline-offset:3px;
 }
