@@ -7,22 +7,10 @@
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
-  <style>
-    .fh-bg {
-      position: fixed; inset: 0; z-index: 0;
-      background: #0b241b url("/assets/background.jpg") center 45% / cover no-repeat;
-    }
-    @media (min-width: 640px) {
-      .fh-bg { background-position: center; }
-    }
-    .fh-bg::after { content:""; position:absolute; inset:0; background: rgba(11,36,27,.55); }
-    #fh-message-clouds { position: fixed; inset: 0; z-index: 0; pointer-events:none; }
-    .fh-content { position: relative; z-index: 20; min-height: 100svh; padding-inline: 1rem; }
-  </style>
 </head>
 <body data-page="lobby">
   <div class="fh-bg background-layer" aria-hidden="true"></div>
-  <div id="fh-message-clouds" class="fh-bubbles bg-bubbles" aria-hidden="true"></div>
+  <div class="fh-bubbles bg-bubbles" aria-hidden="true"></div>
 
   <nav class="topbar">
     <div class="inner">
