@@ -26,6 +26,8 @@
     .event-grid { display: grid; gap: .5rem 1rem; grid-template-columns: auto 1fr; margin-bottom: 1rem; }
     .event-grid > div { display: contents; }
     .event-grid strong { opacity: .85; }
+    .codeRow { display:flex; align-items:center; gap:.5rem; margin:.5rem 0 1rem; }
+    #evCode { font-variant-numeric: tabular-nums; }
     .guests-columns { display:grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 1rem; }
     .guests-columns h4 { margin-bottom:.5rem }
   </style>
@@ -56,6 +58,12 @@
       <!-- Правая колонка: финальная панель события -->
       <section id="lobby-right" class="lobby-right card">
         <h2 id="evTitle">Событие</h2>
+
+        <!-- НОВОЕ: Код приглашения + копирование -->
+        <div class="codeRow">
+          <div><strong>Код:</strong> <b id="evCode">—</b></div>
+          <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
+        </div>
 
         <div class="event-grid">
           <div><strong>Когда:</strong></div>      <div id="evWhen">—</div>
@@ -91,31 +99,43 @@
   </div>
 
   <script>
-    // Читаем черновик, который положили из event-edit.html и/или дополнили на wishlist.html
-    let draft = {};
-    try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch {}
+    // --- Черновик события ---
+    function readDraft() {
+      try { return JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); }
+      catch { return {}; }
+    }
+    function writeDraft(obj) {
+      try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(obj)); } catch {}
+    }
 
-    // Заголовки и поля
+    let draft = readDraft();
+
+    // Если кода нет — генерируем 6-значный и сохраняем
+    if (!draft.code || !/^\d{6}$/.test(String(draft.code))) {
+      draft.code = String(Math.floor(100000 + Math.random() * 900000));
+      writeDraft(draft);
+    }
+
+    // Заполняем UI
     const $ = (id) => document.getElementById(id);
     $('evTitle').textContent = draft.title || 'Событие';
     $('evAddr').textContent  = draft.address || '—';
     $('evDress').textContent = draft.dress   || '—';
     $('evBring').textContent = draft.bring   || '—';
     $('evNotes').textContent = draft.notes   || '—';
+    $('evCode').textContent  = draft.code;
 
-    // Формат "Когда" + крупные часы/дата слева
     function pad(n){ return n.toString().padStart(2,'0'); }
-    function formatWhen(draft){
-      if (!draft?.date && !draft?.time) return '—';
-      const dt = new Date(`${draft.date || ''}T${draft.time || '00:00'}`);
+    function formatWhen(d) {
+      if (!d?.date && !d?.time) return '—';
+      const dt = new Date(`${d.date || ''}T${d.time || '00:00'}`);
       if (isNaN(dt)) return '—';
       const dateFmt = dt.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
       const timeFmt = pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-      return `${dateFmt}${draft.time ? ' в ' + timeFmt : ''}`;
+      return `${dateFmt}${d.time ? ' в ' + timeFmt : ''}`;
     }
     $('evWhen').textContent = formatWhen(draft);
 
-    // Левая панель: большие часы и «число месяц»
     (function updateLeft(){
       if (draft?.date || draft?.time) {
         const dt = new Date(`${draft.date || ''}T${draft.time || '00:00'}`);
@@ -129,7 +149,7 @@
       $('cdSmall').textContent = '—';
     })();
 
-    // Рендерим wishlist
+    // Wishlist
     (function renderWishlist(){
       const box = $('evWishlist');
       box.innerHTML = '';
@@ -143,19 +163,36 @@
       }
       items.forEach(({title, url}) => {
         const li = document.createElement('li');
-        if (url) {
-          li.innerHTML = `<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
-        } else {
-          li.textContent = title;
-        }
+        if (url) li.innerHTML = `<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
+        else li.textContent = title;
         box.appendChild(li);
       });
     })();
 
-    // Гостевые колонки — пока пустые-заглушки (здесь появятся данные после интеграции бэкенда)
+    // Копирование приглашения
+    document.getElementById('copyInviteBtn').addEventListener('click', async () => {
+      const origin = location.origin || 'https://froggyhubapp.netlify.app';
+      const text =
+`Приглашаю на "${draft.title || 'событие'}"!
+Код для присоединения: ${draft.code}
+Зайди на ${origin} и введи этот код.`;
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Приглашение скопировано в буфер обмена!');
+      } catch {
+        // Фоллбек
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        ta.remove();
+        alert('Приглашение скопировано в буфер обмена!');
+      }
+    });
+
+    // Гости — заглушки до интеграции
     ['guestYes','guestNo','guestMaybe'].forEach(id=>{
-      const ul = $(id); if (!ul) return;
-      ul.innerHTML = '';
+      const ul = $(id); if (!ul) return; ul.innerHTML = '';
     });
   </script>
 </body>
