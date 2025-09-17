@@ -12,7 +12,7 @@ const FH_MESSAGES = [
   'Захвачу музыку 🔊','Кто возьмет мангал? 🔥','Я за салатом 🥗','Давайте играть в мафию 😎','Поделитесь адресом 🗺️',
   'Где паркуемся? 🅿️','Принесу колонку 📢','Я принесу десерт 🍰','Кто возьмёт свечи? 🕯️','Я возьму сок 🧃',
   'Берите тёплые вещи 🧥','Я за хлопьями 🍿','Нужен штопор? 🍷','Кто возьмёт гитару? 🎸','Давайте устроим караоке 🎤',
-  '@chenafik','Я везу кота 🐱','Кто-то едет на велосипеде? 🚲','Приготовлю салаты 🥬','Я за фруктами 🍏',
+  'Привезу настольный футбол ⚽','Я везу кота 🐱','Кто-то едет на велосипеде? 🚲','Приготовлю салаты 🥬','Я за фруктами 🍏',
   'Сделаю лимонад 🍋','У меня есть проектор 📽️','Я приеду на час раньше ⏱️','Привезу геймпад 🎮','Я на метро 🚇',
   'Возьму фотоаппарат 📷','Кто-то пьет чай? 🍵','Я привезу воду 💧','Есть у кого настольный теннис? 🏓','Я за хлебом 🍞',
   'Кто возьмёт кофе? ☕','Давайте фильм посмотрим 🎬','Я приготовлю пасту 🍝','Возьму гитару 🎸','Нужны батарейки? 🔋',
@@ -43,7 +43,6 @@ function spawnBubbles(container, count) {
     el.textContent = pickMessage();
     container.appendChild(el);
 
-    // первичная позиция без пересечений
     const c = container.getBoundingClientRect();
     let tries = 0, x = 0, y = 0, ok = false;
     while (tries++ < 60 && !ok) {
@@ -56,7 +55,6 @@ function spawnBubbles(container, count) {
     }
     requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
 
-    // мягкий жизненный цикл
     if (!prefersReduced) {
       const anchor = { x, y };
       const loop = () => {
@@ -69,7 +67,6 @@ function spawnBubbles(container, count) {
             const dx = Math.random()*80 - 40;
             const dy = Math.random()*80 - 40;
 
-            // ограничим контейнером
             const { width, height } = el.getBoundingClientRect();
             const nx = Math.max(8, Math.min(c.width  - width  - 8, anchor.x + dx));
             const ny = Math.max(8, Math.min(c.height - height - 8, anchor.y + dy));
@@ -106,29 +103,9 @@ function show($el) {
   if ($el) $el.classList.add('visible');
 }
 
-// Полностью выносим auth-форму из DOM, чтобы браузер не предлагал сохранённые пароли.
-function removeAuthScreen() {
-  const auth = document.getElementById('screen-auth');
-  if (!auth) return;
-  auth.remove();
-}
-
-// Если нужно оставить экран в DOM, но отключить поля (альтернатива удалению):
-function disableAuthFields() {
-  const auth = document.getElementById('screen-auth');
-  if (!auth) return;
-  auth.setAttribute('inert', ''); // делает контейнер нефокусируемым
-  auth.hidden = true;
-  auth.querySelectorAll('input,button,select,textarea').forEach(el => {
-    el.disabled = true;
-    el.autocomplete = 'off';
-  });
-}
-
 async function route() {
   const hash = (location.hash || '#auth').toLowerCase();
 
-  // пробуем взять кэшированную/актуальную сессию
   let session = getSavedSession();
   if (!session && supa?.auth) {
     const ctrl = new AbortController();
@@ -144,37 +121,30 @@ async function route() {
   const authed = !!session;
 
   if (!authed) {
-    // если вдруг auth удалён ранее — уже не показываем (можно рендерить отдельной страницей)
-    if (document.getElementById('screen-auth')) {
-      show(document.getElementById('screen-auth'));
-      if (hash !== '#auth') location.hash = '#auth';
-    }
+    show($auth);
+    if (hash !== '#auth') location.hash = '#auth';
     return;
   }
 
-  // авторизован: убираем auth из DOM (или можно вызвать disableAuthFields())
-  removeAuthScreen();
-
-  // показываем домашний
-  if (document.getElementById('screen-home')) {
-    show(document.getElementById('screen-home'));
-    if (hash !== '#home') location.hash = '#home';
-  }
+  show($home);
+  if (hash !== '#home') location.hash = '#home';
 }
 
 /* -------------------- переключение экранов -------------------- */
 
 const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
 function showScreen(id) {
+  const target = document.getElementById(id);
+  if (!target) return; // << защита: нет цели — ничего не скрываем
   const screens = ALL_SCREENS();
   for (const s of screens) {
-    const on = s.id === id;
+    const on = s === target;
     s.toggleAttribute('hidden', !on);
     s.classList.toggle('visible', on);
   }
 }
 
-// Делегирование по кнопкам с data-go, c поддержкой data-mode для app
+/* Делегирование по [data-go] */
 document.addEventListener('click', (e) => {
   const navBtn = e.target.closest('[data-go]');
   if (!navBtn) return;
@@ -199,15 +169,12 @@ document.addEventListener('click', (e) => {
   };
 
   if (to === 'app' && mode === 'create') {
-    // если есть отдельная страница — редиректим
-    location.href = '/event-edit.html';
+    showScreen('screen-create-conditions');
     return;
   }
 
   const targetId = map[to] || to;
-  if (document.getElementById(targetId)) {
-    showScreen(targetId);
-  }
+  showScreen(targetId);
 });
 
 /* -------------------- биндинг UI -------------------- */
@@ -279,7 +246,6 @@ function bindAuthForms() {
   handle(loginForm, 'login');
   handle(signupForm, 'signup');
 
-  // страховка на случай кнопок без type="submit"
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-action="login"], [data-action="signup"], .js-login, .js-signup');
     if (!btn) return;
@@ -293,7 +259,7 @@ function bindAuthForms() {
 }
 
 function bindNav() {
-  // верхнее меню (логотип/кнопки с data-link)
+  // верхнее меню по data-link
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-link]');
     if (!btn) return;
@@ -303,18 +269,23 @@ function bindNav() {
     if (to === 'settings') location.hash = '#settings';
   });
 
-  // форма «Присоединиться» с валидацией кода
-  const joinBtn = document.getElementById('join-btn');
+  // форма «Присоединиться»: теперь переводим на реальную страницу лобби
+  const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
     joinBtn.addEventListener('click', () => {
       const code = (joinInput.value || '').trim();
-      if (!/^\d{6}$/.test(code)) {
+      if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code.toUpperCase())) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      showScreen('screen-join-name');
+      const c = code.toUpperCase();
+      // вариант А: сразу в лобби (просмотр события)
+      window.location.href = `/lobby.html?code=${encodeURIComponent(c)}`;
+
+      // вариант B (если нужен мастер присоединения):
+      // window.location.href = `/hub.html?step=join&code=${encodeURIComponent(c)}`;
     });
   }
 }
