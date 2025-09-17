@@ -210,13 +210,14 @@ function bindIndexNav() {
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
     joinBtn.addEventListener('click', () => {
-      const code = (joinInput.value || '').trim();
-      if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code.toUpperCase())) {
+      const raw = (joinInput.value || '').trim();
+      const code = raw.toUpperCase();
+      if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      window.location.href = `/join.html?code=${encodeURIComponent(code.toUpperCase())}`;
+      window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
     });
   }
 }
@@ -255,7 +256,7 @@ function bindEventEditPage() {
 
       if (error) throw error;
 
-      // в черновик на всякий:
+      // в черновик на всякий
       sessionStorage.setItem('fh:draftEvent', JSON.stringify({ id: data.id, ...payload }));
 
       // сразу на страницу вишлиста
@@ -295,6 +296,7 @@ function bindJoinPage() {
     const { data, error } = await supa
       .from('events')
       .select('id, code, join_code, title')
+      // важное исправление: ищем и по code, и по join_code
       .or(`code.eq.${c},join_code.eq.${c}`)
       .limit(1)
       .maybeSingle();
@@ -306,6 +308,7 @@ function bindJoinPage() {
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
     try {
+      if (errorBox) errorBox.textContent = '';
       const ev = await findEventByCode(code);
       if (!ev) {
         if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
