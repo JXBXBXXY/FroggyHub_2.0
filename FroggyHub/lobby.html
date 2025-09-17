@@ -97,3 +97,27 @@
 </div>
 </body>
 </html>
+<script>
+  (function () {
+    const step = new URLSearchParams(location.search).get('step');
+    if (step !== 'wishlist') return;
+
+    // Подхватим черновик (не обязательно, но удобно)
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || 'null');
+      // здесь можно проставить заголовок/дату в шапку лобби и т.п.
+      // например: document.getElementById('eventTitle')?.textContent = draft?.title || 'Событие';
+    } catch {}
+
+    // Показать нужный блок
+    const wl = document.getElementById('wishlist-editor')
+           || document.querySelector('[data-section="wishlist"]')
+           || document.getElementById('wlGrid');
+    if (wl) {
+      document.querySelectorAll('main .section, main .card, .screen')
+        .forEach(el => { if (!el.contains(wl)) el.hidden = true; });
+      wl.hidden = false;
+      wl.closest('.section, .card, .screen')?.removeAttribute('hidden');
+    }
+  })();
+</script>
