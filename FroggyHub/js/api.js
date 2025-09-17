@@ -13,19 +13,20 @@ export const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-export const getSession = () => supa.auth.getSession().then((r) => r.data.session);
-export const onAuthState = (cb) => supa.auth.onAuthStateChange((_evt, session) => cb(session));
-export const signIn = (email, password) => supa.auth.signInWithPassword({ email, password });
-export const signUp = (email, password) => supa.auth.signUp({ email, password });
-export const signOut = () => supa.auth.signOut();
+export const getSession  = () => supa.auth.getSession().then(r => r.data.session);
+export const onAuthState = (cb) => supa.auth.onAuthStateChange((_e, session) => cb(session));
+export const signIn      = (email, password) => supa.auth.signInWithPassword({ email, password });
+export const signUp      = (email, password) => supa.auth.signUp({ email, password });
+export const signOut     = () => supa.auth.signOut();
+
 export async function getProfile() {
   const { data } = await supa.from('profiles').select('*').single();
   return data;
 }
 
 export const TOKEN_KEY = 'fh:token';
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+export const getToken  = () => localStorage.getItem(TOKEN_KEY);
+export const setToken  = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
 export async function nf(path, opts = {}) {
@@ -41,9 +42,7 @@ export async function nf(path, opts = {}) {
 
   if (res.status === 401) {
     clearToken();
-    if (location.pathname !== '/' && location.pathname !== '/index.html') {
-      location.href = '/';
-    }
+    if (location.pathname !== '/' && location.pathname !== '/index.html') location.href = '/';
     return { success: false, error: 'unauthorized' };
   }
   return res.json();
@@ -62,4 +61,3 @@ export function logout() {
   clearToken();
   location.href = '/';
 }
-
