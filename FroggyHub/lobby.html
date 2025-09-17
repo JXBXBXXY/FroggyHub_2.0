@@ -24,6 +24,7 @@
 <body data-page="lobby">
   <div class="fh-bg" aria-hidden="true"></div>
   <div id="fh-message-clouds" aria-hidden="true"></div>
+
   <div class="fh-content">
     <header class="fh-header">
       <a class="fh-logo" href="/">FroggyHub</a>
@@ -34,90 +35,191 @@
       </nav>
     </header>
 
-  <main class="lobby-grid">
-    <!-- Левая колонка: лягушка + счётчик -->
-    <section id="lobby-left" class="lobby-left">
-      <div class="frog-hero"></div>
-      <div class="countdown">
-        <div class="countdown-big" data-countdown-big>00:00</div>
-        <div class="countdown-small" data-countdown-small>1 января</div>
-      </div>
-    </section>
-
-    <!-- Правая колонка: финальная панель события -->
-    <section id="lobby-right" class="lobby-right card">
-      <h2 data-title>Событие</h2>
-      <div class="event-grid">
-        <div class="codeRow"><span id="eventCodeText">Код: <strong id="eventCode" data-code>—</strong></span> <button id="copyInviteBtn" class="btn btn--ghost btn--sm" data-owner-only>Скопировать приглашение</button></div>
-        <div><strong>Когда:</strong> <span data-when></span></div>
-        <div><strong>Адрес:</strong> <span data-address>—</span></div>
-        <div><strong>Дресс-код:</strong> <span data-dress>—</span></div>
-        <div><strong>Что взять:</strong> <span data-bring>—</span></div>
-        <div><strong>Комментарий:</strong> <span data-notes>—</span></div>
-      </div>
-
-      <h3>Wishlist</h3>
-      <ul class="list" data-wishlist></ul>
-
-      <div class="guests-columns">
-        <div>
-          <h4>Идут</h4>
-          <ul class="list" data-guest-yes></ul>
+    <main class="lobby-grid">
+      <!-- Левая колонка: лягушка + счётчик -->
+      <section id="lobby-left" class="lobby-left">
+        <div class="frog-hero"></div>
+        <div class="countdown">
+          <div class="countdown-big" data-countdown-big>00:00</div>
+          <div class="countdown-small" data-countdown-small>1 января</div>
         </div>
-        <div>
-          <h4>Не идут</h4>
-          <ul class="list" data-guest-no></ul>
-        </div>
-        <div>
-          <h4>Может быть</h4>
-          <ul class="list" data-guest-maybe></ul>
-        </div>
-      </div>
+      </section>
 
-      <div class="actions">
-        <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
-      </div>
-    </section>
-  </main>
+      <!-- Правая колонка: финальная панель события -->
+      <section id="lobby-right" class="lobby-right card">
+        <h2 data-title>Событие</h2>
+        <div class="event-grid">
+          <div class="codeRow">
+            <span id="eventCodeText">Код: <strong id="eventCode" data-code>—</strong></span>
+            <button id="copyInviteBtn" class="btn btn--ghost btn--sm" data-owner-only>Скопировать приглашение</button>
+          </div>
+          <div><strong>Когда:</strong> <span data-when></span></div>
+          <div><strong>Адрес:</strong> <span data-address>—</span></div>
+          <div><strong>Дресс-код:</strong> <span data-dress>—</span></div>
+          <div><strong>Что взять:</strong> <span data-bring>—</span></div>
+          <div><strong>Комментарий:</strong> <span data-notes>—</span></div>
+        </div>
 
-  <script type="module" src="js/app.js"></script>
-  <div id="cookieCard" class="card" style="display:none">
-    <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
-      <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
-    </svg>
-    <div class="cookieHeading">Cookies</div>
-    <div class="cookieDescription">
-      Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
-    </div>
-    <div class="buttonContainer">
-      <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
-      <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+        <h3>Wishlist</h3>
+        <ul class="list" data-wishlist></ul>
+
+        <div class="guests-columns">
+          <div>
+            <h4>Идут</h4>
+            <ul class="list" data-guest-yes></ul>
+          </div>
+          <div>
+            <h4>Не идут</h4>
+            <ul class="list" data-guest-no></ul>
+          </div>
+          <div>
+            <h4>Может быть</h4>
+            <ul class="list" data-guest-maybe></ul>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
+        </div>
+      </section>
+
+      <!-- Редактор вишлиста (покажется только при ?step=wishlist) -->
+      <section id="wishlist-editor" class="card" hidden>
+        <h2>Wishlist</h2>
+
+        <form id="form-wish-add" class="row" autocomplete="off">
+          <input id="w-title" class="input" placeholder="Название/тема" />
+          <input id="w-url" class="input" placeholder="Ссылка (необязательно)" />
+          <button class="btn" type="submit">Добавить</button>
+        </form>
+
+        <ul id="wishlist-box" class="wish-grid" style="margin-top:1rem"></ul>
+
+        <div class="row end" style="margin-top:1rem">
+          <button id="btn-wishlist-done" class="btn btn-primary">Далее</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+
+    <div id="cookieCard" class="card" style="display:none">
+      <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
+        <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
+      </svg>
+      <div class="cookieHeading">Cookies</div>
+      <div class="cookieDescription">
+        Мы используем файлы cookies, чтобы сайт работал быстрее и удобнее. Продолжая, вы соглашаетесь с их использованием.
+      </div>
+      <div class="buttonContainer">
+        <button class="btn btn--primary acceptButton" id="cookieAccept">Ок</button>
+        <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
+      </div>
     </div>
   </div>
-</div>
-</body>
-</html>
-<script>
+
+  <!-- Локальная логика переключения шага вишлиста -->
+  <script>
   (function () {
-    const step = new URLSearchParams(location.search).get('step');
-    if (step !== 'wishlist') return;
+    const params = new URLSearchParams(location.search);
+    const step = params.get('step');
 
-    // Подхватим черновик (не обязательно, но удобно)
-    try {
-      const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || 'null');
-      // здесь можно проставить заголовок/дату в шапку лобби и т.п.
-      // например: document.getElementById('eventTitle')?.textContent = draft?.title || 'Событие';
-    } catch {}
+    const finalCard = document.getElementById('lobby-right');
+    const wlCard    = document.getElementById('wishlist-editor');
 
-    // Показать нужный блок
-    const wl = document.getElementById('wishlist-editor')
-           || document.querySelector('[data-section="wishlist"]')
-           || document.getElementById('wlGrid');
-    if (wl) {
-      document.querySelectorAll('main .section, main .card, .screen')
-        .forEach(el => { if (!el.contains(wl)) el.hidden = true; });
-      wl.hidden = false;
-      wl.closest('.section, .card, .screen')?.removeAttribute('hidden');
+    // Показать редактор, если пришли с event-edit на шаг вишлиста
+    if (step === 'wishlist' && wlCard) {
+      if (finalCard) finalCard.hidden = true;
+      wlCard.hidden = false;
+
+      // Подхватим черновик, чтобы при желании проставить заголовок/дату
+      try {
+        const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || 'null');
+        if (draft?.title) {
+          document.querySelector('[data-title]')?.replaceChildren(document.createTextNode(draft.title));
+        }
+      } catch {}
+
+      // Мини-редактор
+      const form = document.getElementById('form-wish-add');
+      const list = document.getElementById('wishlist-box');
+      const done = document.getElementById('btn-wishlist-done');
+
+      const state = [];
+
+      function render() {
+        list.innerHTML = '';
+        state.forEach((item, i) => {
+          const li = document.createElement('li');
+          li.className = 'chip';
+          li.innerHTML = item.url
+            ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>
+               <button type="button" class="btn btn--ghost btn--sm" data-del="${i}">✕</button>`
+            : `${item.title}
+               <button type="button" class="btn btn--ghost btn--sm" data-del="${i}">✕</button>`;
+          list.appendChild(li);
+        });
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = document.getElementById('w-title').value.trim();
+        const url   = document.getElementById('w-url').value.trim();
+        if (!title) return;
+        state.push({ title, url });
+        document.getElementById('w-title').value = '';
+        document.getElementById('w-url').value = '';
+        render();
+      });
+
+      list.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-del]');
+        if (!btn) return;
+        const idx = +btn.getAttribute('data-del');
+        state.splice(idx, 1);
+        render();
+      });
+
+      // Завершение шага — сохраняем и возвращаем финальную карточку
+      done.addEventListener('click', () => {
+        try {
+          const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
+          draft.wishlist = state;
+          sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft));
+        } catch {}
+
+        wlCard.hidden = true;
+        if (finalCard) {
+          finalCard.hidden = false;
+
+          // Обновим «Wishlist» в финальной карточке, если есть контейнер
+          const ul = finalCard.querySelector('[data-wishlist]');
+          if (ul) {
+            ul.innerHTML = '';
+            state.forEach(item => {
+              const li = document.createElement('li');
+              li.className = 'chip';
+              li.innerHTML = item.url
+                ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>`
+                : item.title;
+              ul.appendChild(li);
+            });
+          }
+        }
+
+        // Уберём ?step=wishlist из адресной строки
+        const url = new URL(location.href);
+        url.searchParams.delete('step');
+        history.replaceState({}, '', url);
+
+        // Скролл к карточке
+        finalCard?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      // первая отрисовка
+      render();
     }
   })();
-</script>
+  </script>
+</body>
+</html>
