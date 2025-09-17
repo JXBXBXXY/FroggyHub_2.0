@@ -136,7 +136,6 @@ async function route() {
 
 /* -------------------- переключение экранов -------------------- */
 
-// Показ экрана по id (работает с hidden + класс .visible)
 const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
 function showScreen(id) {
   const screens = ALL_SCREENS();
@@ -147,13 +146,16 @@ function showScreen(id) {
   }
 }
 
-// Делегирование по кнопкам с data-go="..."
+// Делегирование по кнопкам с data-go, c поддержкой data-mode для app
 document.addEventListener('click', (e) => {
   const navBtn = e.target.closest('[data-go]');
   if (!navBtn) return;
+
   e.preventDefault();
+  e.stopPropagation(); // чтобы другие слушатели не перебивали
 
   const to = navBtn.getAttribute('data-go');
+  const mode = navBtn.getAttribute('data-mode') || '';
 
   // маппинг коротких значений на id секций
   const map = {
@@ -168,6 +170,12 @@ document.addEventListener('click', (e) => {
     'join-wishlist': 'screen-join-wishlist',
     auth: 'screen-auth',
   };
+
+  // спец-логика: если app + режим создания, идём на первый шаг мастера
+  if (to === 'app' && mode === 'create') {
+    showScreen('screen-create-conditions');
+    return;
+  }
 
   const targetId = map[to] || to;
   if (document.getElementById(targetId)) {
@@ -268,13 +276,9 @@ function bindNav() {
     if (to === 'settings') location.hash = '#settings';
   });
 
-  // кнопка «Создать событие»
-  const createBtn = document.getElementById('create-event');
-  if (createBtn) createBtn.addEventListener('click', () => {
-    showScreen('screen-create-conditions'); // первый шаг создания
-  });
-
-  // форма «Присоединиться»
+  // — БОЛЬШЕ НИКАКИХ отдельный обработчиков для #create-event —
+  // всё делает делегат [data-go] выше
+  // форма «Присоединиться» пусть остаётся с валидацией кода
   const joinBtn = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
@@ -285,7 +289,6 @@ function bindNav() {
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      // переход к шагу ввода имени (или куда тебе нужно)
       showScreen('screen-join-name');
     });
   }
@@ -296,7 +299,7 @@ function bindNav() {
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
   if (!root) return;
-  root.innerHTML = ''; // на всякий
+  root.innerHTML = '';
   spawnBubbles(root, desiredBubbleCount());
   window.addEventListener('resize', debounce(() => {
     root.innerHTML = '';
@@ -312,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindAuthForms();
   bindNav();
   bootBubbles();
-  route(); // первичный роут
+  route();
 });
 
 window.addEventListener('hashchange', route);
