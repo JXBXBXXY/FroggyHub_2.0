@@ -25,15 +25,9 @@ const FH_MESSAGES = [
 
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pickMessage = () => FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
-
-function rectsOverlap(a, b, pad = 0) {
-  return !(a.right + pad < b.left || a.left - pad > b.right || a.bottom + pad < b.top || a.top - pad > b.bottom);
-}
-function desiredBubbleCount() {
-  const area = window.innerWidth * window.innerHeight;
-  return Math.min(80, Math.max(20, Math.round(area / 12000)));
-}
-const debounce = (fn, wait=100) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), wait); }; };
+const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
+const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
+const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
 function spawnBubbles(container, count) {
   const placed = [];
@@ -66,10 +60,10 @@ function spawnBubbles(container, count) {
             el.textContent = pickMessage();
             const dx = Math.random()*80 - 40;
             const dy = Math.random()*80 - 40;
-
             const { width, height } = el.getBoundingClientRect();
-            const nx = Math.max(8, Math.min(c.width  - width  - 8, anchor.x + dx));
-            const ny = Math.max(8, Math.min(c.height - height - 8, anchor.y + dy));
+            const c2 = container.getBoundingClientRect();
+            const nx = Math.max(8, Math.min(c2.width  - width  - 8, anchor.x + dx));
+            const ny = Math.max(8, Math.min(c2.height - height - 8, anchor.y + dy));
             el.style.left = `${nx}px`; el.style.top = `${ny}px`;
             el.classList.remove('fh-bubble--out');
             requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
@@ -79,108 +73,43 @@ function spawnBubbles(container, count) {
       };
       loop();
     } else {
-      setInterval(()=>{ el.textContent = pickMessage(); }, 10000 + Math.random()*2000);
+      setInterval(()=> el.textContent = pickMessage(), 10000 + Math.random()*2000);
     }
-
     placed.push(el);
   }
 }
 
-/* -------------------- мини-роутер и экраны -------------------- */
+/* -------------------- сессия и экраны -------------------- */
 
 const LS_KEY = 'fh_session';
-const getSavedSession = () => {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; }
-};
-const setSavedSession = (s) => {
-  try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {}
-};
+const getSavedSession = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; } };
+const setSavedSession = (s) => { try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {} };
 
 let $auth, $home;
 
-function show($el) {
-  [$auth, $home].forEach(x => x && x.classList.remove('visible'));
-  if ($el) $el.classList.add('visible');
-}
-
-/**
- * Исправление: НЕ форсируем показ экрана авторизации.
- * Показываем авторизацию только если пользователь явно перешёл на #auth.
- * И никогда не меняем hash из кода.
- */
-async function route() {
-  const hash = (location.hash || '').toLowerCase();
-
-  // опционально обновим кэш сессии (необязательно для показа экрана)
+async function ensureSession() {
   let session = getSavedSession();
   if (!session && supa?.auth) {
-    const ctrl = new AbortController();
-    const t = setTimeout(()=>ctrl.abort(), 1200);
     try {
-      const { data } = await supa.auth.getSession({ signal: ctrl.signal });
+      const { data } = await supa.auth.getSession();
       session = data?.session || null;
+      if (session) setSavedSession({ user: session.user, access_token: session.access_token });
     } catch {}
-    clearTimeout(t);
-    if (session) setSavedSession({ user: session.user, access_token: session.access_token });
   }
-
-  if (hash === '#auth' && $auth) {
-    show($auth);
-    return;
-  }
-
-  // по умолчанию — домашний
-  show($home);
+  return session;
 }
 
-/* -------------------- переключение экранов -------------------- */
-
-const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
 function showScreen(id) {
   const target = document.getElementById(id);
   if (!target) return;
-  const screens = ALL_SCREENS();
-  for (const s of screens) {
+  document.querySelectorAll('.screen').forEach(s => {
     const on = s === target;
     s.toggleAttribute('hidden', !on);
     s.classList.toggle('visible', on);
-  }
+  });
 }
 
-/* Делегирование по [data-go] */
-document.addEventListener('click', (e) => {
-  const navBtn = e.target.closest('[data-go]');
-  if (!navBtn) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-
-  const to = navBtn.getAttribute('data-go');
-  const mode = navBtn.getAttribute('data-mode') || '';
-
-  const map = {
-    menu: 'screen-home',
-    'create-conditions': 'screen-create-conditions',
-    'create-reqs': 'screen-create-reqs',
-    wishlist: 'screen-wishlist',
-    app: 'screen-app',
-    final: 'screen-final',
-    profile: 'screen-profile',
-    'join-name': 'screen-join-name',
-    'join-wishlist': 'screen-join-wishlist',
-    auth: 'screen-auth',
-  };
-
-  if (to === 'app' && mode === 'create') {
-    showScreen('screen-create-conditions');
-    return;
-  }
-
-  const targetId = map[to] || to;
-  showScreen(targetId);
-});
-
-/* -------------------- биндинг UI -------------------- */
+/* -------------------- навигация и общие биндинги -------------------- */
 
 function bindTabs() {
   const tabLogin = document.getElementById('tab-login');
@@ -237,7 +166,9 @@ function bindAuthForms() {
 
         if (ok && session) {
           setSavedSession({ user: session.user, access_token: session.access_token });
-          await route();
+          // удаляем auth-экран, чтобы менеджеры паролей его не видели
+          document.getElementById('screen-auth')?.remove();
+          showScreen('screen-home');
         }
       } catch (e) {
         console.error(e);
@@ -260,42 +191,138 @@ function bindAuthForms() {
   });
 }
 
-function bindNav() {
-  // верхнее меню по data-link
+function bindIndexNav() {
+  // data-go
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-link]');
-    if (!btn) return;
-    const to = btn.getAttribute('data-link');
-    if (to === 'home') location.hash = '#home';
-    if (to === 'profile') location.hash = '#profile';
-    if (to === 'settings') location.hash = '#settings';
+    const navBtn = e.target.closest('[data-go]');
+    if (!navBtn) return;
+    e.preventDefault();
+    const to = navBtn.getAttribute('data-go');
+    const mode = navBtn.getAttribute('data-mode') || '';
+    if (to === 'app' && mode === 'create') {
+      window.location.href = '/event-edit.html';
+      return;
+    }
   });
 
-  // создать событие
-  const createBtn = document.getElementById('create-event');
-  if (createBtn) {
-    createBtn.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      // прямой переход на форму редактирования события
-      window.location.href = '/event-edit.html';
-    });
-  }
-
-  // форма «Присоединиться» — ведём на отдельную страницу ввод/RSVP
+  // “Присоединиться”
   const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
     joinBtn.addEventListener('click', () => {
-      const raw = (joinInput.value || '').trim();
-      const code = raw.replace(/[^0-9A-Z]/gi, '').toUpperCase();
-      if (!/^[0-9A-Z]{6}$/.test(code)) {
+      const code = (joinInput.value || '').trim();
+      if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code.toUpperCase())) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
+      window.location.href = `/join.html?code=${encodeURIComponent(code.toUpperCase())}`;
     });
   }
+}
+
+/* -------------------- страница редактирования события -------------------- */
+
+function randomDigits(n=6){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
+function randomCode(n=6){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:n},()=>A[Math.floor(Math.random()*A.length)]).join(''); }
+
+function bindEventEditPage() {
+  const form = document.getElementById('editForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = {
+      title: fd.get('title') || fd.get('editTitle') || document.getElementById('editTitle')?.value || '',
+      date:  fd.get('date')  || document.getElementById('editDate')?.value  || null,
+      time:  fd.get('time')  || document.getElementById('editTime')?.value  || null,
+      address: fd.get('address') || document.getElementById('editAddress')?.value || '',
+      comment: fd.get('notes') || document.getElementById('editNotes')?.value || '',
+      dress_code: fd.get('dress') || document.getElementById('editDress')?.value || '',
+      what_to_bring: fd.get('bring') || document.getElementById('editBring')?.value || ''
+    };
+
+    // запасной план — коды на клиенте, если нет триггера в БД
+    payload.code = randomDigits(6);
+    payload.join_code = randomCode(6);
+
+    try {
+      const { data, error } = await supa.from('events')
+        .insert(payload)
+        .select('id, code, join_code')
+        .single();
+
+      if (error) throw error;
+
+      // в черновик на всякий:
+      sessionStorage.setItem('fh:draftEvent', JSON.stringify({ id: data.id, ...payload }));
+
+      // сразу на страницу вишлиста
+      window.location.href = `/wishlist.html?event=${data.id}`;
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось сохранить событие. Проверьте подключение к базе.');
+    }
+  });
+}
+
+/* -------------------- страница join.html -------------------- */
+
+function bindJoinPage() {
+  const params = new URLSearchParams(location.search);
+  const code = (params.get('code') || '').toUpperCase();
+  const nameInput = document.querySelector('#join-name, [name="name"]');
+  const btnJoin = document.getElementById('btn-join');
+  const statusWrap = document.getElementById('join-status-wrap') || document;
+  const errorBox = document.getElementById('join-error');
+
+  if (!code || !nameInput || !btnJoin) return;
+
+  // показать код
+  const codeHolder = document.getElementById('join-code-text');
+  if (codeHolder) codeHolder.textContent = code;
+
+  let picked = 'yes';
+  statusWrap.addEventListener('click', (e)=>{
+    const b = e.target.closest('[data-rsvp]');
+    if (!b) return;
+    picked = b.getAttribute('data-rsvp');
+    [...statusWrap.querySelectorAll('[data-rsvp]')].forEach(x=>x.classList.toggle('is-active', x===b));
+  });
+
+  async function findEventByCode(c) {
+    const { data, error } = await supa
+      .from('events')
+      .select('id, code, join_code, title')
+      .or(`code.eq.${c},join_code.eq.${c}`)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  btnJoin.addEventListener('click', async ()=>{
+    const name = nameInput.value.trim();
+    if (!name) { nameInput.focus(); return; }
+    try {
+      const ev = await findEventByCode(code);
+      if (!ev) {
+        if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
+        return;
+      }
+      const { error } = await supa.from('rsvps').insert({
+        event_id: ev.id,
+        user_name: name,
+        status: picked
+      });
+      if (error) throw error;
+      window.location.href = `/lobby.html?event=${ev.id}`;
+    } catch (err) {
+      console.error(err);
+      if (errorBox) errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.';
+    }
+  });
 }
 
 /* -------------------- bootstrap -------------------- */
@@ -305,21 +332,29 @@ function bootBubbles() {
   if (!root) return;
   root.innerHTML = '';
   spawnBubbles(root, desiredBubbleCount());
-  window.addEventListener('resize', debounce(() => {
+  addEventListener('resize', debounce(() => {
     root.innerHTML = '';
     spawnBubbles(root, desiredBubbleCount());
   }, 200));
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   $auth = document.getElementById('screen-auth');
   $home = document.getElementById('screen-home');
 
   bindTabs();
   bindAuthForms();
-  bindNav();
+  bindIndexNav();
+  bindEventEditPage();
+  bindJoinPage();
   bootBubbles();
-  route();
-});
 
-window.addEventListener('hashchange', route);
+  const session = await ensureSession();
+  if (session) {
+    // убираем auth из DOM, чтобы не мешал менеджерам паролей
+    document.getElementById('screen-auth')?.remove();
+    showScreen('screen-home');
+  } else {
+    showScreen('screen-auth');
+  }
+});
