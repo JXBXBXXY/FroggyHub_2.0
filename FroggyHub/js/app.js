@@ -217,14 +217,13 @@ function spawnBubbles(container, count) {
   }
 }
 
-// ---- BOOTSTRAP (один раз) -----------------------------------
+// ---- BOOTСТАРТ (один раз)
 if (!window.FH) window.FH = {};
-if (window.FH.__booted) { /* уже проинициализировано */ }
-else {
+if (window.FH.__booted) {
+  // уже проинициализировано
+} else {
   window.FH.__booted = true;
 
-  // -------- Supabase: получить клиент (через существующий _supabase.js)
-  // ожидается window.supabase уже сконфигурирован
   const getSupabase = () => supa;
 
   // Локальный кэш сессии
@@ -274,22 +273,24 @@ else {
     if (hash !== '#home') location.hash = '#home';
   }
 
-  // --- Навигационные кнопки (делегирование)
+  // --- Навигация (делегирование)
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-link]');
     if (!btn) return;
     const to = btn.getAttribute('data-link');
     if (to === 'home') location.hash = '#home';
-    else if (to === 'profile') location.hash = '#profile';   // сейчас просто якорь, UI можно расширять
-    else if (to === 'settings') location.hash = '#settings'; // якорь
+    else if (to === 'profile') location.hash = '#profile';
+    else if (to === 'settings') location.hash = '#settings';
   });
 
   // --- Обработчики форм логина/регистрации
   function bindAuth() {
-    if (window.FH.__authBound) return;        // защита от повтора
+    if (window.FH.__authBound) return;
     window.FH.__authBound = true;
+
     const loginForm  = document.querySelector('#loginForm');
     const signupForm = document.querySelector('#signupForm');
+
     async function handle(form, kind) {
       if (!form) return;
       form.addEventListener('submit', async (ev) => {
@@ -299,7 +300,6 @@ else {
         const password = (fd.get('password') || '').toString();
         if (!nickname || !password) return;
 
-        // поддержка и email, и ника (ник -> <nick>@local)
         const email = nickname.includes('@') ? nickname : `${nickname}@local`;
         try {
           const supa = getSupabase();
@@ -311,7 +311,6 @@ else {
           } else {
             const { data, error } = await supa.auth.signUp({ email, password });
             if (!error) {
-              // повторный вход для единообразия
               const r = await supa.auth.signInWithPassword({ email, password });
               session = r.data.session; ok = !r.error;
             }
@@ -319,45 +318,36 @@ else {
 
           if (ok && session) {
             setSavedSession({ user: session.user, access_token: session.access_token });
-            location.hash = '#home'; // триггерит route()
+            location.hash = '#home';
             await route();
           }
-        } catch (err) { /* можно показать тост */ }
+        } catch (err) {
+          // можно вывести тост/ошибку
+        }
       });
     }
     handle(loginForm, 'login');
     handle(signupForm, 'signup');
 
-    // --- Страховка: если кнопки не type="submit", дожимаем сабмит программно
-    // Работает для кнопок с data-action="login"/"signup" или классами .js-login/.js-signup
+    // Страховка для кнопок без type="submit"
     document.addEventListener('click', (ev) => {
       const btn = ev.target.closest('[data-action="login"], [data-action="signup"], .js-login, .js-signup');
       if (!btn) return;
-
-      // определяем, какую форму сабмитить
       const isLogin = btn.matches('[data-action="login"], .js-login');
       const form = btn.closest('form') || (isLogin ? loginForm : signupForm);
       if (!form) return;
 
-      // не меняем визуал, просто инициируем submit, чтобы сработали наши обработчики выше
       ev.preventDefault();
-      if (typeof form.requestSubmit === 'function') {
-        form.requestSubmit();
-      } else {
-        // полифилл для старых браузеров
-        const evt = new Event('submit', { bubbles: true, cancelable: true });
-        form.dispatchEvent(evt);
-      }
+      if (typeof form.requestSubmit === 'function') form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     });
   }
 
-  // ---- Фоновые «смс» (сетка + локальные орбиты)
+  // ---- Фоновые «смс»
   (function bubbles() {
     const root = document.querySelector('.fh-bubbles');
     if (!root) return;
-
     spawnBubbles(root, desiredBubbleCount());
-
     window.addEventListener('resize', debounce(() => {
       const box = document.querySelector('.fh-bubbles');
       if (!box) return;
@@ -367,10 +357,9 @@ else {
   })();
 
   // --- Старт
-  // Делаем привязки строго после готовности DOM, чтобы формы точно существовали
   document.addEventListener('DOMContentLoaded', () => {
-    bindAuth(); // навешиваем обработчики форм
-    route();    // и сразу роутим
+    bindAuth();
+    route();
   });
   window.addEventListener('hashchange', route);
 }
