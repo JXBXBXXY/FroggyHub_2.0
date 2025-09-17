@@ -7,35 +7,28 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
-
-  <!-- Небольшие стили только для фоновых «облачков» -->
   <style>
     .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem;}
-
     #fh-message-clouds{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
     .fh-bubble{position:absolute;padding:8px 14px;border-radius:16px;background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.12);backdrop-filter:saturate(150%) blur(6px);-webkit-backdrop-filter:saturate(150%) blur(6px);
       color:rgba(255,255,255,.88);font-size:14px;line-height:1.25;box-shadow:0 8px 20px rgba(0,0,0,.25);
       opacity:0;transform:translate3d(0,0,0) scale(1);transition:opacity .35s ease, transform .35s ease}
-    .fh-bubble--in{opacity:1}
-    .fh-bubble--out{opacity:0;transform:translate3d(0,6px,0) scale(.98)}
+    .fh-bubble--in{opacity:1}.fh-bubble--out{opacity:0;transform:translate3d(0,6px,0) scale(.98)}
     @media (max-width:640px){.fh-bubble{font-size:12px}}
   </style>
 </head>
 
-<body class="scene-intro">
+<body class="scene-intro" data-page="index">
   <div class="fh-bg" aria-hidden="true"></div>
-
-  <!-- фоновые «смс» -->
   <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true"></div>
 
   <div class="fh-content">
-    <!-- Topbar -->
     <nav class="topbar">
       <div class="topbar-left">
-        <a href="#" id="logo" class="logo" data-link="home">FroggyHub</a>
+        <a href="/" id="logo" class="logo" data-link="home">FroggyHub</a>
       </div>
       <div class="topbar-right">
         <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
@@ -44,14 +37,14 @@
       </div>
     </nav>
 
-    <!-- ЭКРАН: Авторизация -->
-    <section id="screen-auth" class="screen container" role="main">
+    <!-- Авторизация -->
+    <section id="screen-auth" class="screen container" role="main" hidden>
       <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
         <div class="auth-head">
           <div class="auth-avatar"><img src="/assets/frog_idle.png" alt="Froggy" /></div>
           <div class="auth-title">
             <h2>Вход / Регистрация</h2>
-            <div id="authSteps" class="auth-steps">
+            <div class="auth-steps">
               <span class="chip chip-on" data-step="1">Шаг 1</span>
               <span class="chip" data-step="profile">Профиль</span>
             </div>
@@ -100,7 +93,7 @@
       </div>
     </section>
 
-    <!-- ЭКРАН: Домашний (меню) -->
+    <!-- Домашний экран -->
     <section id="screen-home" class="screen visible" role="main">
       <div id="hero" class="hero hero-frog">
         <img class="frog" src="/assets/frog_idle.png" alt="Froggy" />
@@ -110,34 +103,18 @@
       <div class="menu-deck">
         <div class="panel">
           <div class="menu-grid">
-            <!-- Ссылка вместо кнопки: гарантированный переход -->
-            <a id="create-event" class="btn btn-primary" href="/event-edit.html">Создать событие</a>
+            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
 
-            <!-- Форма GET на join.html -->
-            <form id="join-form" class="join-row" action="/join.html" method="get" autocomplete="off">
-              <input
-                id="join-code"
-                class="input"
-                name="code"
-                inputmode="text"
-                maxlength="6"
-                pattern="[0-9A-Za-z]{6}"
-                placeholder="Введите 6-значный код"
-                autocapitalize="characters"
-              >
-              <button id="join-btn" type="submit" class="btn">Присоединиться</button>
+            <form id="join-form" class="join-row" autocomplete="off" onsubmit="return false;">
+              <input id="join-code" class="input" inputmode="text" maxlength="6" placeholder="Введите 6-значный код">
+              <button id="join-btn" type="button" class="btn">Присоединиться</button>
             </form>
           </div>
         </div>
       </div>
     </section>
-
-    <!-- Остальные экраны остаются как в твоей верстке; их JS сейчас не трогаем -->
-    <!-- ... (join / create / app / final / profile / модалки и т.п. из твоей верстки) ... -->
-
   </div>
 
-  <!-- ВЕРНО: путь в папку js -->
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>
