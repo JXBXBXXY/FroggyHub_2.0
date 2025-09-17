@@ -25,6 +25,7 @@ const FH_MESSAGES = [
 
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pickMessage = () => FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
+const debounce = (fn, wait=100) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), wait); }; };
 
 function rectsOverlap(a, b, pad = 0) {
   return !(a.right + pad < b.left || a.left - pad > b.right || a.bottom + pad < b.top || a.top - pad > b.bottom);
@@ -33,7 +34,6 @@ function desiredBubbleCount() {
   const area = window.innerWidth * window.innerHeight;
   return Math.min(80, Math.max(20, Math.round(area / 12000)));
 }
-const debounce = (fn, wait=100) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), wait); }; };
 
 function spawnBubbles(container, count) {
   const placed = [];
@@ -43,7 +43,7 @@ function spawnBubbles(container, count) {
     el.textContent = pickMessage();
     container.appendChild(el);
 
-    // первичная позиция без пересечений
+    // стартовая позиция без пересечений
     const c = container.getBoundingClientRect();
     let tries = 0, x = 0, y = 0, ok = false;
     while (tries++ < 60 && !ok) {
@@ -56,7 +56,7 @@ function spawnBubbles(container, count) {
     }
     requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
 
-    // мягкий жизненный цикл
+    // мягкий цикл появления/исчезновения
     if (!prefersReduced) {
       const anchor = { x, y };
       const loop = () => {
@@ -69,11 +69,12 @@ function spawnBubbles(container, count) {
             const dx = Math.random()*80 - 40;
             const dy = Math.random()*80 - 40;
 
-            // ограничим контейнером
             const { width, height } = el.getBoundingClientRect();
             const nx = Math.max(8, Math.min(c.width  - width  - 8, anchor.x + dx));
             const ny = Math.max(8, Math.min(c.height - height - 8, anchor.y + dy));
-            el.style.left = `${nx}px`; el.style.top = `${ny}px`;
+            el.style.left = `${nx}px`;
+            el.style.top  = `${ny}px`;
+
             el.classList.remove('fh-bubble--out');
             requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
             loop();
@@ -89,7 +90,18 @@ function spawnBubbles(container, count) {
   }
 }
 
-/* -------------------- мини-роутер и экраны -------------------- */
+function bootBubbles() {
+  const root = document.querySelector('.fh-bubbles');
+  if (!root) return;
+  root.innerHTML = '';
+  spawnBubbles(root, desiredBubbleCount());
+  window.addEventListener('resize', debounce(() => {
+    root.innerHTML = '';
+    spawnBubbles(root, desiredBubbleCount());
+  }, 200));
+}
+
+/* -------------------- простая сессия и роут -------------------- */
 
 const LS_KEY = 'fh_session';
 const getSavedSession = () => {
@@ -109,7 +121,6 @@ function show($el) {
 async function route() {
   const hash = (location.hash || '#auth').toLowerCase();
 
-  // пробуем взять кэшированную/актуальную сессию
   let session = getSavedSession();
   if (!session && supa?.auth) {
     const ctrl = new AbortController();
@@ -117,13 +128,12 @@ async function route() {
     try {
       const { data } = await supa.auth.getSession({ signal: ctrl.signal });
       session = data?.session || null;
-    } catch {}
+    } catch { /* ignore */ }
     clearTimeout(t);
     if (session) setSavedSession({ user: session.user, access_token: session.access_token });
   }
 
   const authed = !!session;
-
   if (!authed) {
     show($auth);
     if (hash !== '#auth') location.hash = '#auth';
@@ -134,54 +144,18 @@ async function route() {
   if (hash !== '#home') location.hash = '#home';
 }
 
-/* -------------------- переключение экранов -------------------- */
+/* -------------------- безопасное переключение внутренних экранов -------------------- */
 
 const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
 function showScreen(id) {
   const screens = ALL_SCREENS();
+  if (!screens.length) return; // если на странице нет секций — тихо выходим
   for (const s of screens) {
     const on = s.id === id;
     s.toggleAttribute('hidden', !on);
     s.classList.toggle('visible', on);
   }
 }
-
-// Делегирование по кнопкам с data-go, c поддержкой data-mode для app
-document.addEventListener('click', (e) => {
-  const navBtn = e.target.closest('[data-go]');
-  if (!navBtn) return;
-
-  e.preventDefault();
-  e.stopPropagation(); // чтобы другие слушатели не перебивали
-
-  const to = navBtn.getAttribute('data-go');
-  const mode = navBtn.getAttribute('data-mode') || '';
-
-  // маппинг коротких значений на id секций
-  const map = {
-    menu: 'screen-home',
-    'create-conditions': 'screen-create-conditions',
-    'create-reqs': 'screen-create-reqs',
-    wishlist: 'screen-wishlist',
-    app: 'screen-app',
-    final: 'screen-final',
-    profile: 'screen-profile',
-    'join-name': 'screen-join-name',
-    'join-wishlist': 'screen-join-wishlist',
-    auth: 'screen-auth',
-  };
-
-  // спец-логика: если app + режим создания, идём на первый шаг мастера
-  if (to === 'app' && mode === 'create') {
-    showScreen('screen-create-conditions');
-    return;
-  }
-
-  const targetId = map[to] || to;
-  if (document.getElementById(targetId)) {
-    showScreen(targetId);
-  }
-});
 
 /* -------------------- биндинг UI -------------------- */
 
@@ -251,22 +225,10 @@ function bindAuthForms() {
 
   handle(loginForm, 'login');
   handle(signupForm, 'signup');
-
-  // страховка на случай кнопок без type="submit"
-  document.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-action="login"], [data-action="signup"], .js-login, .js-signup');
-    if (!btn) return;
-    ev.preventDefault();
-    const isLogin = btn.matches('[data-action="login"], .js-login');
-    const form = btn.closest('form') || (isLogin ? loginForm : signupForm);
-    if (!form) return;
-    if (typeof form.requestSubmit === 'function') form.requestSubmit();
-    else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-  });
 }
 
 function bindNav() {
-  // верхнее меню (логотип/кнопки с data-link)
+  // Верхнее меню (data-link)
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-link]');
     if (!btn) return;
@@ -276,9 +238,45 @@ function bindNav() {
     if (to === 'settings') location.hash = '#settings';
   });
 
-  // — БОЛЬШЕ НИКАКИХ отдельный обработчиков для #create-event —
-  // всё делает делегат [data-go] выше
-  // форма «Присоединиться» пусть остаётся с валидацией кода
+  // Делегирование по кнопкам с data-go (фолбэк на отдельные страницы)
+  document.addEventListener('click', (e) => {
+    const navBtn = e.target.closest('[data-go]');
+    if (!navBtn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const to = navBtn.getAttribute('data-go');
+    const mode = navBtn.getAttribute('data-mode') || '';
+
+    // 1) Спец-кейс: «Создать событие» — всегда отдельная страница
+    if (to === 'app' && mode === 'create') {
+      window.location.href = '/event-edit.html';
+      return;
+    }
+
+    // 2) «Присоединиться» может быть формой — здесь не обрабатываем
+
+    // 3) Внутренние экраны (если они реально присутствуют на странице)
+    const map = {
+      menu: 'screen-home',
+      'create-conditions': 'screen-create-conditions',
+      'create-reqs': 'screen-create-reqs',
+      wishlist: 'screen-wishlist',
+      app: 'screen-app',
+      final: 'screen-final',
+      profile: 'screen-profile',
+      'join-name': 'screen-join-name',
+      'join-wishlist': 'screen-join-wishlist',
+      auth: 'screen-auth',
+    };
+    const targetId = map[to] || to;
+    if (document.getElementById(targetId)) {
+      showScreen(targetId);
+    }
+  });
+
+  // Форма «Присоединиться»
   const joinBtn = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
@@ -289,23 +287,13 @@ function bindNav() {
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      showScreen('screen-join-name');
+      // перенаправляем на лобби с кодом
+      window.location.href = `/lobby.html?code=${encodeURIComponent(code)}`;
     });
   }
 }
 
 /* -------------------- bootstrap -------------------- */
-
-function bootBubbles() {
-  const root = document.querySelector('.fh-bubbles');
-  if (!root) return;
-  root.innerHTML = '';
-  spawnBubbles(root, desiredBubbleCount());
-  window.addEventListener('resize', debounce(() => {
-    root.innerHTML = '';
-    spawnBubbles(root, desiredBubbleCount());
-  }, 200));
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   $auth = document.getElementById('screen-auth');
