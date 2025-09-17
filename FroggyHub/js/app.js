@@ -135,7 +135,7 @@ async function route() {
 const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
 function showScreen(id) {
   const target = document.getElementById(id);
-  if (!target) return; // << защита: нет цели — ничего не скрываем
+  if (!target) return; // защита от «пустого экрана»
   const screens = ALL_SCREENS();
   for (const s of screens) {
     const on = s === target;
@@ -269,7 +269,7 @@ function bindNav() {
     if (to === 'settings') location.hash = '#settings';
   });
 
-  // форма «Присоединиться»: теперь переводим на реальную страницу лобби
+  // форма «Присоединиться» — ведём в мастер join
   const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
@@ -281,11 +281,8 @@ function bindNav() {
         return;
       }
       const c = code.toUpperCase();
-      // вариант А: сразу в лобби (просмотр события)
-      window.location.href = `/lobby.html?code=${encodeURIComponent(c)}`;
-
-      // вариант B (если нужен мастер присоединения):
-      // window.location.href = `/hub.html?step=join&code=${encodeURIComponent(c)}`;
+      // 👉 теперь на страницу с вводом имени/RSVP:
+      window.location.href = `/hub.html?step=join&code=${encodeURIComponent(c)}`;
     });
   }
 }
