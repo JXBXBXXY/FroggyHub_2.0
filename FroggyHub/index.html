@@ -110,11 +110,22 @@
       <div class="menu-deck">
         <div class="panel">
           <div class="menu-grid">
-            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
+            <!-- Ссылка вместо кнопки: гарантированный переход -->
+            <a id="create-event" class="btn btn-primary" href="/event-edit.html">Создать событие</a>
 
-            <form id="join-form" class="join-row" autocomplete="off">
-              <input id="join-code" class="input" inputmode="numeric" maxlength="6" placeholder="Введите 6-значный код">
-              <button id="join-btn" type="button" class="btn">Присоединиться</button>
+            <!-- Форма GET на join.html -->
+            <form id="join-form" class="join-row" action="/join.html" method="get" autocomplete="off">
+              <input
+                id="join-code"
+                class="input"
+                name="code"
+                inputmode="text"
+                maxlength="6"
+                pattern="[0-9A-Za-z]{6}"
+                placeholder="Введите 6-значный код"
+                autocapitalize="characters"
+              >
+              <button id="join-btn" type="submit" class="btn">Присоединиться</button>
             </form>
           </div>
         </div>
