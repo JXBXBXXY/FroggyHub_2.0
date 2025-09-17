@@ -103,13 +103,19 @@ function show($el) {
   if ($el) $el.classList.add('visible');
 }
 
+/**
+ * Исправление: НЕ форсируем показ экрана авторизации.
+ * Показываем авторизацию только если пользователь явно перешёл на #auth.
+ * И никогда не меняем hash из кода.
+ */
 async function route() {
-  const hash = (location.hash || '#auth').toLowerCase();
+  const hash = (location.hash || '').toLowerCase();
 
+  // опционально обновим кэш сессии (необязательно для показа экрана)
   let session = getSavedSession();
   if (!session && supa?.auth) {
     const ctrl = new AbortController();
-    const t = setTimeout(()=>ctrl.abort(), 1500);
+    const t = setTimeout(()=>ctrl.abort(), 1200);
     try {
       const { data } = await supa.auth.getSession({ signal: ctrl.signal });
       session = data?.session || null;
@@ -118,16 +124,13 @@ async function route() {
     if (session) setSavedSession({ user: session.user, access_token: session.access_token });
   }
 
-  const authed = !!session;
-
-  if (!authed) {
+  if (hash === '#auth' && $auth) {
     show($auth);
-    if (hash !== '#auth') location.hash = '#auth';
     return;
   }
 
+  // по умолчанию — домашний
   show($home);
-  if (hash !== '#home') location.hash = '#home';
 }
 
 /* -------------------- переключение экранов -------------------- */
@@ -135,7 +138,7 @@ async function route() {
 const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
 function showScreen(id) {
   const target = document.getElementById(id);
-  if (!target) return; // защита от «пустого экрана»
+  if (!target) return;
   const screens = ALL_SCREENS();
   for (const s of screens) {
     const on = s === target;
@@ -234,7 +237,6 @@ function bindAuthForms() {
 
         if (ok && session) {
           setSavedSession({ user: session.user, access_token: session.access_token });
-          location.hash = '#home';
           await route();
         }
       } catch (e) {
@@ -269,20 +271,29 @@ function bindNav() {
     if (to === 'settings') location.hash = '#settings';
   });
 
-  // форма «Присоединиться» — ведём в мастер join
+  // создать событие
+  const createBtn = document.getElementById('create-event');
+  if (createBtn) {
+    createBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      // прямой переход на форму редактирования события
+      window.location.href = '/event-edit.html';
+    });
+  }
+
+  // форма «Присоединиться» — ведём на отдельную страницу ввод/RSVP
   const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
     joinBtn.addEventListener('click', () => {
-      const code = (joinInput.value || '').trim();
-      if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code.toUpperCase())) {
+      const raw = (joinInput.value || '').trim();
+      const code = raw.replace(/[^0-9A-Z]/gi, '').toUpperCase();
+      if (!/^[0-9A-Z]{6}$/.test(code)) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      const c = code.toUpperCase();
-      // 👉 теперь на страницу с вводом имени/RSVP:
-      window.location.href = `/join.html?code=${encodeURIComponent(c)}`;
+      window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
     });
   }
 }
