@@ -134,6 +134,47 @@ async function route() {
   if (hash !== '#home') location.hash = '#home';
 }
 
+/* -------------------- переключение экранов -------------------- */
+
+// Показ экрана по id (работает с hidden + класс .visible)
+const ALL_SCREENS = () => Array.from(document.querySelectorAll('.screen'));
+function showScreen(id) {
+  const screens = ALL_SCREENS();
+  for (const s of screens) {
+    const on = s.id === id;
+    s.toggleAttribute('hidden', !on);
+    s.classList.toggle('visible', on);
+  }
+}
+
+// Делегирование по кнопкам с data-go="..."
+document.addEventListener('click', (e) => {
+  const navBtn = e.target.closest('[data-go]');
+  if (!navBtn) return;
+  e.preventDefault();
+
+  const to = navBtn.getAttribute('data-go');
+
+  // маппинг коротких значений на id секций
+  const map = {
+    menu: 'screen-home',
+    'create-conditions': 'screen-create-conditions',
+    'create-reqs': 'screen-create-reqs',
+    wishlist: 'screen-wishlist',
+    app: 'screen-app',
+    final: 'screen-final',
+    profile: 'screen-profile',
+    'join-name': 'screen-join-name',
+    'join-wishlist': 'screen-join-wishlist',
+    auth: 'screen-auth',
+  };
+
+  const targetId = map[to] || to;
+  if (document.getElementById(targetId)) {
+    showScreen(targetId);
+  }
+});
+
 /* -------------------- биндинг UI -------------------- */
 
 function bindTabs() {
@@ -195,7 +236,6 @@ function bindAuthForms() {
           await route();
         }
       } catch (e) {
-        // можно вывести toast
         console.error(e);
       }
     });
@@ -218,6 +258,7 @@ function bindAuthForms() {
 }
 
 function bindNav() {
+  // верхнее меню (логотип/кнопки с data-link)
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-link]');
     if (!btn) return;
@@ -227,13 +268,13 @@ function bindNav() {
     if (to === 'settings') location.hash = '#settings';
   });
 
-  // кнопки в главном меню
+  // кнопка «Создать событие»
   const createBtn = document.getElementById('create-event');
   if (createBtn) createBtn.addEventListener('click', () => {
-    // пока просто идём на #home (как в роутере), тут можно включить следующий экран
-    alert('Создание события (заглушка). Можно навесить переход на нужный экран).');
+    showScreen('screen-create-conditions'); // первый шаг создания
   });
 
+  // форма «Присоединиться»
   const joinBtn = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
@@ -244,7 +285,8 @@ function bindNav() {
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
         return;
       }
-      alert(`Проверка кода ${code} (заглушка).`);
+      // переход к шагу ввода имени (или куда тебе нужно)
+      showScreen('screen-join-name');
     });
   }
 }
