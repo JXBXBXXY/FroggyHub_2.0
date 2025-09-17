@@ -59,7 +59,7 @@
       <section id="lobby-right" class="lobby-right card">
         <h2 id="evTitle">Событие</h2>
 
-        <!-- НОВОЕ: Код приглашения + копирование -->
+        <!-- Код приглашения + копирование -->
         <div class="codeRow">
           <div><strong>Код:</strong> <b id="evCode">—</b></div>
           <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
@@ -194,6 +194,54 @@
     ['guestYes','guestNo','guestMaybe'].forEach(id=>{
       const ul = $(id); if (!ul) return; ul.innerHTML = '';
     });
+
+    // ---------- ВАЖНО: сохраняем событие в БД через Netlify Function ----------
+    async function persistEventOnce() {
+      try {
+        // чтобы не слать повторно: помечаем, что этот код уже сохранён
+        if (draft.savedToDbForCode === String(draft.code)) return;
+
+        // собираем полезные поля под серверную схему
+        const payload = {
+          code: String(draft.code),
+          title: draft.title || 'Моё событие',
+          date: draft.date || null,
+          time: draft.time || null,
+          address: draft.address || null,
+          dress_code: draft.dress || null,
+          what_to_bring: draft.bring || null,
+          comment: draft.notes || null
+        };
+
+        const res = await fetch('/.netlify/functions/event-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.event?.id) {
+          console.error('event-create failed:', data);
+          // не спамим алертами, но один раз скажем
+          if (!draft._saveWarned) {
+            alert('Не удалось сохранить событие. Проверьте интернет или попробуйте ещё раз.');
+            draft._saveWarned = true;
+          }
+          return;
+        }
+
+        // успех: запомним id и флажок, чтобы больше не слать
+        draft.id = data.event.id;
+        draft.savedToDbForCode = String(draft.code);
+        writeDraft(draft);
+        console.log('Событие сохранено в БД:', draft.code, draft.id);
+      } catch (e) {
+        console.error('persistEventOnce error', e);
+      }
+    }
+
+    // запускаем сохранение сразу после отрисовки страницы
+    persistEventOnce();
   </script>
 </body>
 </html>
