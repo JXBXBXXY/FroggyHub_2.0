@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Присоединиться к событию — FroggyHub</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <style>
+    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
+    .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
+    .join-card{max-width:720px;width:min(720px,100%);margin:0 auto}
+    .status-row{display:flex;gap:.5rem;flex-wrap:wrap}
+    .status-row .btn{min-width:120px}
+    .muted{opacity:.8}
+  </style>
+</head>
+<body data-page="join">
+  <div class="fh-bg" aria-hidden="true"></div>
+  <div class="fh-content">
+    <main class="card join-card">
+      <h1 id="evTitle">Присоединиться к событию</h1>
+      <p class="muted">Код: <strong id="evCode">—</strong></p>
+
+      <form id="joinForm" class="grid" autocomplete="off">
+        <label>Ваше имя
+          <input id="guestName" name="guestName" required minlength="2" placeholder="Например, Анна" />
+        </label>
+
+        <fieldset>
+          <legend>Статус</legend>
+          <div class="status-row">
+            <label class="btn btn--ghost">
+              <input type="radio" name="status" value="yes" checked hidden> Иду
+            </label>
+            <label class="btn btn--ghost">
+              <input type="radio" name="status" value="no" hidden> Не иду
+            </label>
+            <label class="btn btn--ghost">
+              <input type="radio" name="status" value="maybe" hidden> Может быть
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="grid" style="grid-template-columns:1fr auto;gap:.75rem;align-items:center">
+          <a class="btn btn--ghost" href="/index.html">Отмена</a>
+          <button id="joinSubmit" type="submit" class="btn btn--primary">Присоединиться</button>
+        </div>
+
+        <p id="joinError" class="error" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supa } from '/js/api.js';
+
+    const params = new URLSearchParams(location.search);
+    const codeRaw = (params.get('code') || '').trim();
+    const code = codeRaw.toUpperCase();
+    const evTitleEl = document.getElementById('evTitle');
+    const evCodeEl  = document.getElementById('evCode');
+    const form      = document.getElementById('joinForm');
+    const errorEl   = document.getElementById('joinError');
+
+    if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
+      errorEl.textContent = 'Некорректный код приглашения.';
+      form.querySelector('button[type="submit"]').disabled = true;
+    }
+    evCodeEl.textContent = code || '—';
+
+    let eventRow = null;
+
+    async function loadEvent() {
+      // Ищем по code ИЛИ по join_code (поддерживаем оба варианта)
+      const { data, error } = await supa
+        .from('events')
+        .select('id,title,code,join_code')
+        .or(`code.eq.${code},join_code.eq.${code}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) {
+        errorEl.textContent = 'Событие с таким кодом не найдено.';
+        form.querySelector('button[type="submit"]').disabled = true;
+        return;
+      }
+      eventRow = data;
+      evTitleEl.textContent = `Присоединиться: ${data.title}`;
+      // Где-то далее можно показать дату/время, если нужно
+    }
+
+    // Кнопочные радиокнопки (визуалка)
+    document.querySelectorAll('label.btn input[type="radio"]').forEach(input => {
+      input.addEventListener('change', () => {
+        document.querySelectorAll('label.btn').forEach(l => l.classList.remove('btn--primary'));
+        input.closest('label.btn').classList.add('btn--primary');
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+
+      const guestName = (form.guestName.value || '').trim();
+      const status = (form.querySelector('input[name="status"]:checked')?.value) || 'yes';
+
+      if (!guestName || !eventRow) return;
+
+      // Вставляем/обновляем RSVP. Предполагаем схему:
+      // rsvps(id, event_id bigint, user_id uuid null, guest_name text, status text, created_at timestamptz default now())
+      const payload = { event_id: eventRow.id, guest_name: guestName, status };
+
+      const { error } = await supa.from('rsvps').upsert(payload, {
+        onConflict: 'event_id,guest_name' // чтобы одно имя в ивенте было уникальным
+      });
+
+      if (error) {
+        console.error(error);
+        errorEl.textContent = 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
+        return;
+      }
+
+      // Успех — ведём пользователя в лобби этого события
+      const targetCode = eventRow.code || eventRow.join_code || code;
+      window.location.href = `/lobby.html?code=${encodeURIComponent(targetCode)}`;
+    });
+
+    loadEvent();
+  </script>
+</body>
+</html>
