@@ -1,7 +1,9 @@
+// api.js
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const SUPABASE_URL = 'https://smamhlfzerjkdfhtwhdv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtYW1obGZ6ZXJqa2RmaHR3aGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUxMzQ0MzYsImV4cCI6MjA3MDcxMDQzNn0.PwRF3OAtlpJ7zu2lsIb46V7XLINlyhfC97Jgbu--Vv4';
 
 export const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -14,7 +16,7 @@ export const supa = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 export const getSession  = () => supa.auth.getSession().then(r => r.data.session);
-export const onAuthState = (cb) => supa.auth.onAuthStateChange((_e, session) => cb(session));
+export const onAuthState = (cb) => supa.auth.onAuthStateChange((_evt, session) => cb(session));
 export const signIn      = (email, password) => supa.auth.signInWithPassword({ email, password });
 export const signUp      = (email, password) => supa.auth.signUp({ email, password });
 export const signOut     = () => supa.auth.signOut();
@@ -24,10 +26,11 @@ export async function getProfile() {
   return data;
 }
 
-export const TOKEN_KEY = 'fh:token';
-export const getToken  = () => localStorage.getItem(TOKEN_KEY);
-export const setToken  = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+// вспомогательный токен для своих функций (если понадобится)
+export const TOKEN_KEY   = 'fh:token';
+export const getToken    = () => localStorage.getItem(TOKEN_KEY);
+export const setToken    = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
+export const clearToken  = () => localStorage.removeItem(TOKEN_KEY);
 
 export async function nf(path, opts = {}) {
   const token = getToken();
@@ -42,7 +45,9 @@ export async function nf(path, opts = {}) {
 
   if (res.status === 401) {
     clearToken();
-    if (location.pathname !== '/' && location.pathname !== '/index.html') location.href = '/';
+    if (location.pathname !== '/' && location.pathname !== '/index.html') {
+      location.href = '/';
+    }
     return { success: false, error: 'unauthorized' };
   }
   return res.json();
