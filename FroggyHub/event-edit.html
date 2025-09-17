@@ -12,34 +12,96 @@
   <main class="container" role="main">
     <form id="editForm" class="card grid edit-form" aria-describedby="editError">
       <h1>Редактировать событие</h1>
+
       <label>Название
         <input id="editTitle" required aria-required="true" />
       </label>
+
       <label>Дата
         <input id="editDate" type="date" required aria-required="true" />
       </label>
+
       <label>Время
         <input id="editTime" type="time" required aria-required="true" />
       </label>
+
       <label>Адрес
         <input id="editAddress" />
       </label>
+
       <label>Заметки
-        <textarea id="editNotes"></textarea>
+        <textarea id="editNotes" rows="3"></textarea>
       </label>
+
       <label>Дресс-код
         <input id="editDress" />
       </label>
+
       <label>Что взять
         <input id="editBring" />
       </label>
+
       <div class="save-row">
         <button id="saveEvent" type="submit" class="btn btn--primary">Сохранить</button>
       </div>
     </form>
+
     <p id="editError" class="error" role="status" aria-live="polite"></p>
   </main>
+
+  <!-- Твой общий модуль (оставляем, если он нужен для стилей/общих хендлеров) -->
   <script type="module" src="js/app.js"></script>
+
+  <!-- Локальный сценарий страницы редактирования: валидируем и уходим на вишлист -->
+  <script type="module">
+    const form = document.getElementById('editForm');
+    const err  = document.getElementById('editError');
+
+    // Куда переводим после сохранения
+    const NEXT_URL = '/lobby.html?step=wishlist';
+
+    // Подхват черновика из sessionStorage (если вернулись назад)
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || 'null');
+      if (draft) {
+        document.getElementById('editTitle').value   = draft.title   || '';
+        document.getElementById('editDate').value    = draft.date    || '';
+        document.getElementById('editTime').value    = draft.time    || '';
+        document.getElementById('editAddress').value = draft.address || '';
+        document.getElementById('editNotes').value   = draft.notes   || '';
+        document.getElementById('editDress').value   = draft.dress   || '';
+        document.getElementById('editBring').value   = draft.bring   || '';
+      }
+    } catch {}
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const title   = document.getElementById('editTitle').value.trim();
+      const date    = document.getElementById('editDate').value;
+      const time    = document.getElementById('editTime').value;
+      const address = document.getElementById('editAddress').value.trim();
+      const notes   = document.getElementById('editNotes').value.trim();
+      const dress   = document.getElementById('editDress').value.trim();
+      const bring   = document.getElementById('editBring').value.trim();
+
+      // Простая валидация обязательных полей
+      if (!title || !date || !time) {
+        err.textContent = 'Пожалуйста заполните «Название», «Дата» и «Время».';
+        return;
+      }
+      err.textContent = '';
+
+      // Сохраняем черновик для следующего шага (лоби может его подхватить)
+      const draft = { title, date, time, address, notes, dress, bring, updatedAt: Date.now() };
+      try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft)); } catch {}
+
+      // Переход на шаг создания вишлиста
+      window.location.assign(NEXT_URL);
+    });
+  </script>
+
+  <!-- Cookie-карта и тосты (как у тебя) -->
   <div id="cookieCard" class="card" style="display:none">
     <svg id="cookieSvg" viewBox="0 0 24 24" aria-hidden="true">
       <g><path d="M12 2a5 5 0 0 0 5 5 5 5 0 0 0 5 5 10 10 0 1 1-10-10z"/></g>
@@ -53,6 +115,7 @@
       <button class="btn btn--ghost declineButton" id="cookieDecline">Только необходимые</button>
     </div>
   </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
