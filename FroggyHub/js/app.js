@@ -166,7 +166,7 @@ function bindAuthForms() {
 
         if (ok && session) {
           setSavedSession({ user: session.user, access_token: session.access_token });
-          // удаляем auth-экран, чтобы менеджеры паролей его не видели
+          // убираем auth-экран, чтобы менеджеры паролей его не «подсвечивали»
           document.getElementById('screen-auth')?.remove();
           showScreen('screen-home');
         }
@@ -210,8 +210,8 @@ function bindIndexNav() {
   const joinInput = document.getElementById('join-code');
   if (joinBtn && joinInput) {
     joinBtn.addEventListener('click', () => {
-      const raw = (joinInput.value || '').trim();
-      const code = raw.toUpperCase();
+      const raw  = (joinInput.value || '').trim();
+      const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,''); // на всякий
       if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
@@ -235,16 +235,16 @@ function bindEventEditPage() {
     e.preventDefault();
     const fd = new FormData(form);
     const payload = {
-      title: fd.get('title') || fd.get('editTitle') || document.getElementById('editTitle')?.value || '',
+      title: (fd.get('title') || fd.get('editTitle') || document.getElementById('editTitle')?.value || '').toString().trim(),
       date:  fd.get('date')  || document.getElementById('editDate')?.value  || null,
       time:  fd.get('time')  || document.getElementById('editTime')?.value  || null,
-      address: fd.get('address') || document.getElementById('editAddress')?.value || '',
-      comment: fd.get('notes') || document.getElementById('editNotes')?.value || '',
-      dress_code: fd.get('dress') || document.getElementById('editDress')?.value || '',
-      what_to_bring: fd.get('bring') || document.getElementById('editBring')?.value || ''
+      address: (fd.get('address') || document.getElementById('editAddress')?.value || '').toString().trim(),
+      comment: (fd.get('notes') || document.getElementById('editNotes')?.value || '').toString().trim(),
+      dress_code: (fd.get('dress') || document.getElementById('editDress')?.value || '').toString().trim(),
+      what_to_bring: (fd.get('bring') || document.getElementById('editBring')?.value || '').toString().trim()
     };
 
-    // запасной план — коды на клиенте, если нет триггера в БД
+    // fallback — коды на клиенте (если нет серверного триггера)
     payload.code = randomDigits(6);
     payload.join_code = randomCode(6);
 
@@ -256,14 +256,14 @@ function bindEventEditPage() {
 
       if (error) throw error;
 
-      // в черновик на всякий
+      // черновик — полезно для восстановления формы
       sessionStorage.setItem('fh:draftEvent', JSON.stringify({ id: data.id, ...payload }));
 
       // сразу на страницу вишлиста
       window.location.href = `/wishlist.html?event=${data.id}`;
     } catch (err) {
       console.error(err);
-      alert('Не удалось сохранить событие. Проверьте подключение к базе.');
+      alert('Не удалось сохранить событие. Проверь подключение к базе.');
     }
   });
 }
@@ -272,17 +272,19 @@ function bindEventEditPage() {
 
 function bindJoinPage() {
   const params = new URLSearchParams(location.search);
-  const code = (params.get('code') || '').toUpperCase();
+  const codeParam  = (params.get('code') || '').toString().trim().toUpperCase();
+  const eventIdParam = params.get('event') ? Number(params.get('event')) : null;
+
   const nameInput = document.querySelector('#join-name, [name="name"]');
-  const btnJoin = document.getElementById('btn-join');
-  const statusWrap = document.getElementById('join-status-wrap') || document;
-  const errorBox = document.getElementById('join-error');
+  const btnJoin   = document.getElementById('btn-join');
+  const statusWrap= document.getElementById('join-status-wrap') || document;
+  const errorBox  = document.getElementById('join-error');
+  const codeHolder= document.getElementById('join-code-text');
 
-  if (!code || !nameInput || !btnJoin) return;
+  if (!nameInput || !btnJoin) return;
 
-  // показать код
-  const codeHolder = document.getElementById('join-code-text');
-  if (codeHolder) codeHolder.textContent = code;
+  // визуально показываем, что ввёл пользователь
+  if (codeHolder && codeParam) codeHolder.textContent = codeParam;
 
   let picked = 'yes';
   statusWrap.addEventListener('click', (e)=>{
@@ -292,37 +294,61 @@ function bindJoinPage() {
     [...statusWrap.querySelectorAll('[data-rsvp]')].forEach(x=>x.classList.toggle('is-active', x===b));
   });
 
-  async function findEventByCode(c) {
-    const { data, error } = await supa
-      .from('events')
-      .select('id, code, join_code, title')
-      // важное исправление: ищем и по code, и по join_code
-      .or(`code.eq.${c},join_code.eq.${c}`)
-      .limit(1)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
+  async function findEvent() {
+    try {
+      // Если пришли по id — это приоритетно и надёжно
+      if (eventIdParam) {
+        const { data, error } = await supa
+          .from('events')
+          .select('id, code, join_code, title')
+          .eq('id', eventIdParam)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+      // Иначе ищем по коду (любой: числовой или буквенный)
+      if (codeParam) {
+        const code = codeParam.replace(/[^A-Z0-9]/g, '');
+        const { data, error } = await supa
+          .from('events')
+          .select('id, code, join_code, title')
+          .or(`code.eq.${code},join_code.eq.${code}`)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+      return null;
+    } catch (e) {
+      console.error('[join] findEvent error:', e);
+      return null;
+    }
   }
 
   btnJoin.addEventListener('click', async ()=>{
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
+
+    // чистим ошибку
+    if (errorBox) errorBox.textContent = '';
+
+    const ev = await findEvent();
+    if (!ev) {
+      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено. Проверь код или попроси у создателя ссылку.';
+      return;
+    }
+
     try {
-      if (errorBox) errorBox.textContent = '';
-      const ev = await findEventByCode(code);
-      if (!ev) {
-        if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
-        return;
-      }
       const { error } = await supa.from('rsvps').insert({
         event_id: ev.id,
         user_name: name,
         status: picked
       });
       if (error) throw error;
+
+      // В лобби события
       window.location.href = `/lobby.html?event=${ev.id}`;
     } catch (err) {
-      console.error(err);
+      console.error('[join] insert rsvp error:', err);
       if (errorBox) errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.';
     }
   });
@@ -354,7 +380,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const session = await ensureSession();
   if (session) {
-    // убираем auth из DOM, чтобы не мешал менеджерам паролей
     document.getElementById('screen-auth')?.remove();
     showScreen('screen-home');
   } else {
