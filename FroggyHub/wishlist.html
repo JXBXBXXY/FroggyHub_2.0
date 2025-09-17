@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wishlist — FroggyHub</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <style>
+    .page { max-width: 980px; margin: 32px auto; padding: 0 16px; }
+    .wl-card { padding: 24px; }
+    .wl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .wl-grid { display:flex; flex-wrap:wrap; gap:10px; }
+    .wl-grid .chip { display:inline-flex; align-items:center; gap:.5rem; }
+    .wl-grid .chip button { margin-left:.25rem }
+  </style>
+</head>
+<body>
+  <header class="fh-header">
+    <a class="fh-logo" href="/">FroggyHub</a>
+    <nav class="topbar">
+      <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
+      <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
+      <a href="/lobby.html" class="btn btn--ghost btn--sm">К событию</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section class="card wl-card">
+      <div class="wl-head">
+        <h2>Wishlist</h2>
+        <div class="hint" id="wlEventTitle" aria-live="polite"></div>
+      </div>
+
+      <form id="form-wish-add" class="row" autocomplete="off">
+        <input id="w-title" class="input" placeholder="Название/тема" />
+        <input id="w-url" class="input" placeholder="Ссылка (необязательно)" />
+        <button class="btn" type="submit">Добавить</button>
+      </form>
+
+      <ul id="wishlist-box" class="wl-grid" style="margin-top:1rem"></ul>
+
+      <div class="row end" style="margin-top:1rem">
+        <button id="btn-wishlist-cancel" class="btn btn--ghost" type="button">Назад</button>
+        <button id="btn-wishlist-done" class="btn btn-primary" type="button">Готово</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module">
+    // 1) Подхватываем черновик события из sessionStorage (его кладёт event-edit.html)
+    let draft = {};
+    try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch {}
+
+    // Заголовок в правом углу
+    const wlTitle = document.getElementById('wlEventTitle');
+    wlTitle.textContent = draft?.title ? `Для события: “${draft.title}”` : '';
+
+    // 2) Локальное состояние вишлиста
+    const state = Array.isArray(draft?.wishlist) ? [...draft.wishlist] : [];
+
+    const form = document.getElementById('form-wish-add');
+    const list = document.getElementById('wishlist-box');
+    const btnDone = document.getElementById('btn-wishlist-done');
+    const btnCancel = document.getElementById('btn-wishlist-cancel');
+
+    function render() {
+      list.innerHTML = '';
+      if (state.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'hint';
+        li.textContent = 'Добавьте хотя бы один пункт…';
+        list.appendChild(li);
+        return;
+      }
+      state.forEach((item, i) => {
+        const li = document.createElement('li');
+        li.className = 'chip';
+        li.innerHTML = item.url
+          ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>`
+          : `${item.title}`;
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn btn--ghost btn--sm';
+        del.textContent = '✕';
+        del.addEventListener('click', () => {
+          state.splice(i, 1);
+          render();
+        });
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('w-title').value.trim();
+      const url   = document.getElementById('w-url').value.trim();
+      if (!title) return;
+      state.push({ title, url });
+      document.getElementById('w-title').value = '';
+      document.getElementById('w-url').value = '';
+      render();
+    });
+
+    btnCancel.addEventListener('click', () => {
+      // просто вернёмся в лобби не меняя wishlist
+      location.href = '/lobby.html';
+    });
+
+    btnDone.addEventListener('click', () => {
+      try {
+        const d = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
+        d.wishlist = state;
+        sessionStorage.setItem('fh:draftEvent', JSON.stringify(d));
+      } catch {}
+      // после заполнения — в лобби
+      location.href = '/lobby.html';
+    });
+
+    render();
+  </script>
+</body>
+</html>
