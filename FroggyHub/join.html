@@ -15,6 +15,7 @@
     .status-row{display:flex;gap:.5rem;flex-wrap:wrap}
     .status-row .btn{min-width:120px}
     .muted{opacity:.8}
+    .hidden{display:none}
   </style>
 </head>
 <body data-page="join">
@@ -50,49 +51,26 @@
         </div>
 
         <p id="joinError" class="error" role="status" aria-live="polite"></p>
+        <p id="joinOk" class="success hidden" role="status" aria-live="polite">Готово! Перенаправляю…</p>
       </form>
     </main>
   </div>
 
   <script type="module">
-    import { supa } from '/js/api.js';
-
+    // --- helpers ---
+    const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
     const codeRaw = (params.get('code') || '').trim();
     const code = codeRaw.toUpperCase();
-    const evTitleEl = document.getElementById('evTitle');
-    const evCodeEl  = document.getElementById('evCode');
-    const form      = document.getElementById('joinForm');
-    const errorEl   = document.getElementById('joinError');
 
-    if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
-      errorEl.textContent = 'Некорректный код приглашения.';
-      form.querySelector('button[type="submit"]').disabled = true;
-    }
-    evCodeEl.textContent = code || '—';
+    const evTitleEl = $('evTitle');
+    const evCodeEl  = $('evCode');
+    const form      = $('joinForm');
+    const errorEl   = $('joinError');
+    const okEl      = $('joinOk');
+    const submitBtn = $('joinSubmit');
 
-    let eventRow = null;
-
-    async function loadEvent() {
-      // Ищем по code ИЛИ по join_code (поддерживаем оба варианта)
-      const { data, error } = await supa
-        .from('events')
-        .select('id,title,code,join_code')
-        .or(`code.eq.${code},join_code.eq.${code}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (error || !data) {
-        errorEl.textContent = 'Событие с таким кодом не найдено.';
-        form.querySelector('button[type="submit"]').disabled = true;
-        return;
-      }
-      eventRow = data;
-      evTitleEl.textContent = `Присоединиться: ${data.title}`;
-      // Где-то далее можно показать дату/время, если нужно
-    }
-
-    // Кнопочные радиокнопки (визуалка)
+    // визуальный тумблер для "кнопочных" радиокнопок
     document.querySelectorAll('label.btn input[type="radio"]').forEach(input => {
       input.addEventListener('change', () => {
         document.querySelectorAll('label.btn').forEach(l => l.classList.remove('btn--primary'));
@@ -100,35 +78,93 @@
       });
     });
 
+    // показываем код
+    evCodeEl.textContent = code || '—';
+
+    // базовая валидация кода
+    if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
+      errorEl.textContent = 'Некорректный код приглашения.';
+      submitBtn.disabled = true;
+    }
+
+    let eventRow = null;
+
+    // грузим событие через серверную функцию (без прямого доступа к Supabase)
+    async function loadEvent() {
+      if (!code) return;
+      errorEl.textContent = '';
+      try {
+        const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
+        const data = await r.json();
+        if (!r.ok) {
+          errorEl.textContent = data?.error || 'Событие с таким кодом не найдено.';
+          submitBtn.disabled = true;
+          return;
+        }
+        eventRow = data;
+        evTitleEl.textContent = `Присоединиться: ${data.title}`;
+        submitBtn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        errorEl.textContent = 'Не удалось загрузить событие. Проверьте интернет.';
+        submitBtn.disabled = true;
+      }
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorEl.textContent = '';
+      okEl.classList.add('hidden');
 
-      const guestName = (form.guestName.value || '').trim();
-      const status = (form.querySelector('input[name="status"]:checked')?.value) || 'yes';
-
-      if (!guestName || !eventRow) return;
-
-      // Вставляем/обновляем RSVP. Предполагаем схему:
-      // rsvps(id, event_id bigint, user_id uuid null, guest_name text, status text, created_at timestamptz default now())
-      const payload = { event_id: eventRow.id, guest_name: guestName, status };
-
-      const { error } = await supa.from('rsvps').upsert(payload, {
-        onConflict: 'event_id,guest_name' // чтобы одно имя в ивенте было уникальным
-      });
-
-      if (error) {
-        console.error(error);
-        errorEl.textContent = 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
+      if (!eventRow?.id) {
+        errorEl.textContent = 'Событие не найдено.';
         return;
       }
 
-      // Успех — ведём пользователя в лобби этого события
-      const targetCode = eventRow.code || eventRow.join_code || code;
-      window.location.href = `/lobby.html?code=${encodeURIComponent(targetCode)}`;
+      const guestName = (form.guestName.value || '').trim();
+      const status = (form.querySelector('input[name="status"]:checked')?.value) || 'yes';
+      if (guestName.length < 2) {
+        errorEl.textContent = 'Введите имя (минимум 2 символа).';
+        return;
+      }
+
+      submitBtn.disabled = true;
+
+      try {
+        // отправляем RSVP на серверную функцию
+        const r = await fetch('/.netlify/functions/events-rsvp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: eventRow.id,      // надёжнее, чем по коду
+            guest_name: guestName,
+            status
+          })
+        });
+        const res = await r.json().catch(() => ({}));
+
+        if (!r.ok || res?.error) {
+          console.error('RSVP error:', res);
+          errorEl.textContent = res?.error || 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
+          submitBtn.disabled = false;
+          return;
+        }
+
+        okEl.classList.remove('hidden');
+
+        // успех — ведём пользователя в лобби (код берём из БД, иначе — из URL)
+        const targetCode = eventRow.code || eventRow.join_code || code;
+        setTimeout(() => {
+          window.location.href = `/lobby.html?code=${encodeURIComponent(targetCode)}`;
+        }, 400);
+      } catch (e) {
+        console.error(e);
+        errorEl.textContent = 'Не получилось отправить ответ. Проверьте интернет.';
+        submitBtn.disabled = false;
+      }
     });
 
-    loadEvent();
+    await loadEvent();
   </script>
 </body>
 </html>
