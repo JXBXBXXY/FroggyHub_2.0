@@ -282,7 +282,7 @@ function bindNav() {
       }
       const c = code.toUpperCase();
       // 👉 теперь на страницу с вводом имени/RSVP:
-      window.location.href = `/hub.html?step=join&code=${encodeURIComponent(c)}`;
+      window.location.href = `/join.html?code=${encodeURIComponent(c)}`;
     });
   }
 }
