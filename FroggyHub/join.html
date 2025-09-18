@@ -3,187 +3,260 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Присоединиться к событию — FroggyHub</title>
+  <title>Лобби — FroggyHub</title>
   <link rel="stylesheet" href="/style.css" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
-    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
+    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
+    @media (min-width:640px){.fh-bg{background-position:center}}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
-    .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
-    .join-card{max-width:720px;width:min(720px,100%);margin:0 auto}
-    .status-row{display:flex;gap:.5rem;flex-wrap:wrap}
-    .status-row .btn{min-width:120px}
-    .muted{opacity:.8}
-    .hidden{display:none}
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem}
+    .lobby-grid{max-width:1200px;margin:40px auto;display:grid;gap:24px;grid-template-columns:minmax(280px,1fr) minmax(420px,620px);align-items:start}
+    .countdown-big{font-size:clamp(48px,8vw,96px);font-weight:800}
+    .countdown-small{opacity:.85;margin-top:.25rem}
+    .event-grid{display:grid;gap:.5rem 1rem;grid-template-columns:auto 1fr;margin-bottom:1rem}
+    .event-grid>div{display:contents}
+    .event-grid strong{opacity:.85}
+    .codeRow{display:flex;align-items:center;gap:.5rem;margin:.5rem 0 1rem}
+    #evCode{font-variant-numeric:tabular-nums}
+    .guests-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:1rem}
+    .guests-columns h4{margin-bottom:.5rem}
+    .muted{opacity:.75}
   </style>
 </head>
-<body data-page="join">
+<body data-page="lobby">
   <div class="fh-bg" aria-hidden="true"></div>
+
   <div class="fh-content">
-    <main class="card join-card">
-      <h1 id="pageTitle">Присоединиться к событию</h1>
+    <header class="fh-header">
+      <a class="fh-logo" href="/">FroggyHub</a>
+      <nav class="topbar">
+        <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
+        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
+        <a href="/wishlist.html" class="btn btn--ghost btn--sm">Редактировать wishlist</a>
+      </nav>
+    </header>
 
-      <!-- Шаг А: ввод кода -->
-      <form id="step-code" class="grid hidden" autocomplete="off">
-        <label>Код приглашения
-          <input id="codeInput" inputmode="numeric" pattern="\\d{6}" maxlength="6" placeholder="123456" />
-        </label>
-        <div class="grid" style="grid-template-columns:auto auto;gap:.75rem;align-items:center">
-          <a class="btn btn--ghost" href="/index.html">Отмена</a>
-          <button type="submit" class="btn btn--primary">Дальше</button>
+    <main class="lobby-grid">
+      <section id="lobby-left" class="lobby-left">
+        <div class="frog-hero"></div>
+        <div class="countdown">
+          <div class="countdown-big" id="cdBig">00:00</div>
+          <div class="countdown-small" id="cdSmall">—</div>
         </div>
-        <p class="muted">Вставьте код из приглашения и нажмите «Дальше».</p>
-        <p id="codeError" class="error" role="status" aria-live="polite"></p>
-      </form>
+      </section>
 
-      <!-- Шаг B: имя + статус -->
-      <p id="codeInfo" class="muted hidden">Код: <strong id="evCode">—</strong></p>
-      <form id="step-rsvp" class="grid hidden" autocomplete="off">
-        <label>Ваше имя
-          <input id="guestName" name="guestName" required minlength="2" placeholder="Например, Анна" />
-        </label>
+      <section id="lobby-right" class="lobby-right card">
+        <h2 id="evTitle">Событие</h2>
 
-        <fieldset>
-          <legend>Статус</legend>
-          <div class="status-row">
-            <label class="btn btn--ghost"><input type="radio" name="status" value="yes" checked hidden> Иду</label>
-            <label class="btn btn--ghost"><input type="radio" name="status" value="no" hidden> Не иду</label>
-            <label class="btn btn--ghost"><input type="radio" name="status" value="maybe" hidden> Может быть</label>
-          </div>
-        </fieldset>
-
-        <div class="grid" style="grid-template-columns:1fr auto;gap:.75rem;align-items:center">
-          <a class="btn btn--ghost" href="/index.html">Отмена</a>
-          <button id="joinSubmit" type="submit" class="btn btn--primary">Присоединиться</button>
+        <div class="codeRow">
+          <div><strong>Код:</strong> <b id="evCode">—</b></div>
+          <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
         </div>
 
-        <p id="joinError" class="error" role="status" aria-live="polite"></p>
-        <p id="joinOk" class="success hidden" role="status" aria-live="polite">Готово! Открою список подарков…</p>
-      </form>
+        <div style="margin:.5rem 0 1rem">
+          <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
+        </div>
+
+        <div class="event-grid">
+          <div><strong>📅 Когда:</strong></div><div id="evWhen">—</div>
+          <div><strong>📍 Адрес:</strong></div><div id="evAddr">—</div>
+          <div><strong>👔 Дресс-код:</strong></div><div id="evDress">—</div>
+          <div><strong>🎒 Что взять:</strong></div><div id="evBring">—</div>
+          <div><strong>💬 Комментарий:</strong></div><div id="evNotes">—</div>
+        </div>
+
+        <h3>Wishlist</h3>
+        <ul class="list" id="evWishlist"></ul>
+
+        <div class="guests-columns">
+          <div><h4>Идут</h4><ul class="list" id="guestYes"></ul></div>
+          <div><h4>Не идут</h4><ul class="list" id="guestNo"></ul></div>
+          <div><h4>Может быть</h4><ul class="list" id="guestMaybe"></ul></div>
+        </div>
+
+        <div class="actions" style="margin-top:1rem">
+          <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
+        </div>
+      </section>
     </main>
   </div>
 
-  <script type="module">
-    const $ = (id) => document.getElementById(id);
-    const qs = new URLSearchParams(location.search);
-    const codeFromUrl = (qs.get('code') || '').trim().toUpperCase();
+  <script>
+    // ---------- draft (sessionStorage) ----------
+    const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}') } catch { return {} } };
+    const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
+    let draft = readDraft();
 
-    const pageTitle = $('pageTitle');
-    const stepCode  = $('step-code');
-    const codeInput = $('codeInput');
-    const codeError = $('codeError');
+    // Если в URL пришёл код — используем его и пробуем подтянуть событие
+    const urlCode = new URLSearchParams(location.search).get('code');
+    if (urlCode && /^\w{6}$/.test(urlCode.trim())) {
+      draft.code = urlCode.trim().toUpperCase();
+      writeDraft(draft);
+    }
 
-    const stepRsvp  = $('step-rsvp');
-    const evCodeEl  = $('evCode');
-    const codeInfo  = $('codeInfo');
-    const guestName = $('guestName');
-    const joinError = $('joinError');
-    const joinOk    = $('joinOk');
-    const joinBtn   = $('joinSubmit');
+    // ---------- ui helpers ----------
+    const $   = (id) => document.getElementById(id);
+    const pad = (n) => n.toString().padStart(2,'0');
+    const formatWhen = (d) => {
+      if (!d?.date && !d?.time) return '—';
+      const dt = new Date(`${d.date||''}T${d.time||'00:00'}`);
+      if (isNaN(dt)) return '—';
+      const dateFmt = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+      const timeFmt = pad(dt.getHours())+':'+pad(dt.getMinutes());
+      return `${dateFmt}${d.time ? ' в '+timeFmt : ''}`;
+    };
 
-    // Подсветка выбранной «кнопки»
-    document.querySelectorAll('label.btn input[type="radio"]').forEach(input => {
-      input.addEventListener('change', () => {
-        document.querySelectorAll('label.btn').forEach(l => l.classList.remove('btn--primary'));
-        input.closest('label.btn').classList.add('btn--primary');
-      });
-    });
+    function renderFromDraft() {
+      $('evTitle').textContent = draft.title || 'Событие';
+      $('evAddr').textContent  = draft.address || '—';
+      $('evDress').textContent = draft.dress   || '—';
+      $('evBring').textContent = draft.bring   || '—';
+      $('evNotes').textContent = draft.notes   || '—';
+      $('evCode').textContent  = draft.code || '—';
+      $('evWhen').textContent  = formatWhen(draft);
 
-    let eventRow = null;
-
-    // ---- режимы страницы ----
-    if (!codeFromUrl) {
-      // Шаг А: ввод кода
-      stepCode.classList.remove('hidden');
-      pageTitle.textContent = 'Присоединиться к событию';
-      codeInput.focus();
-
-      stepCode.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        codeError.textContent = '';
-        const raw = (codeInput.value || '').trim();
-        const code = raw.toUpperCase();
-
-        if (!/^\d{6}$/.test(code)) {
-          codeError.textContent = 'Введите 6 цифр.';
-          return;
-        }
-
-        // валидируем существование события, чтобы не вести на пустую форму
-        try {
-          const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
-          const data = await r.json().catch(() => ({}));
-          if (!r.ok) {
-            codeError.textContent = data?.error || 'Event not found';
-            return;
-          }
-          // ок — ведём на шаг с именем
-          location.href = `/join.html?code=${encodeURIComponent(code)}`;
-        } catch {
-          codeError.textContent = 'Не удалось проверить код. Проверьте интернет.';
-        }
-      });
-    } else {
-      // Шаг B: имя + статус
-      stepRsvp.classList.remove('hidden');
-      codeInfo.classList.remove('hidden');
-      evCodeEl.textContent = codeFromUrl;
-      pageTitle.textContent = 'Присоединиться к событию';
-
-      // грузим событие
-      try {
-        const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(codeFromUrl));
-        const data = await r.json();
-        if (!r.ok) {
-          joinError.textContent = data?.error || 'Событие с таким кодом не найдено.';
-          joinBtn.disabled = true;
+      if (draft?.date || draft?.time) {
+        const dt = new Date(`${draft.date||''}T${draft.time||'00:00'}`);
+        if (!isNaN(dt)) {
+          $('cdBig').textContent = pad(dt.getHours())+':'+pad(dt.getMinutes());
+          $('cdSmall').textContent = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
         } else {
-          eventRow = data;
-          pageTitle.textContent = `Присоединиться: ${data.title}`;
-          joinBtn.disabled = false;
+          $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
         }
-      } catch {
-        joinError.textContent = 'Не удалось загрузить событие. Проверьте интернет.';
-        joinBtn.disabled = true;
+      } else {
+        $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
       }
 
-      stepRsvp.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        joinError.textContent = '';
-        joinOk.classList.add('hidden');
+      const box = $('evWishlist'); box.innerHTML='';
+      const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
+      if (items.length === 0) {
+        const li=document.createElement('li'); li.className='hint';
+        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+        box.appendChild(li);
+      } else {
+        items.forEach(({title,url})=>{
+          const li=document.createElement('li');
+          if (url) li.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
+          else li.textContent=title;
+          box.appendChild(li);
+        });
+      }
 
-        if (!eventRow?.id) { joinError.textContent = 'Событие не найдено.'; return; }
-
-        const name = (guestName.value || '').trim();
-        const status = (stepRsvp.querySelector('input[name="status"]:checked')?.value) || 'yes';
-        if (name.length < 2) { joinError.textContent = 'Введите имя (минимум 2 символа).'; return; }
-
-        joinBtn.disabled = true;
-
-        try {
-          const r = await fetch('/.netlify/functions/events-rsvp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ event_id: eventRow.id, guest_name: name, status })
-          });
-          const res = await r.json().catch(() => ({}));
-          if (!r.ok || res?.error) {
-            joinError.textContent = res?.error || 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
-            joinBtn.disabled = false;
-            return;
-          }
-
-          joinOk.classList.remove('hidden');
-          const targetCode = eventRow.code || eventRow.join_code || codeFromUrl;
-          setTimeout(() => {
-            location.href = `/wishlist-claim.html?code=${encodeURIComponent(targetCode)}&name=${encodeURIComponent(name)}`;
-          }, 400);
-        } catch {
-          joinError.textContent = 'Не получилось отправить ответ. Проверьте интернет.';
-          joinBtn.disabled = false;
-        }
+      // колонки гостей пока не заполняем (отдельная подгрузка позже)
+      ['guestYes','guestNo','guestMaybe'].forEach(id=>{
+        const ul=$(id); if (ul) ul.innerHTML='';
       });
     }
+
+    renderFromDraft();
+
+    // копирование инвайта
+    $('copyInviteBtn').addEventListener('click', async () => {
+      const origin = location.origin || 'https://froggyhubapp.netlify.app';
+      if (!draft.code) { alert('Сначала сохраните событие — код появится автоматически.'); return; }
+      const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code}\nЗайди на ${origin} и введи этот код.`;
+      try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано в буфер обмена!'); }
+      catch {
+        const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove(); alert('Приглашение скопировано в буфер обмена!');
+      }
+    });
+
+    // ---------- серверные функции ----------
+    async function fetchEventByCode(code) {
+      if (!code) return null;
+      try {
+        const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
+        if (!r.ok) return null;
+        return await r.json();
+      } catch { return null; }
+    }
+
+    async function saveEventToServer() {
+      // отправляем только бизнес-поля; код генерит сервер
+      const payload = {
+        title: draft.title || 'Моё событие',
+        date:  draft.date,
+        time:  draft.time,
+        address:      draft.address || null,
+        dress_code:   draft.dress   || null,
+        what_to_bring:draft.bring   || null,
+        comment:      draft.notes   || null,
+        // wishlist можно добавить позже отдельной функцией
+      };
+      const r = await fetch('/.netlify/functions/event-create', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const data = await r.json().catch(()=> ({}));
+      if (!r.ok || !data?.event?.id) throw new Error(data?.error || 'Create failed');
+      return data.event; // ожидаем { id, code, join_code, ... }
+    }
+
+    // Если код есть (из URL/драфта) — подгружаем событие и синхронизируем драфт
+    (async function hydrateFromServer() {
+      if (!draft.code) return;
+      const ev = await fetchEventByCode(draft.code);
+      if (!ev) return;
+      draft = {
+        ...draft,
+        id: ev.id,
+        code: ev.code || ev.join_code || draft.code,
+        title: ev.title ?? draft.title,
+        date: ev.date ?? draft.date,
+        time: ev.time ?? draft.time,
+        address: ev.address ?? draft.address,
+        dress: ev.dress_code ?? draft.dress,
+        bring: ev.what_to_bring ?? draft.bring,
+        notes: ev.comment ?? draft.notes,
+        savedToDbForCode: String(ev.code || ev.join_code)
+      };
+      writeDraft(draft);
+      // если в URL не было кода — добавим его (удобно делиться ссылкой)
+      const sp = new URLSearchParams(location.search);
+      if (!sp.get('code')) {
+        sp.set('code', draft.code);
+        history.replaceState(null,'', location.pathname + '?' + sp.toString());
+      }
+      renderFromDraft();
+    })();
+
+    // Сохранение события: создаём на сервере и берём код из ответа
+    $('saveEventBtn')?.addEventListener('click', async () => {
+      if (!draft.date || !draft.time) { alert('Сначала укажи дату и время 🙂'); return; }
+      if (draft.savedToDbForCode === String(draft.code) && draft.code) {
+        alert('Событие уже сохранено. Код: ' + draft.code);
+        return;
+      }
+
+      const btn = $('saveEventBtn');
+      const old = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Сохраняем...';
+
+      try {
+        const created = await saveEventToServer();
+        draft.id = created.id;
+        draft.code = created.code || created.join_code; // ← код только с сервера
+        draft.savedToDbForCode = String(draft.code);
+        writeDraft(draft);
+
+        // Подставим код в адресную строку для удобного шаринга
+        const sp = new URLSearchParams(location.search);
+        sp.set('code', draft.code);
+        history.replaceState(null,'', location.pathname + '?' + sp.toString());
+
+        renderFromDraft();
+        alert('Сохранено! Код: ' + draft.code);
+      } catch (e) {
+        console.error(e);
+        alert('Не получилось сохранить. Попробуй ещё раз.');
+      } finally {
+        btn.disabled = false; btn.textContent = old;
+      }
+    });
   </script>
 </body>
 </html>
