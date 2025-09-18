@@ -84,7 +84,14 @@
     const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
     let draft = readDraft();
 
-    // генерим код если нет
+    // если код передали в URL — используем его (приоритет сервера)
+    const urlCode = new URLSearchParams(location.search).get('code');
+    if (urlCode && /^\d{6}$/.test(urlCode)) {
+      draft.code = urlCode;
+      writeDraft(draft);
+    }
+
+    // если кода нет — генерим новый
     if (!draft.code || !/^\d{6}$/.test(String(draft.code))) {
       draft.code = String(Math.floor(100000 + Math.random() * 900000));
       writeDraft(draft);
@@ -102,43 +109,50 @@
       return `${dateFmt}${d.time ? ' в '+timeFmt : ''}`;
     };
 
-    // первичный рендер из драфта
-    $('evTitle').textContent = draft.title || 'Событие';
-    $('evAddr').textContent  = draft.address || '—';
-    $('evDress').textContent = draft.dress   || '—';
-    $('evBring').textContent = draft.bring   || '—';
-    $('evNotes').textContent = draft.notes   || '—';
-    $('evCode').textContent  = draft.code;
-    $('evWhen').textContent  = formatWhen(draft);
-    (function updateLeft(){
+    function renderFromDraft() {
+      $('evTitle').textContent = draft.title || 'Событие';
+      $('evAddr').textContent  = draft.address || '—';
+      $('evDress').textContent = draft.dress   || '—';
+      $('evBring').textContent = draft.bring   || '—';
+      $('evNotes').textContent = draft.notes   || '—';
+      $('evCode').textContent  = draft.code;
+      $('evWhen').textContent  = formatWhen(draft);
+
       if (draft?.date || draft?.time) {
         const dt = new Date(`${draft.date||''}T${draft.time||'00:00'}`);
         if (!isNaN(dt)) {
           $('cdBig').textContent = pad(dt.getHours())+':'+pad(dt.getMinutes());
           $('cdSmall').textContent = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
-          return;
+        } else {
+          $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
         }
+      } else {
+        $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
       }
-      $('cdBig').textContent = '00:00';
-      $('cdSmall').textContent = '—';
-    })();
 
-    // wishlist из драфта (пока без БД)
-    (function renderWishlist(){
+      // wishlist из драфта (пока без БД)
       const box = $('evWishlist'); box.innerHTML='';
       const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
       if (items.length === 0) {
         const li=document.createElement('li'); li.className='hint';
         li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
-        box.appendChild(li); return;
-      }
-      items.forEach(({title,url})=>{
-        const li=document.createElement('li');
-        if (url) li.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
-        else li.textContent=title;
         box.appendChild(li);
+      } else {
+        items.forEach(({title,url})=>{
+          const li=document.createElement('li');
+          if (url) li.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
+          else li.textContent=title;
+          box.appendChild(li);
+        });
+      }
+
+      // очистим колонки гостей (онлайн-подгрузку при желании добавим отдельно)
+      ['guestYes','guestNo','guestMaybe'].forEach(id=>{
+        const ul=$(id); if (ul) ul.innerHTML='';
       });
-    })();
+    }
+
+    renderFromDraft();
 
     // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
@@ -161,14 +175,26 @@
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(draft.code));
         if (r.ok) {
           const ev = await r.json();
-          draft.id = ev.id;
-          draft.savedToDbForCode = String(draft.code);
+          // сливаем серверные поля в драфт и перерисовываем
+          draft = {
+            ...draft,
+            id: ev.id,
+            title: ev.title ?? draft.title,
+            date: ev.date ?? draft.date,
+            time: ev.time ?? draft.time,
+            address: ev.address ?? draft.address,
+            dress: ev.dress_code ?? draft.dress,
+            bring: ev.what_to_bring ?? draft.bring,
+            notes: ev.comment ?? draft.notes,
+            savedToDbForCode: String(draft.code),
+          };
           writeDraft(draft);
+          renderFromDraft();
           return;
         }
       } catch (_) {}
 
-      // 2) если нет даты/времени — не создаём (сервер всё равно вернёт 400)
+      // 2) если нет даты/времени — не создаём (сервер вернёт 400)
       if (!draft.date || !draft.time) return;
 
       // 3) создаём на сервере
@@ -193,16 +219,16 @@
           draft.id = data.event.id;
           draft.savedToDbForCode = String(draft.code);
           writeDraft(draft);
+          renderFromDraft();
         } else {
           console.warn('event-create failed:', data);
-          // без алёрта — просто лог
         }
       } catch (e) {
         console.warn('persist error', e);
       }
     }
 
-    // запускаем синхронизацию (без навязчивого алёрта)
+    // запускаем синхронизацию (без лишних алёртов)
     ensureEventExistsInDb();
   </script>
 </body>
