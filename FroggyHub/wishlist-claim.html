@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Выбор подарков — FroggyHub</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <style>
+    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
+    .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
+    .box{max-width:900px;width:min(900px,100%);margin:0 auto}
+    .wl-list{list-style:none; padding:0; margin:0; display:grid; gap:.5rem}
+    .wl-item{display:flex; gap:.75rem; align-items:center; justify-content:space-between; padding:.75rem 1rem; border:1px solid rgba(255,255,255,.08); border-radius:12px}
+    .wl-item .meta{display:flex; gap:.5rem; align-items:center; flex-wrap:wrap}
+    .badge{font-size:.85em; opacity:.85; padding:.2rem .5rem; border-radius:999px; border:1px solid rgba(255,255,255,.15)}
+    .muted{opacity:.8}
+  </style>
+</head>
+<body>
+  <div class="fh-bg" aria-hidden="true"></div>
+  <div class="fh-content">
+    <main class="card box">
+      <h1 id="title">Выбор подарков</h1>
+      <p class="muted">
+        Событие: <strong id="evName">—</strong> · Код: <strong id="evCode">—</strong><br/>
+        Вы вошли как: <strong id="guestName">—</strong>
+      </p>
+
+      <h3>Wishlist</h3>
+      <ul id="list" class="wl-list"></ul>
+
+      <div class="grid" style="grid-template-columns:1fr auto; gap:.75rem; margin-top:1rem">
+        <a class="btn btn--ghost" id="backBtn" href="/index.html">В меню</a>
+        <a class="btn btn--primary" id="toLobby">Готово → к лобби</a>
+      </div>
+
+      <p id="err" class="error" role="status" aria-live="polite" style="margin-top:.5rem"></p>
+    </main>
+  </div>
+
+  <script type="module">
+    import { supa } from '/js/api.js';
+
+    const qs = new URLSearchParams(location.search);
+    const code = (qs.get('code') || '').trim();
+    const myName = (qs.get('name') || '').trim();
+    const evNameEl = document.getElementById('evName');
+    const evCodeEl = document.getElementById('evCode');
+    const guestNameEl = document.getElementById('guestName');
+    const listEl = document.getElementById('list');
+    const errEl  = document.getElementById('err');
+    const toLobbyBtn = document.getElementById('toLobby');
+
+    evCodeEl.textContent = code || '—';
+    guestNameEl.textContent = myName || '—';
+    toLobbyBtn.href = `/lobby.html?code=${encodeURIComponent(code)}`;
+
+    let eventId = null;
+
+    function sameName(a='', b='') { return a.trim().toLowerCase() === b.trim().toLowerCase(); }
+
+    async function loadEvent() {
+      const { data: ev, error } = await supa
+        .from('events')
+        .select('id,title,code,join_code')
+        .or(`code.eq.${code},join_code.eq.${code}`)
+        .maybeSingle();
+      if (error || !ev) { errEl.textContent = 'Событие не найдено.'; return; }
+      eventId = ev.id;
+      evNameEl.textContent = ev.title || 'Событие';
+    }
+
+    async function loadWishlist() {
+      listEl.innerHTML = '';
+      const { data, error } = await supa
+        .from('wishlist_items')
+        .select('id,title,url,claimed_by')
+        .eq('event_id', eventId)
+        .order('id', { ascending: true });
+      if (error) { errEl.textContent = error.message; return; }
+
+      if (!data || data.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'muted';
+        li.textContent = 'Вишлист пока пуст.';
+        listEl.appendChild(li);
+        return;
+      }
+
+      data.forEach(row => {
+        const li = document.createElement('li');
+        li.className = 'wl-item';
+
+        const left = document.createElement('div');
+        left.className = 'meta';
+        const title = document.createElement('div');
+        if (row.url) title.innerHTML = `<a href="${row.url}" target="_blank" rel="noopener">${row.title}</a>`;
+        else title.textContent = row.title;
+        left.appendChild(title);
+
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        if (!row.claimed_by) badge.textContent = 'Свободно';
+        else if (sameName(row.claimed_by, myName)) badge.textContent = 'Ваш выбор';
+        else badge.textContent = `Занято: ${row.claimed_by}`;
+        left.appendChild(badge);
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn--ghost btn--sm';
+
+        const mine = sameName(row.claimed_by || '', myName);
+        if (!row.claimed_by) {
+          btn.textContent = 'Заберу';
+          btn.disabled = !myName;
+          btn.addEventListener('click', () => claim(row.id));
+        } else if (mine) {
+          btn.textContent = 'Отменить';
+          btn.addEventListener('click', () => unclaim(row.id));
+        } else {
+          btn.textContent = 'Недоступно';
+          btn.disabled = true;
+        }
+
+        li.appendChild(left);
+        li.appendChild(btn);
+        listEl.appendChild(li);
+      });
+    }
+
+    async function claim(itemId) {
+      errEl.textContent = '';
+      try {
+        const res = await fetch('/.netlify/functions/events-rsvp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, guest_name: myName, claimItemId: itemId })
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok || data?.error) throw new Error(data.error || 'Не удалось занять предмет');
+        await loadWishlist();
+      } catch (e) { errEl.textContent = e.message || String(e); }
+    }
+
+    async function unclaim(itemId) {
+      errEl.textContent = '';
+      try {
+        const res = await fetch('/.netlify/functions/events-rsvp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, guest_name: myName, unclaimItemId: itemId })
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok || data?.error) throw new Error(data.error || 'Не удалось снять бронь');
+        await loadWishlist();
+      } catch (e) { errEl.textContent = e.message || String(e); }
+    }
+
+    (async function init(){
+      if (!code) { errEl.textContent = 'Не передан код события.'; return; }
+      if (!myName) { errEl.textContent = 'Не передано имя гостя.'; return; }
+      await loadEvent();
+      if (eventId) await loadWishlist();
+    })();
+  </script>
+</body>
+</html>
