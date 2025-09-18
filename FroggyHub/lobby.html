@@ -176,16 +176,21 @@
     }
 
     async function saveEventToServer() {
-      const payload = {
-        code: String(draft.code),
-        title: draft.title || 'Моё событие',
-        date: draft.date,
-        time: draft.time,
-        address: draft.address || null,
-        dress_code: draft.dress || null,
-        what_to_bring: draft.bring || null,
-        comment: draft.notes || null,
-      };
+     const payload = {
+  code: String(draft.code),
+  title: draft.title || 'Моё событие',
+  date: draft.date,
+  time: draft.time,
+  address: draft.address || null,
+  dress_code: draft.dress || null,
+  what_to_bring: draft.bring || null,
+  comment: draft.notes || null,
+  // >>> добавляем
+  wishlist: Array.isArray(draft.wishlist) ? draft.wishlist.map(i => ({
+    title: i?.title || '',
+    url: i?.url || null
+  })) : []
+};
       const r = await fetch('/.netlify/functions/event-create', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
