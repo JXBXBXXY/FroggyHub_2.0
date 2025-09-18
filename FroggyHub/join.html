@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Присоединиться к событию — FroggyHub</title>
   <link rel="stylesheet" href="/style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
     .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
@@ -51,11 +50,9 @@
   </div>
 
   <script type="module">
-    // --- helpers ---
     const $ = (id) => document.getElementById(id);
     const params = new URLSearchParams(location.search);
-    const codeRaw = (params.get('code') || '').trim();
-    const code = codeRaw.toUpperCase();
+    const code = (params.get('code') || '').trim().toUpperCase();
 
     const evTitleEl = $('evTitle');
     const evCodeEl  = $('evCode');
@@ -64,7 +61,7 @@
     const okEl      = $('joinOk');
     const submitBtn = $('joinSubmit');
 
-    // визуальная подсветка выбранной «кнопки»
+    // подсветка выбранной «кнопки»
     document.querySelectorAll('label.btn input[type="radio"]').forEach(input => {
       input.addEventListener('change', () => {
         document.querySelectorAll('label.btn').forEach(l => l.classList.remove('btn--primary'));
@@ -72,10 +69,8 @@
       });
     });
 
-    // код
     evCodeEl.textContent = code || '—';
 
-    // базовая проверка кода
     if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
       errorEl.textContent = 'Некорректный код приглашения.';
       submitBtn.disabled = true;
@@ -83,7 +78,6 @@
 
     let eventRow = null;
 
-    // грузим событие через Netlify Function
     async function loadEvent() {
       if (!code) return;
       errorEl.textContent = '';
@@ -110,29 +104,21 @@
       errorEl.textContent = '';
       okEl.classList.add('hidden');
 
-      if (!eventRow?.id) {
-        errorEl.textContent = 'Событие не найдено.';
-        return;
-      }
+      if (!eventRow?.id) { errorEl.textContent = 'Событие не найдено.'; return; }
 
       const guestName = (form.guestName.value || '').trim();
       const status = (form.querySelector('input[name="status"]:checked')?.value) || 'yes';
-      if (guestName.length < 2) {
-        errorEl.textContent = 'Введите имя (минимум 2 символа).';
-        return;
-      }
+      if (guestName.length < 2) { errorEl.textContent = 'Введите имя (минимум 2 символа).'; return; }
 
       submitBtn.disabled = true;
 
       try {
-        // сохраняем RSVP в БД
         const r = await fetch('/.netlify/functions/events-rsvp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ event_id: eventRow.id, guest_name: guestName, status })
         });
         const res = await r.json().catch(() => ({}));
-
         if (!r.ok || res?.error) {
           console.error('RSVP error:', res);
           errorEl.textContent = res?.error || 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
@@ -141,8 +127,6 @@
         }
 
         okEl.classList.remove('hidden');
-
-        // → на выбор подарков (передаём код и имя)
         const targetCode = eventRow.code || eventRow.join_code || code;
         setTimeout(() => {
           const url = `/wishlist-claim.html?code=${encodeURIComponent(targetCode)}&name=${encodeURIComponent(guestName)}`;
