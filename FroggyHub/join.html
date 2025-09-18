@@ -33,15 +33,9 @@
         <fieldset>
           <legend>Статус</legend>
           <div class="status-row">
-            <label class="btn btn--ghost">
-              <input type="radio" name="status" value="yes" checked hidden> Иду
-            </label>
-            <label class="btn btn--ghost">
-              <input type="radio" name="status" value="no" hidden> Не иду
-            </label>
-            <label class="btn btn--ghost">
-              <input type="radio" name="status" value="maybe" hidden> Может быть
-            </label>
+            <label class="btn btn--ghost"><input type="radio" name="status" value="yes" checked hidden> Иду</label>
+            <label class="btn btn--ghost"><input type="radio" name="status" value="no" hidden> Не иду</label>
+            <label class="btn btn--ghost"><input type="radio" name="status" value="maybe" hidden> Может быть</label>
           </div>
         </fieldset>
 
@@ -51,7 +45,7 @@
         </div>
 
         <p id="joinError" class="error" role="status" aria-live="polite"></p>
-        <p id="joinOk" class="success hidden" role="status" aria-live="polite">Готово! Перенаправляю…</p>
+        <p id="joinOk" class="success hidden" role="status" aria-live="polite">Готово! Открою список подарков…</p>
       </form>
     </main>
   </div>
@@ -70,7 +64,7 @@
     const okEl      = $('joinOk');
     const submitBtn = $('joinSubmit');
 
-    // визуальный тумблер для "кнопочных" радиокнопок
+    // визуальная подсветка выбранной «кнопки»
     document.querySelectorAll('label.btn input[type="radio"]').forEach(input => {
       input.addEventListener('change', () => {
         document.querySelectorAll('label.btn').forEach(l => l.classList.remove('btn--primary'));
@@ -78,10 +72,10 @@
       });
     });
 
-    // показываем код
+    // код
     evCodeEl.textContent = code || '—';
 
-    // базовая валидация кода
+    // базовая проверка кода
     if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
       errorEl.textContent = 'Некорректный код приглашения.';
       submitBtn.disabled = true;
@@ -89,7 +83,7 @@
 
     let eventRow = null;
 
-    // грузим событие через серверную функцию (без прямого доступа к Supabase)
+    // грузим событие через Netlify Function
     async function loadEvent() {
       if (!code) return;
       errorEl.textContent = '';
@@ -131,15 +125,11 @@
       submitBtn.disabled = true;
 
       try {
-        // отправляем RSVP на серверную функцию
+        // сохраняем RSVP в БД
         const r = await fetch('/.netlify/functions/events-rsvp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event_id: eventRow.id,      // надёжнее, чем по коду
-            guest_name: guestName,
-            status
-          })
+          body: JSON.stringify({ event_id: eventRow.id, guest_name: guestName, status })
         });
         const res = await r.json().catch(() => ({}));
 
@@ -152,10 +142,11 @@
 
         okEl.classList.remove('hidden');
 
-        // успех — ведём пользователя в лобби (код берём из БД, иначе — из URL)
+        // → на выбор подарков (передаём код и имя)
         const targetCode = eventRow.code || eventRow.join_code || code;
         setTimeout(() => {
-          window.location.href = `/lobby.html?code=${encodeURIComponent(targetCode)}`;
+          const url = `/wishlist-claim.html?code=${encodeURIComponent(targetCode)}&name=${encodeURIComponent(guestName)}`;
+          window.location.href = url;
         }, 400);
       } catch (e) {
         console.error(e);
