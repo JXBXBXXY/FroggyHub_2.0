@@ -55,7 +55,6 @@
           <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
         </div>
 
-        <!-- Кнопка явного сохранения на сервер -->
         <div class="grid" style="grid-template-columns:1fr auto;gap:.75rem;align-items:center;margin:.5rem 0 1rem">
           <div class="muted" id="saveHint">Укажи дату и время → нажми «Сохранить событие».</div>
           <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
@@ -91,11 +90,11 @@
     const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
     let draft = readDraft();
 
-    // если код передали в URL — используем его (приоритет сервера)
+    // URL-код имеет приоритет
     const urlCode = new URLSearchParams(location.search).get('code');
     if (urlCode && /^\d{6}$/.test(urlCode)) { draft.code = urlCode; writeDraft(draft); }
 
-    // если кода нет — генерим новый
+    // генерим при отсутствии
     if (!draft.code || !/^\d{6}$/.test(String(draft.code))) {
       draft.code = String(Math.floor(100000 + Math.random() * 900000));
       writeDraft(draft);
@@ -134,7 +133,6 @@
         $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
       }
 
-      // wishlist из драфта (пока без БД)
       const box = $('evWishlist'); box.innerHTML='';
       const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
       if (items.length === 0) {
@@ -150,7 +148,6 @@
         });
       }
 
-      // очистим колонки гостей (онлайн-подгрузку добавим при желании)
       ['guestYes','guestNo','guestMaybe'].forEach(id=>{
         const ul=$(id); if (ul) ul.innerHTML='';
       });
@@ -170,7 +167,7 @@
     });
 
     // ---------- серверная синхронизация ----------
-    async function fetchEventFromServerByCode(code) {
+    async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
         if (!r.ok) return null;
@@ -195,19 +192,21 @@
         body: JSON.stringify(payload),
       });
       const data = await r.json().catch(()=> ({}));
-      if (!r.ok || !data?.event?.id) throw new Error('Create failed');
+      if (!r.ok || !data?.event?.id) throw new Error(data?.error || 'Create failed');
       return data.event;
     }
 
     async function ensureEventExistsInDb() {
       if (draft.savedToDbForCode === String(draft.code)) return;
 
-      // 1) есть ли уже на сервере?
-      const ev = await fetchEventFromServerByCode(draft.code);
+      // 1) пробуем найти на сервере
+      const ev = await fetchEventByCode(draft.code);
       if (ev) {
         draft = {
           ...draft,
           id: ev.id,
+          // ВАЖНО: код из БД имеет приоритет
+          code: ev.code || ev.join_code || draft.code,
           title: ev.title ?? draft.title,
           date: ev.date ?? draft.date,
           time: ev.time ?? draft.time,
@@ -215,20 +214,22 @@
           dress: ev.dress_code ?? draft.dress,
           bring: ev.what_to_bring ?? draft.bring,
           notes: ev.comment ?? draft.notes,
-          savedToDbForCode: String(draft.code),
+          savedToDbForCode: String(ev.code || ev.join_code || draft.code),
         };
         writeDraft(draft);
         renderFromDraft();
         return;
       }
 
-      // 2) если нет даты/времени — ждём пока пользователь нажмёт «Сохранить»
+      // 2) если нет даты/времени — ждём явного сохранения
       if (!draft.date || !draft.time) return;
 
-      // 3) пробуем создать автоматически один раз (мягко)
+      // 3) создаём автоматически один раз
       try {
         const created = await saveEventToServer();
+        // ВАЖНО: синхронизируем код с тем, что вернул сервер
         draft.id = created.id;
+        draft.code = created.code || created.join_code || draft.code;
         draft.savedToDbForCode = String(draft.code);
         writeDraft(draft);
         renderFromDraft();
@@ -237,7 +238,6 @@
       }
     }
 
-    // кнопка явного сохранения (без терминала)
     document.getElementById('saveEventBtn')?.addEventListener('click', async () => {
       if (!draft.date || !draft.time) { alert('Сначала укажи дату и время 🙂'); return; }
       if (draft.savedToDbForCode === String(draft.code)) { alert('Событие уже сохранено. Код: '+draft.code); return; }
@@ -249,6 +249,7 @@
       try {
         const created = await saveEventToServer();
         draft.id = created.id;
+        draft.code = created.code || created.join_code || draft.code; // ← синхронизация кода
         draft.savedToDbForCode = String(draft.code);
         writeDraft(draft);
         renderFromDraft();
@@ -261,7 +262,6 @@
       }
     });
 
-    // мягкая автосинхронизация
     ensureEventExistsInDb();
   </script>
 </body>
