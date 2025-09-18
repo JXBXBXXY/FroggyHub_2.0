@@ -2,7 +2,6 @@
 import { supa } from './api.js';
 
 /* -------------------- фоновые «облачка» -------------------- */
-
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪','Буду позже 🙈',
   'Закажем такси? 🚖','Добавил плейлист 🎶','У кого карты? 🎴','Забронировал столик 🍽️','Сделаем фото 📸',
@@ -80,7 +79,6 @@ function spawnBubbles(container, count) {
 }
 
 /* -------------------- сессия и экраны -------------------- */
-
 const LS_KEY = 'fh_session';
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; } };
 const setSavedSession = (s) => { try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {} };
@@ -110,7 +108,6 @@ function showScreen(id) {
 }
 
 /* -------------------- навигация и общие биндинги -------------------- */
-
 function bindTabs() {
   const tabLogin = document.getElementById('tab-login');
   const tabReg   = document.getElementById('tab-register');
@@ -166,7 +163,6 @@ function bindAuthForms() {
 
         if (ok && session) {
           setSavedSession({ user: session.user, access_token: session.access_token });
-          // убираем auth-экран, чтобы менеджеры паролей его не «подсвечивали»
           document.getElementById('screen-auth')?.remove();
           showScreen('screen-home');
         }
@@ -191,6 +187,10 @@ function bindAuthForms() {
   });
 }
 
+/**
+ * Главная: «Создать событие» и «Присоединиться по коду».
+ * ВАЖНО: любые переходы по коду ведут на /join.html (не на lobby).
+ */
 function bindIndexNav() {
   // data-go
   document.addEventListener('click', (e) => {
@@ -201,29 +201,38 @@ function bindIndexNav() {
     const mode = navBtn.getAttribute('data-mode') || '';
     if (to === 'app' && mode === 'create') {
       window.location.href = '/event-edit.html';
-      return;
     }
   });
 
-  // “Присоединиться”
+  const form      = document.getElementById('join-form');
   const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
+
+  const goJoin = () => {
+    const raw  = (joinInput.value || '').trim();
+    const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
+      joinInput.classList.add('input-error');
+      setTimeout(()=> joinInput.classList.remove('input-error'), 800);
+      return;
+    }
+    window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
+  };
+
+  if (form) {
+    form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); });
+  }
   if (joinBtn && joinInput) {
-    joinBtn.addEventListener('click', () => {
-      const raw  = (joinInput.value || '').trim();
-      const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,''); // на всякий
-      if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
-        joinInput.classList.add('input-error');
-        setTimeout(()=> joinInput.classList.remove('input-error'), 800);
-        return;
-      }
-      window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
+    joinBtn.addEventListener('click', goJoin);
+    // автопереход при 6 символах
+    joinInput.addEventListener('input', () => {
+      const v = (joinInput.value || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+      if (v.length === 6) goJoin();
     });
   }
 }
 
 /* -------------------- страница редактирования события -------------------- */
-
 function randomDigits(n=6){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
 function randomCode(n=6){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:n},()=>A[Math.floor(Math.random()*A.length)]).join(''); }
 
@@ -256,10 +265,7 @@ function bindEventEditPage() {
 
       if (error) throw error;
 
-      // черновик — полезно для восстановления формы
       sessionStorage.setItem('fh:draftEvent', JSON.stringify({ id: data.id, ...payload }));
-
-      // сразу на страницу вишлиста
       window.location.href = `/wishlist.html?event=${data.id}`;
     } catch (err) {
       console.error(err);
@@ -269,23 +275,21 @@ function bindEventEditPage() {
 }
 
 /* -------------------- страница join.html -------------------- */
-
 function bindJoinPage() {
   const params = new URLSearchParams(location.search);
   const codeParam  = (params.get('code') || '').toString().trim().toUpperCase();
   const eventIdParam = params.get('event') ? Number(params.get('event')) : null;
 
-  const nameInput = document.querySelector('#join-name, [name="name"]');
-  const btnJoin   = document.getElementById('btn-join');
+  const nameInput = document.querySelector('#join-name, [name="name"], #guestName');
+  const btnJoin   = document.getElementById('btn-join') || document.getElementById('joinSubmit');
   const statusWrap= document.getElementById('join-status-wrap') || document;
-  const errorBox  = document.getElementById('join-error');
-  const codeHolder= document.getElementById('join-code-text');
+  const errorBox  = document.getElementById('join-error') || document.getElementById('joinError');
+  const codeHolder= document.getElementById('join-code-text') || document.getElementById('evCode');
 
+  if (codeHolder && codeParam) codeHolder.textContent = codeParam;
   if (!nameInput || !btnJoin) return;
 
-  // визуально показываем, что ввёл пользователь
-  if (codeHolder && codeParam) codeHolder.textContent = codeParam;
-
+  // визуальный переключатель RSVP (если есть кастомные кнопки)
   let picked = 'yes';
   statusWrap.addEventListener('click', (e)=>{
     const b = e.target.closest('[data-rsvp]');
@@ -296,7 +300,6 @@ function bindJoinPage() {
 
   async function findEvent() {
     try {
-      // Если пришли по id — это приоритетно и надёжно
       if (eventIdParam) {
         const { data, error } = await supa
           .from('events')
@@ -306,7 +309,6 @@ function bindJoinPage() {
         if (error) throw error;
         return data;
       }
-      // Иначе ищем по коду (любой: числовой или буквенный)
       if (codeParam) {
         const code = codeParam.replace(/[^A-Z0-9]/g, '');
         const { data, error } = await supa
@@ -325,15 +327,13 @@ function bindJoinPage() {
   }
 
   btnJoin.addEventListener('click', async ()=>{
-    const name = nameInput.value.trim();
+    const name = (nameInput.value || '').trim();
     if (!name) { nameInput.focus(); return; }
-
-    // чистим ошибку
     if (errorBox) errorBox.textContent = '';
 
     const ev = await findEvent();
     if (!ev) {
-      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено. Проверь код или попроси у создателя ссылку.';
+      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
       return;
     }
 
@@ -345,7 +345,7 @@ function bindJoinPage() {
       });
       if (error) throw error;
 
-      // В лобби события
+      // После RSVP — уже в лобби события
       window.location.href = `/lobby.html?event=${ev.id}`;
     } catch (err) {
       console.error('[join] insert rsvp error:', err);
@@ -355,7 +355,6 @@ function bindJoinPage() {
 }
 
 /* -------------------- bootstrap -------------------- */
-
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
   if (!root) return;
@@ -368,9 +367,7 @@ function bootBubbles() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  $auth = document.getElementById('screen-auth');
-  $home = document.getElementById('screen-home');
-
+  // Инициализация
   bindTabs();
   bindAuthForms();
   bindIndexNav();
@@ -378,11 +375,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindJoinPage();
   bootBubbles();
 
+  // Экран авторизации / домашний
   const session = await ensureSession();
   if (session) {
     document.getElementById('screen-auth')?.remove();
     showScreen('screen-home');
   } else {
+    // если нет auth-разметки (некоторые страницы), просто оставим как есть
     showScreen('screen-auth');
   }
 });
