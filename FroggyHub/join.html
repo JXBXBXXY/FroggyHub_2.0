@@ -15,32 +15,30 @@
     .status-row .btn{min-width:120px}
     .muted{opacity:.8}
     .hidden{display:none}
-    .code-row{display:flex;gap:.5rem;align-items:end}
-    .code-row input{font-variant-numeric:tabular-nums}
   </style>
 </head>
 <body data-page="join">
   <div class="fh-bg" aria-hidden="true"></div>
   <div class="fh-content">
     <main class="card join-card">
-      <h1 id="evTitle">Присоединиться к событию</h1>
+      <h1 id="pageTitle">Присоединиться к событию</h1>
 
-      <!-- Блок ввода кода (покажется, если кода нет или он неверный) -->
-      <section id="codeSection" class="grid hidden" style="margin-bottom:1rem">
+      <!-- Шаг А: ввод кода -->
+      <form id="step-code" class="grid hidden" autocomplete="off">
         <label>Код приглашения
-          <div class="code-row">
-            <input id="codeInput" inputmode="numeric" pattern="\\d{6}|[A-Za-z0-9]{6}" placeholder="Например, 123456" />
-            <button id="codeApply" class="btn btn--primary">Дальше</button>
-          </div>
+          <input id="codeInput" inputmode="numeric" pattern="\\d{6}" maxlength="6" placeholder="123456" />
         </label>
+        <div class="grid" style="grid-template-columns:auto auto;gap:.75rem;align-items:center">
+          <a class="btn btn--ghost" href="/index.html">Отмена</a>
+          <button type="submit" class="btn btn--primary">Дальше</button>
+        </div>
         <p class="muted">Вставьте код из приглашения и нажмите «Дальше».</p>
-      </section>
+        <p id="codeError" class="error" role="status" aria-live="polite"></p>
+      </form>
 
-      <!-- Линия с кодом, когда он валиден -->
-      <p id="codeLine" class="muted hidden">Код: <strong id="evCode">—</strong></p>
-
-      <!-- Основная форма RSVP (покажется, когда событие найдено) -->
-      <form id="joinForm" class="grid hidden" autocomplete="off">
+      <!-- Шаг B: имя + статус -->
+      <p id="codeInfo" class="muted hidden">Код: <strong id="evCode">—</strong></p>
+      <form id="step-rsvp" class="grid hidden" autocomplete="off">
         <label>Ваше имя
           <input id="guestName" name="guestName" required minlength="2" placeholder="Например, Анна" />
         </label>
@@ -59,31 +57,31 @@
           <button id="joinSubmit" type="submit" class="btn btn--primary">Присоединиться</button>
         </div>
 
+        <p id="joinError" class="error" role="status" aria-live="polite"></p>
         <p id="joinOk" class="success hidden" role="status" aria-live="polite">Готово! Открою список подарков…</p>
       </form>
-
-      <p id="joinError" class="error" role="status" aria-live="polite" style="margin-top:.5rem"></p>
     </main>
   </div>
 
   <script type="module">
     const $ = (id) => document.getElementById(id);
-    const params = new URLSearchParams(location.search);
-    const norm = v => String(v||'').trim().toUpperCase();
+    const qs = new URLSearchParams(location.search);
+    const codeFromUrl = (qs.get('code') || '').trim().toUpperCase();
 
-    const evTitleEl = $('evTitle');
+    const pageTitle = $('pageTitle');
+    const stepCode  = $('step-code');
+    const codeInput = $('codeInput');
+    const codeError = $('codeError');
+
+    const stepRsvp  = $('step-rsvp');
     const evCodeEl  = $('evCode');
-    const codeLine  = $('codeLine');
-    const form      = $('joinForm');
-    const errorEl   = $('joinError');
-    const okEl      = $('joinOk');
-    const submitBtn = $('joinSubmit');
+    const codeInfo  = $('codeInfo');
+    const guestName = $('guestName');
+    const joinError = $('joinError');
+    const joinOk    = $('joinOk');
+    const joinBtn   = $('joinSubmit');
 
-    const codeSection = $('codeSection');
-    const codeInput   = $('codeInput');
-    const codeApply   = $('codeApply');
-
-    // подсветка выбранной «кнопки»
+    // Подсветка выбранной «кнопки»
     document.querySelectorAll('label.btn input[type="radio"]').forEach(input => {
       input.addEventListener('change', () => {
         document.querySelectorAll('label.btn').forEach(l => l.classList.remove('btn--primary'));
@@ -92,99 +90,99 @@
     });
 
     let eventRow = null;
-    let code = norm(params.get('code'));
 
-    function showAskCode(msg='') {
-      form.classList.add('hidden');
-      codeLine.classList.add('hidden');
-      codeSection.classList.remove('hidden');
-      if (msg) errorEl.textContent = msg;
-      codeInput.value = code.replace(/[^A-Za-z0-9]/g,'');
+    // ---- режимы страницы ----
+    if (!codeFromUrl) {
+      // Шаг А: ввод кода
+      stepCode.classList.remove('hidden');
+      pageTitle.textContent = 'Присоединиться к событию';
       codeInput.focus();
-    }
 
-    function showForm() {
-      codeSection.classList.add('hidden');
-      codeLine.classList.remove('hidden');
-      form.classList.remove('hidden');
-    }
+      stepCode.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        codeError.textContent = '';
+        const raw = (codeInput.value || '').trim();
+        const code = raw.toUpperCase();
 
-    async function loadEventByCode(c) {
-      const valid = /^[A-Z0-9]{6}$/.test(c);
-      if (!valid) { showAskCode('Введите корректный 6-значный код.'); return; }
-      errorEl.textContent = '';
+        if (!/^\d{6}$/.test(code)) {
+          codeError.textContent = 'Введите 6 цифр.';
+          return;
+        }
+
+        // валидируем существование события, чтобы не вести на пустую форму
+        try {
+          const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            codeError.textContent = data?.error || 'Event not found';
+            return;
+          }
+          // ок — ведём на шаг с именем
+          location.href = `/join.html?code=${encodeURIComponent(code)}`;
+        } catch {
+          codeError.textContent = 'Не удалось проверить код. Проверьте интернет.';
+        }
+      });
+    } else {
+      // Шаг B: имя + статус
+      stepRsvp.classList.remove('hidden');
+      codeInfo.classList.remove('hidden');
+      evCodeEl.textContent = codeFromUrl;
+      pageTitle.textContent = 'Присоединиться к событию';
+
+      // грузим событие
       try {
-        const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(c));
+        const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(codeFromUrl));
         const data = await r.json();
         if (!r.ok) {
-          showAskCode(data?.error || 'Событие не найдено. Проверьте код.');
-          return;
+          joinError.textContent = data?.error || 'Событие с таким кодом не найдено.';
+          joinBtn.disabled = true;
+        } else {
+          eventRow = data;
+          pageTitle.textContent = `Присоединиться: ${data.title}`;
+          joinBtn.disabled = false;
         }
-        eventRow = data;
-        code = norm(eventRow.code || eventRow.join_code || c);
-        evCodeEl.textContent = code;
-        evTitleEl.textContent = `Присоединиться: ${data.title}`;
-        submitBtn.disabled = false;
-        showForm();
-        // синхронизируем URL
-        const url = new URL(location.href);
-        url.searchParams.set('code', code);
-        history.replaceState(null, '', url);
-      } catch (e) {
-        console.error(e);
-        showAskCode('Не удалось загрузить событие. Проверьте интернет.');
+      } catch {
+        joinError.textContent = 'Не удалось загрузить событие. Проверьте интернет.';
+        joinBtn.disabled = true;
       }
-    }
 
-    // обработка ввода кода
-    codeApply.addEventListener('click', () => loadEventByCode(norm(codeInput.value)));
-    codeInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); codeApply.click(); }
-    });
+      stepRsvp.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        joinError.textContent = '';
+        joinOk.classList.add('hidden');
 
-    // сабмит RSVP
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorEl.textContent = '';
-      okEl.classList.add('hidden');
+        if (!eventRow?.id) { joinError.textContent = 'Событие не найдено.'; return; }
 
-      if (!eventRow?.id) { errorEl.textContent = 'Событие не найдено.'; return; }
+        const name = (guestName.value || '').trim();
+        const status = (stepRsvp.querySelector('input[name="status"]:checked')?.value) || 'yes';
+        if (name.length < 2) { joinError.textContent = 'Введите имя (минимум 2 символа).'; return; }
 
-      const guestName = (form.guestName.value || '').trim();
-      const status = (form.querySelector('input[name="status"]:checked')?.value) || 'yes';
-      if (guestName.length < 2) { errorEl.textContent = 'Введите имя (минимум 2 символа).'; return; }
+        joinBtn.disabled = true;
 
-      submitBtn.disabled = true;
-      try {
-        const r = await fetch('/.netlify/functions/events-rsvp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ event_id: eventRow.id, guest_name: guestName, status })
-        });
-        const res = await r.json().catch(() => ({}));
-        if (!r.ok || res?.error) {
-          console.error('RSVP error:', res);
-          errorEl.textContent = res?.error || 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
-          submitBtn.disabled = false;
-          return;
+        try {
+          const r = await fetch('/.netlify/functions/events-rsvp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_id: eventRow.id, guest_name: name, status })
+          });
+          const res = await r.json().catch(() => ({}));
+          if (!r.ok || res?.error) {
+            joinError.textContent = res?.error || 'Не получилось сохранить ваш ответ. Попробуйте ещё раз.';
+            joinBtn.disabled = false;
+            return;
+          }
+
+          joinOk.classList.remove('hidden');
+          const targetCode = eventRow.code || eventRow.join_code || codeFromUrl;
+          setTimeout(() => {
+            location.href = `/wishlist-claim.html?code=${encodeURIComponent(targetCode)}&name=${encodeURIComponent(name)}`;
+          }, 400);
+        } catch {
+          joinError.textContent = 'Не получилось отправить ответ. Проверьте интернет.';
+          joinBtn.disabled = false;
         }
-        okEl.classList.remove('hidden');
-        const targetCode = eventRow.code || eventRow.join_code || code;
-        setTimeout(() => {
-          location.href = `/wishlist-claim.html?code=${encodeURIComponent(targetCode)}&name=${encodeURIComponent(guestName)}`;
-        }, 400);
-      } catch (e) {
-        console.error(e);
-        errorEl.textContent = 'Не получилось отправить ответ. Проверьте интернет.';
-        submitBtn.disabled = false;
-      }
-    });
-
-    // старт: если кода нет в URL — просим его
-    if (!/^[A-Z0-9]{6}$/.test(code)) {
-      showAskCode();
-    } else {
-      loadEventByCode(code);
+      });
     }
   </script>
 </body>
