@@ -1,11 +1,9 @@
 [build]
-  # Сборка не нужна — это статический фронт
-  command = ""
-  publish = "FroggyHub"
-  functions = "netlify/functions"
+# статический фронт
+command = ""
+publish = "FroggyHub"
+functions = "netlify/functions"
 
-# Если у тебя есть SPA-роутинг, раскомментируй блок ниже
-# [[redirects]]
-#   from = "/*"
-#   to = "/index.html"
-#   status = 200
+# ЯВНО указываем директорию функций (чтоб Netlify точно их собрал)
+[functions]
+directory = "netlify/functions"
