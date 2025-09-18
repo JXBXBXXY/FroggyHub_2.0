@@ -12,158 +12,195 @@
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
     .box{max-width:900px;width:min(900px,100%);margin:0 auto}
-    .wl-list{list-style:none; padding:0; margin:0; display:grid; gap:.5rem}
-    .wl-item{display:flex; gap:.75rem; align-items:center; justify-content:space-between; padding:.75rem 1rem; border:1px solid rgba(255,255,255,.08); border-radius:12px}
-    .wl-item .meta{display:flex; gap:.5rem; align-items:center; flex-wrap:wrap}
-    .badge{font-size:.85em; opacity:.85; padding:.2rem .5rem; border-radius:999px; border:1px solid rgba(255,255,255,.15)}
+    .wl{list-style:none;padding:0;margin:.75rem 0 0;display:grid;gap:.5rem}
+    .li{display:flex;align-items:center;justify-content:space-between;gap:.75rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.75rem 1rem}
+    .meta{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .title{font-weight:600}
+    .badge{font-size:.85em;opacity:.85;padding:.2rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.15)}
+    .me{background:rgba(56,142,60,.15);border-color:rgba(56,142,60,.35)}
     .muted{opacity:.8}
+    .hidden{display:none}
+    .error{color:#ff8a80}
+    .success{color:#a5d6a7}
   </style>
 </head>
 <body>
   <div class="fh-bg" aria-hidden="true"></div>
   <div class="fh-content">
     <main class="card box">
-      <h1 id="title">Выбор подарков</h1>
+      <h1>Выбор подарков</h1>
       <p class="muted">
         Событие: <strong id="evName">—</strong> · Код: <strong id="evCode">—</strong><br/>
         Вы вошли как: <strong id="guestName">—</strong>
       </p>
 
       <h3>Wishlist</h3>
-      <ul id="list" class="wl-list"></ul>
+      <ul id="list" class="wl"></ul>
+      <p id="empty" class="muted hidden">Вишлист пока пуст.</p>
 
-      <div class="grid" style="grid-template-columns:1fr auto; gap:.75rem; margin-top:1rem">
+      <div class="grid" style="grid-template-columns:1fr auto;gap:.75rem;margin-top:1rem">
         <a class="btn btn--ghost" id="backBtn" href="/index.html">В меню</a>
-        <a class="btn btn--primary" id="toLobby">Готово → к лобби</a>
+        <button class="btn btn--primary" id="toLobby">Готово → к лобби</button>
       </div>
 
-      <p id="err" class="error" role="status" aria-live="polite" style="margin-top:.5rem"></p>
+      <p id="msgErr" class="error" role="status" aria-live="polite" style="margin-top:.5rem"></p>
+      <p id="msgOk"  class="success hidden" role="status" aria-live="polite">Готово! Перенаправляю…</p>
     </main>
   </div>
 
   <script type="module">
-    import { supa } from '/js/api.js';
+    const $ = (id)=>document.getElementById(id);
+    const qs   = new URLSearchParams(location.search);
+    const code = (qs.get('code')||'').trim();
+    const my   = (qs.get('name')||'').trim();
 
-    const qs = new URLSearchParams(location.search);
-    const code = (qs.get('code') || '').trim();
-    const myName = (qs.get('name') || '').trim();
-    const evNameEl = document.getElementById('evName');
-    const evCodeEl = document.getElementById('evCode');
-    const guestNameEl = document.getElementById('guestName');
-    const listEl = document.getElementById('list');
-    const errEl  = document.getElementById('err');
-    const toLobbyBtn = document.getElementById('toLobby');
+    $('evCode').textContent   = code || '—';
+    $('guestName').textContent= my || '—';
 
-    evCodeEl.textContent = code || '—';
-    guestNameEl.textContent = myName || '—';
-    toLobbyBtn.href = `/lobby.html?code=${encodeURIComponent(code)}`;
+    const same = (a='',b='') => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-    let eventId = null;
+    let eventRow = null;
+    let items    = [];
 
-    function sameName(a='', b='') { return a.trim().toLowerCase() === b.trim().toLowerCase(); }
+    $('toLobby').addEventListener('click', ()=>{
+      $('msgOk').classList.remove('hidden');
+      const target = eventRow?.code || eventRow?.join_code || code;
+      setTimeout(()=> location.href = `/lobby.html?code=${encodeURIComponent(target)}`, 350);
+    });
 
-    async function loadEvent() {
-      const { data: ev, error } = await supa
-        .from('events')
-        .select('id,title,code,join_code')
-        .or(`code.eq.${code},join_code.eq.${code}`)
-        .maybeSingle();
-      if (error || !ev) { errEl.textContent = 'Событие не найдено.'; return; }
-      eventId = ev.id;
-      evNameEl.textContent = ev.title || 'Событие';
+    function btnBusy(b){
+      $('toLobby').disabled = b;
+      document.querySelectorAll('.wl button').forEach(x=> x.disabled = b);
     }
 
-    async function loadWishlist() {
-      listEl.innerHTML = '';
-      const { data, error } = await supa
-        .from('wishlist_items')
-        .select('id,title,url,claimed_by')
-        .eq('event_id', eventId)
-        .order('id', { ascending: true });
-      if (error) { errEl.textContent = error.message; return; }
+    async function j(url, opts){
+      const r = await fetch(url, opts);
+      const data = await r.json().catch(()=> ({}));
+      return { ok: r.ok, data };
+    }
 
-      if (!data || data.length === 0) {
-        const li = document.createElement('li');
-        li.className = 'muted';
-        li.textContent = 'Вишлист пока пуст.';
-        listEl.appendChild(li);
-        return;
+    function idOf(i){ return i.id || i.item_id || i.itemId; }
+    function titleOf(i){ return i.title || i.name || 'Без названия'; }
+    function urlOf(i){ return i.url || i.link || ''; }
+    function claimerOf(i){ return i.claimed_by ?? i.claimedBy ?? i.claimed ?? null; }
+
+    function render(){
+      const ul = $('list'); ul.innerHTML = '';
+      if (!Array.isArray(items) || items.length === 0){
+        $('empty').classList.remove('hidden'); return;
       }
+      $('empty').classList.add('hidden');
 
-      data.forEach(row => {
-        const li = document.createElement('li');
-        li.className = 'wl-item';
+      items.forEach(it=>{
+        const li = document.createElement('li'); li.className = 'li';
+        const meta = document.createElement('div'); meta.className = 'meta';
 
-        const left = document.createElement('div');
-        left.className = 'meta';
-        const title = document.createElement('div');
-        if (row.url) title.innerHTML = `<a href="${row.url}" target="_blank" rel="noopener">${row.title}</a>`;
-        else title.textContent = row.title;
-        left.appendChild(title);
+        const t = document.createElement('span'); t.className='title';
+        const link = urlOf(it);
+        if (link) t.innerHTML = `<a href="${link}" target="_blank" rel="noopener">${titleOf(it)}</a>`;
+        else t.textContent = titleOf(it);
+        meta.appendChild(t);
 
-        const badge = document.createElement('span');
-        badge.className = 'badge';
-        if (!row.claimed_by) badge.textContent = 'Свободно';
-        else if (sameName(row.claimed_by, myName)) badge.textContent = 'Ваш выбор';
-        else badge.textContent = `Занято: ${row.claimed_by}`;
-        left.appendChild(badge);
+        const claimer = claimerOf(it);
+        if (claimer){
+          const b = document.createElement('span');
+          b.className = 'badge ' + (same(claimer,my) ? 'me' : '');
+          b.textContent = same(claimer,my) ? 'Ваш выбор' : `Занято: ${claimer}`;
+          meta.appendChild(b);
+        } else {
+          const b = document.createElement('span');
+          b.className = 'badge';
+          b.textContent = 'Свободно';
+          meta.appendChild(b);
+        }
+
+        li.appendChild(meta);
 
         const btn = document.createElement('button');
         btn.className = 'btn btn--ghost btn--sm';
 
-        const mine = sameName(row.claimed_by || '', myName);
-        if (!row.claimed_by) {
-          btn.textContent = 'Заберу';
-          btn.disabled = !myName;
-          btn.addEventListener('click', () => claim(row.id));
-        } else if (mine) {
+        if (!claimer){
+          btn.textContent = 'Забрать';
+          btn.disabled = !my;
+          btn.addEventListener('click', ()=> claim(idOf(it)));
+        } else if (same(claimer,my)){
           btn.textContent = 'Отменить';
-          btn.addEventListener('click', () => unclaim(row.id));
+          btn.addEventListener('click', ()=> unclaim(idOf(it)));
         } else {
           btn.textContent = 'Недоступно';
           btn.disabled = true;
         }
 
-        li.appendChild(left);
         li.appendChild(btn);
-        listEl.appendChild(li);
+        ul.appendChild(li);
       });
     }
 
-    async function claim(itemId) {
-      errEl.textContent = '';
-      try {
-        const res = await fetch('/.netlify/functions/events-rsvp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, guest_name: myName, claimItemId: itemId })
-        });
-        const data = await res.json().catch(()=> ({}));
-        if (!res.ok || data?.error) throw new Error(data.error || 'Не удалось занять предмет');
-        await loadWishlist();
-      } catch (e) { errEl.textContent = e.message || String(e); }
+    async function claim(itemId){
+      $('msgErr').textContent = ''; btnBusy(true);
+      const body = { code, guest_name: my, claimItemId: itemId };
+      const r = await j('/.netlify/functions/events-rsvp', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+      });
+      if (!r.ok || r.data?.error){
+        $('msgErr').textContent = r.data?.error || 'Не удалось занять предмет.';
+      } else {
+        items = items.map(x=> idOf(x)===itemId ? { ...x, claimed_by: my } : x);
+        render();
+      }
+      btnBusy(false);
     }
 
-    async function unclaim(itemId) {
-      errEl.textContent = '';
-      try {
-        const res = await fetch('/.netlify/functions/events-rsvp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, guest_name: myName, unclaimItemId: itemId })
-        });
-        const data = await res.json().catch(()=> ({}));
-        if (!res.ok || data?.error) throw new Error(data.error || 'Не удалось снять бронь');
-        await loadWishlist();
-      } catch (e) { errEl.textContent = e.message || String(e); }
+    async function unclaim(itemId){
+      $('msgErr').textContent = ''; btnBusy(true);
+      const body = { code, guest_name: my, unclaimItemId: itemId };
+      const r = await j('/.netlify/functions/events-rsvp', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+      });
+      if (!r.ok || r.data?.error){
+        $('msgErr').textContent = r.data?.error || 'Не удалось снять бронь.';
+      } else {
+        items = items.map(x=> idOf(x)===itemId ? { ...x, claimed_by: null } : x);
+        render();
+      }
+      btnBusy(false);
     }
 
-    (async function init(){
-      if (!code) { errEl.textContent = 'Не передан код события.'; return; }
-      if (!myName) { errEl.textContent = 'Не передано имя гостя.'; return; }
-      await loadEvent();
-      if (eventId) await loadWishlist();
-    })();
+    async function loadAll(){
+      if (!/^\d{6}$/.test(code)){ $('msgErr').textContent = 'Некорректный код события.'; return; }
+      if (!my){ $('msgErr').textContent = 'Не передано имя гостя.'; return; }
+
+      // 1) Пытаемся расширенный API, где уже есть вишлист
+      let r = await j('/.netlify/functions/events-one-v2?code=' + encodeURIComponent(code));
+      if (!r.ok) r = await j('/.netlify/functions/events-one?code=' + encodeURIComponent(code));
+
+      if (r.ok){
+        const root = r.data.event || r.data || {};
+        eventRow = root.event || root;
+        $('evName').textContent = eventRow.title || 'Событие';
+        items = r.data.wishlist_items || r.data.wishlist || eventRow.wishlist_items || [];
+        if (Array.isArray(items) && items.length){ render(); return; }
+      }
+
+      // 2) Фоллбек: минимальный event + попытка получить список по нескольким функциям
+      const g = await j('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
+      if (!g.ok){ $('msgErr').textContent = g.data?.error || 'Событие не найдено.'; return; }
+      eventRow = g.data; $('evName').textContent = eventRow.title || 'Событие';
+
+      const bases = [
+        '/.netlify/functions/wishlist-list?event_id=',
+        '/.netlify/functions/wishlist?event_id=',
+        '/.netlify/functions/events-list?event_id='
+      ];
+      for (const b of bases){
+        const w = await j(b + encodeURIComponent(eventRow.id));
+        if (w.ok && Array.isArray(w.data)){ items = w.data; break; }
+        if (w.ok && Array.isArray(w.data?.items)){ items = w.data.items; break; }
+      }
+      render();
+    }
+
+    loadAll();
   </script>
 </body>
 </html>
