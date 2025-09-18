@@ -8,28 +8,20 @@
   <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
-    .fh-bg {
-      position: fixed; inset: 0; z-index: 0;
-      background: #0b241b url("/assets/froggy_glass_bg.jpeg") center 45% / cover no-repeat;
-    }
-    @media (min-width: 640px) { .fh-bg { background-position: center; } }
-    .fh-bg::after { content:""; position:absolute; inset:0; background: rgba(11,36,27,.55); }
-    .fh-content { position: relative; z-index: 20; min-height: 100svh; padding-inline: 1rem; }
-
-    .lobby-grid {
-      max-width: 1200px; margin: 40px auto; display: grid; gap: 24px;
-      grid-template-columns: minmax(280px, 1fr) minmax(420px, 620px);
-      align-items: start;
-    }
-    .countdown-big { font-size: clamp(48px, 8vw, 96px); font-weight: 800; }
-    .countdown-small { opacity: .85; margin-top: .25rem; }
-    .event-grid { display: grid; gap: .5rem 1rem; grid-template-columns: auto 1fr; margin-bottom: 1rem; }
-    .event-grid > div { display: contents; }
-    .event-grid strong { opacity: .85; }
-    .codeRow { display:flex; align-items:center; gap:.5rem; margin:.5rem 0 1rem; }
-    #evCode { font-variant-numeric: tabular-nums; }
-    .guests-columns { display:grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 1rem; }
-    .guests-columns h4 { margin-bottom:.5rem }
+    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
+    @media (min-width:640px){.fh-bg{background-position:center}}
+    .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem}
+    .lobby-grid{max-width:1200px;margin:40px auto;display:grid;gap:24px;grid-template-columns:minmax(280px,1fr) minmax(420px,620px);align-items:start}
+    .countdown-big{font-size:clamp(48px,8vw,96px);font-weight:800}
+    .countdown-small{opacity:.85;margin-top:.25rem}
+    .event-grid{display:grid;gap:.5rem 1rem;grid-template-columns:auto 1fr;margin-bottom:1rem}
+    .event-grid>div{display:contents}
+    .event-grid strong{opacity:.85}
+    .codeRow{display:flex;align-items:center;gap:.5rem;margin:.5rem 0 1rem}
+    #evCode{font-variant-numeric:tabular-nums}
+    .guests-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:1rem}
+    .guests-columns h4{margin-bottom:.5rem}
   </style>
 </head>
 <body data-page="lobby">
@@ -46,7 +38,6 @@
     </header>
 
     <main class="lobby-grid">
-      <!-- Левая колонка: лягушка + счётчик -->
       <section id="lobby-left" class="lobby-left">
         <div class="frog-hero"></div>
         <div class="countdown">
@@ -55,21 +46,19 @@
         </div>
       </section>
 
-      <!-- Правая колонка: финальная панель события -->
       <section id="lobby-right" class="lobby-right card">
         <h2 id="evTitle">Событие</h2>
 
-        <!-- Код приглашения + копирование -->
         <div class="codeRow">
           <div><strong>Код:</strong> <b id="evCode">—</b></div>
           <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
         </div>
 
         <div class="event-grid">
-          <div><strong>Когда:</strong></div>      <div id="evWhen">—</div>
-          <div><strong>Адрес:</strong></div>      <div id="evAddr">—</div>
-          <div><strong>Дресс-код:</strong></div>  <div id="evDress">—</div>
-          <div><strong>Что взять:</strong></div>  <div id="evBring">—</div>
+          <div><strong>Когда:</strong></div><div id="evWhen">—</div>
+          <div><strong>Адрес:</strong></div><div id="evAddr">—</div>
+          <div><strong>Дресс-код:</strong></div><div id="evDress">—</div>
+          <div><strong>Что взять:</strong></div><div id="evBring">—</div>
           <div><strong>Комментарий:</strong></div><div id="evNotes">—</div>
         </div>
 
@@ -77,18 +66,9 @@
         <ul class="list" id="evWishlist"></ul>
 
         <div class="guests-columns">
-          <div>
-            <h4>Идут</h4>
-            <ul class="list" id="guestYes"></ul>
-          </div>
-          <div>
-            <h4>Не идут</h4>
-            <ul class="list" id="guestNo"></ul>
-          </div>
-          <div>
-            <h4>Может быть</h4>
-            <ul class="list" id="guestMaybe"></ul>
-          </div>
+          <div><h4>Идут</h4><ul class="list" id="guestYes"></ul></div>
+          <div><h4>Не идут</h4><ul class="list" id="guestNo"></ul></div>
+          <div><h4>Может быть</h4><ul class="list" id="guestMaybe"></ul></div>
         </div>
 
         <div class="actions" style="margin-top:1rem">
@@ -99,49 +79,43 @@
   </div>
 
   <script>
-    // --- Черновик события ---
-    function readDraft() {
-      try { return JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); }
-      catch { return {}; }
-    }
-    function writeDraft(obj) {
-      try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(obj)); } catch {}
-    }
-
+    // ---------- draft helpers ----------
+    const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}') } catch { return {} } };
+    const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
     let draft = readDraft();
 
-    // Если кода нет — генерируем 6-значный и сохраняем
+    // генерим код если нет
     if (!draft.code || !/^\d{6}$/.test(String(draft.code))) {
       draft.code = String(Math.floor(100000 + Math.random() * 900000));
       writeDraft(draft);
     }
 
-    // Заполняем UI
+    // ---------- ui helpers ----------
     const $ = (id) => document.getElementById(id);
+    const pad = (n) => n.toString().padStart(2,'0');
+    const formatWhen = (d) => {
+      if (!d?.date && !d?.time) return '—';
+      const dt = new Date(`${d.date||''}T${d.time||'00:00'}`);
+      if (isNaN(dt)) return '—';
+      const dateFmt = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'});
+      const timeFmt = pad(dt.getHours())+':'+pad(dt.getMinutes());
+      return `${dateFmt}${d.time ? ' в '+timeFmt : ''}`;
+    };
+
+    // первичный рендер из драфта
     $('evTitle').textContent = draft.title || 'Событие';
     $('evAddr').textContent  = draft.address || '—';
     $('evDress').textContent = draft.dress   || '—';
     $('evBring').textContent = draft.bring   || '—';
     $('evNotes').textContent = draft.notes   || '—';
     $('evCode').textContent  = draft.code;
-
-    function pad(n){ return n.toString().padStart(2,'0'); }
-    function formatWhen(d) {
-      if (!d?.date && !d?.time) return '—';
-      const dt = new Date(`${d.date || ''}T${d.time || '00:00'}`);
-      if (isNaN(dt)) return '—';
-      const dateFmt = dt.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
-      const timeFmt = pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-      return `${dateFmt}${d.time ? ' в ' + timeFmt : ''}`;
-    }
-    $('evWhen').textContent = formatWhen(draft);
-
+    $('evWhen').textContent  = formatWhen(draft);
     (function updateLeft(){
       if (draft?.date || draft?.time) {
-        const dt = new Date(`${draft.date || ''}T${draft.time || '00:00'}`);
+        const dt = new Date(`${draft.date||''}T${draft.time||'00:00'}`);
         if (!isNaN(dt)) {
-          $('cdBig').textContent  = pad(dt.getHours()) + ':' + pad(dt.getMinutes());
-          $('cdSmall').textContent = dt.toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+          $('cdBig').textContent = pad(dt.getHours())+':'+pad(dt.getMinutes());
+          $('cdSmall').textContent = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
           return;
         }
       }
@@ -149,99 +123,87 @@
       $('cdSmall').textContent = '—';
     })();
 
-    // Wishlist
+    // wishlist из драфта (пока без БД)
     (function renderWishlist(){
-      const box = $('evWishlist');
-      box.innerHTML = '';
+      const box = $('evWishlist'); box.innerHTML='';
       const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
       if (items.length === 0) {
-        const li = document.createElement('li');
-        li.className = 'hint';
-        li.textContent = 'Пока пусто. Нажмите «Редактировать wishlist».';
-        box.appendChild(li);
-        return;
+        const li=document.createElement('li'); li.className='hint';
+        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+        box.appendChild(li); return;
       }
-      items.forEach(({title, url}) => {
-        const li = document.createElement('li');
-        if (url) li.innerHTML = `<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
-        else li.textContent = title;
+      items.forEach(({title,url})=>{
+        const li=document.createElement('li');
+        if (url) li.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
+        else li.textContent=title;
         box.appendChild(li);
       });
     })();
 
-    // Копирование приглашения
+    // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
       const origin = location.origin || 'https://froggyhubapp.netlify.app';
-      const text =
-`Приглашаю на "${draft.title || 'событие'}"!
-Код для присоединения: ${draft.code}
-Зайди на ${origin} и введи этот код.`;
-      try {
-        await navigator.clipboard.writeText(text);
-        alert('Приглашение скопировано в буфер обмена!');
-      } catch {
-        // Фоллбек
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy');
-        ta.remove();
-        alert('Приглашение скопировано в буфер обмена!');
+      const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code}\nЗайди на ${origin} и введи этот код.`;
+      try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано в буфер обмена!'); }
+      catch {
+        const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove(); alert('Приглашение скопировано в буфер обмена!');
       }
     });
 
-    // Гости — заглушки до интеграции
-    ['guestYes','guestNo','guestMaybe'].forEach(id=>{
-      const ul = $(id); if (!ul) return; ul.innerHTML = '';
-    });
+    // ---------- серверная синхронизация ----------
+    async function ensureEventExistsInDb() {
+      // 0) если уже помечено — выходим
+      if (draft.savedToDbForCode === String(draft.code)) return;
 
-    // ---------- ВАЖНО: сохраняем событие в БД через Netlify Function ----------
-    async function persistEventOnce() {
+      // 1) пробуем найти событие по коду — вдруг уже есть
       try {
-        // чтобы не слать повторно: помечаем, что этот код уже сохранён
-        if (draft.savedToDbForCode === String(draft.code)) return;
+        const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(draft.code));
+        if (r.ok) {
+          const ev = await r.json();
+          draft.id = ev.id;
+          draft.savedToDbForCode = String(draft.code);
+          writeDraft(draft);
+          return;
+        }
+      } catch (_) {}
 
-        // собираем полезные поля под серверную схему
+      // 2) если нет даты/времени — не создаём (сервер всё равно вернёт 400)
+      if (!draft.date || !draft.time) return;
+
+      // 3) создаём на сервере
+      try {
         const payload = {
           code: String(draft.code),
           title: draft.title || 'Моё событие',
-          date: draft.date || null,
-          time: draft.time || null,
+          date: draft.date,
+          time: draft.time,
           address: draft.address || null,
           dress_code: draft.dress || null,
           what_to_bring: draft.bring || null,
-          comment: draft.notes || null
+          comment: draft.notes || null,
         };
-
         const res = await fetch('/.netlify/functions/event-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.event?.id) {
-          console.error('event-create failed:', data);
-          // не спамим алертами, но один раз скажем
-          if (!draft._saveWarned) {
-            alert('Не удалось сохранить событие. Проверьте интернет или попробуйте ещё раз.');
-            draft._saveWarned = true;
-          }
-          return;
+        const data = await res.json().catch(()=> ({}));
+        if (res.ok && data?.event?.id) {
+          draft.id = data.event.id;
+          draft.savedToDbForCode = String(draft.code);
+          writeDraft(draft);
+        } else {
+          console.warn('event-create failed:', data);
+          // без алёрта — просто лог
         }
-
-        // успех: запомним id и флажок, чтобы больше не слать
-        draft.id = data.event.id;
-        draft.savedToDbForCode = String(draft.code);
-        writeDraft(draft);
-        console.log('Событие сохранено в БД:', draft.code, draft.id);
       } catch (e) {
-        console.error('persistEventOnce error', e);
+        console.warn('persist error', e);
       }
     }
 
-    // запускаем сохранение сразу после отрисовки страницы
-    persistEventOnce();
+    // запускаем синхронизацию (без навязчивого алёрта)
+    ensureEventExistsInDb();
   </script>
 </body>
 </html>
