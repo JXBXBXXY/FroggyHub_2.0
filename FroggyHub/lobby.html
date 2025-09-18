@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Лобби — FroggyHub</title>
   <link rel="stylesheet" href="/style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
     .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
     @media (min-width:640px){.fh-bg{background-position:center}}
@@ -22,7 +21,6 @@
     #evCode{font-variant-numeric:tabular-nums}
     .guests-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:1rem}
     .guests-columns h4{margin-bottom:.5rem}
-    .muted{opacity:.75}
   </style>
 </head>
 <body data-page="lobby">
@@ -55,6 +53,7 @@
           <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
         </div>
 
+        <!-- убрали текст-подсказку, оставили одну кнопку -->
         <div style="margin:.5rem 0 1rem">
           <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
         </div>
@@ -175,21 +174,20 @@
     }
 
     async function saveEventToServer() {
-     const payload = {
-  code: String(draft.code),
-  title: draft.title || 'Моё событие',
-  date: draft.date,
-  time: draft.time,
-  address: draft.address || null,
-  dress_code: draft.dress || null,
-  what_to_bring: draft.bring || null,
-  comment: draft.notes || null,
-  // >>> добавляем
-  wishlist: Array.isArray(draft.wishlist) ? draft.wishlist.map(i => ({
-    title: i?.title || '',
-    url: i?.url || null
-  })) : []
-};
+      const payload = {
+        code: String(draft.code),
+        title: draft.title || 'Моё событие',
+        date: draft.date,
+        time: draft.time,
+        address: draft.address || null,
+        dress_code: draft.dress || null,
+        what_to_bring: draft.bring || null,
+        comment: draft.notes || null,
+        wishlist: Array.isArray(draft.wishlist) ? draft.wishlist.map(i => ({
+          title: i?.title || '',
+          url: i?.url || null
+        })) : []
+      };
       const r = await fetch('/.netlify/functions/event-create', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -203,13 +201,11 @@
     async function ensureEventExistsInDb() {
       if (draft.savedToDbForCode === String(draft.code)) return;
 
-      // 1) пробуем найти на сервере
       const ev = await fetchEventByCode(draft.code);
       if (ev) {
         draft = {
           ...draft,
           id: ev.id,
-          // ВАЖНО: код из БД имеет приоритет
           code: ev.code || ev.join_code || draft.code,
           title: ev.title ?? draft.title,
           date: ev.date ?? draft.date,
@@ -225,20 +221,17 @@
         return;
       }
 
-      // 2) если нет даты/времени — ждём явного сохранения
       if (!draft.date || !draft.time) return;
 
-      // 3) создаём автоматически один раз
       try {
         const created = await saveEventToServer();
-        // ВАЖНО: синхронизируем код с тем, что вернул сервер
         draft.id = created.id;
         draft.code = created.code || created.join_code || draft.code;
         draft.savedToDbForCode = String(draft.code);
         writeDraft(draft);
         renderFromDraft();
       } catch (e) {
-        console.warn('Автосоздание не удалось — можно нажать кнопку "Сохранить событие".', e);
+        console.warn('Автосоздание не удалось — нажми «Сохранить событие».', e);
       }
     }
 
@@ -253,7 +246,7 @@
       try {
         const created = await saveEventToServer();
         draft.id = created.id;
-        draft.code = created.code || created.join_code || draft.code; // ← синхронизация кода
+        draft.code = created.code || created.join_code || draft.code;
         draft.savedToDbForCode = String(draft.code);
         writeDraft(draft);
         renderFromDraft();
