@@ -14,12 +14,11 @@ const json = (status, body) => ({
   body: JSON.stringify(body),
 });
 
-// лёгкая нормализация кода: убираем пробелы, переводим в верхний регистр
+// лёгкая нормализация кода: убираем пробелы, приводим к верхнему регистру
 const normCode = (v) => String(v || '').trim().toUpperCase();
 
 export async function handler(event) {
   try {
-    // CORS preflight
     if (event.httpMethod === 'OPTIONS') return json(200, { ok: true });
     if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed' });
 
@@ -30,7 +29,7 @@ export async function handler(event) {
 
     const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1) пробуем по колонке code
+    // 1) ищем по code
     let { data, error } = await sb
       .from('events')
       .select('id, code, join_code, title, date, time, address, dress_code, what_to_bring, comment, created_at')
@@ -38,22 +37,19 @@ export async function handler(event) {
       .maybeSingle();
 
     if (error && !isMissingColumnError(error)) {
-      // это не «нет такой колонки», а реальная ошибка
       return json(500, { error: error.message });
     }
 
     // 2) если не нашли — пробуем по join_code (если колонка есть)
     if (!data) {
-      const res2 = await sb
+      const r2 = await sb
         .from('events')
         .select('id, code, join_code, title, date, time, address, dress_code, what_to_bring, comment, created_at')
         .eq('join_code', code)
         .maybeSingle();
-      // если join_code колонки нет — res2.error будет «missing column», игнорируем
-      if (!res2.error) ({ data } = res2);
-      else if (!isMissingColumnError(res2.error)) {
-        return json(500, { error: res2.error.message });
-      }
+
+      if (!r2.error) ({ data } = r2);
+      else if (!isMissingColumnError(r2.error)) return json(500, { error: r2.error.message });
     }
 
     if (!data) return json(404, { error: 'Event not found' });
