@@ -561,6 +561,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindWishlistBridge();
   ensureLobbyParamsFromDraft();
   bootBubbles();
+  bindProfileRsvpViewer();
 
   const session = await ensureSession();
   if (session) {
@@ -602,5 +603,128 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     setTimeout(() => { obs.disconnect(); tryAutoClick(); }, 8000);
   })();
+/* -------------------- PROFILE: RSVP viewer -------------------- */
+function bindProfileRsvpViewer() {
+  if (!/\/profile\.html/i.test(location.pathname)) return;
 
+  // ищем строки событий в профиле; желательно, чтобы на элементе был data-event-id,
+  // но попробуем достать id и из ссылок вида "...?event=123"
+  const rows = [...document.querySelectorAll('.event-item, [data-event-id]')];
+
+  // вспомогательный: достать ID события из строки
+  const getEventId = (row) => {
+    const d = row.dataset?.eventId;
+    if (d && String(d).trim()) return Number(d);
+    const link = row.querySelector('a[href*="event="], a[href*="/lobby"]');
+    if (link) {
+      try {
+        const u = new URL(link.href, location.origin);
+        const id = u.searchParams.get('event');
+        if (id) return Number(id);
+      } catch {}
+    }
+    return null;
+  };
+
+  // если на странице ничего не найдено — выходим тихо
+  if (!rows.length) return;
+
+  // создать/вставить кнопку «Гости»
+  rows.forEach(row => {
+    const evId = getEventId(row);
+    if (!evId) return;
+
+    // не дублируем если уже есть
+    if (row.querySelector('[data-action="show-rsvps"]')) return;
+
+    const actions = row.querySelector('.event-actions') || row; // куда вставлять
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-ghost';
+    btn.type = 'button';
+    btn.textContent = 'Гости';
+    btn.dataset.action = 'show-rsvps';
+    btn.dataset.eventId = String(evId);
+    actions.appendChild(btn);
+  });
+
+  // шаблон панели
+  const renderPanel = (evId, groups) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'glass-section rsvps-panel';
+    wrap.dataset.for = String(evId);
+    wrap.innerHTML = `
+      <div class="section-title">Кто идёт</div>
+      <div class="stats">
+        <span class="badge yes">Да: ${groups.yes.length}</span>
+        <span class="badge maybe">Может быть: ${groups.maybe.length}</span>
+        <span class="badge no">Нет: ${groups.no.length}</span>
+      </div>
+      <div class="guests-columns">
+        <div>
+          <div class="bubble-head">Да</div>
+          <ul class="list">${groups.yes.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
+        <div>
+          <div class="bubble-head">Может быть</div>
+          <ul class="list">${groups.maybe.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
+        <div>
+          <div class="bubble-head">Нет</div>
+          <ul class="list">${groups.no.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
+        </div>
+      </div>
+    `;
+    return wrap;
+  };
+
+  // загрузчик из supabase
+  const loadRsvps = async (eventId) => {
+    try {
+      const { data, error } = await supa
+        .from('rsvps')
+        .select('user_name, status')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+
+      const groups = { yes: [], maybe: [], no: [] };
+      (data || []).forEach(r => {
+        const name = (r.user_name || 'Без имени').trim();
+        const key = (r.status || 'maybe').toLowerCase();
+        (groups[key] || groups.maybe).push(name);
+      });
+      return groups;
+    } catch (e) {
+      console.error('[profile] loadRsvps error', e);
+      return { yes: [], maybe: [], no: [] };
+    }
+  };
+
+  // делегированный клик по «Гости»
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="show-rsvps"]');
+    if (!btn) return;
+
+    const row = btn.closest('.event-item') || btn.parentElement;
+    const evId = Number(btn.dataset.eventId || getEventId(row));
+    if (!evId || !row) return;
+
+    // если панель уже есть — просто сворачиваем/разворачиваем
+    let panel = row.nextElementSibling;
+    if (panel && panel.classList.contains('rsvps-panel')) {
+      panel.hidden = !panel.hidden;
+      return;
+    }
+
+    // создаём заглушку
+    panel = document.createElement('div');
+    panel.className = 'glass-section rsvps-panel';
+    panel.innerHTML = '<div class="section-title">Кто идёт</div><div class="hint">Загружаем…</div>';
+    row.after(panel);
+
+    const groups = await loadRsvps(evId);
+    const fresh = renderPanel(evId, groups);
+    panel.replaceWith(fresh);
+  }, { passive: true });
+}
 });
