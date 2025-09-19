@@ -5,3 +5,12 @@
 /profile           /profile.html           200
 /login             /login.html             200
 /event-analytics   /event-analytics.html   200
+
+# если вдруг кто-то запросит с завершающим слэшем
+/join/             /join.html              200
+/lobby/            /lobby.html             200
+/event-edit/       /event-edit.html        200
+/wishlist/         /wishlist.html          200
+/profile/          /profile.html           200
+/login/            /login.html             200
+/event-analytics/  /event-analytics.html   200
