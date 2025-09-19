@@ -1,9 +1,73 @@
 [build]
-# статический фронт
-command = ""
-publish = "FroggyHub"
-functions = "netlify/functions"
+  # статический фронт
+  command = ""         # ничего не билдим, просто деплой
+  publish = "FroggyHub"
+  functions = "netlify/functions"
 
 # ЯВНО указываем директорию функций (чтоб Netlify точно их собрал)
 [functions]
-directory = "netlify/functions"
+  directory = "netlify/functions"
+
+# ===== КЭШ СТАТИКИ =====
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# ===== БЕЗОПАСНОСТЬ =====
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    X-XSS-Protection = "0"
+    Content-Security-Policy = "default-src 'self' https:; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:; connect-src 'self' https://*.supabase.co https://*.supabase.net wss://*.supabase.co wss://*.supabase.net; frame-ancestors 'none'; upgrade-insecure-requests"
+
+# ===== РЕДИРЕКТЫ =====
+[[redirects]]
+  from = "/join"
+  to = "/join.html"
+  status = 200
+
+[[redirects]]
+  from = "/lobby"
+  to = "/lobby.html"
+  status = 200
+
+[[redirects]]
+  from = "/event-edit"
+  to = "/event-edit.html"
+  status = 200
+
+[[redirects]]
+  from = "/wishlist"
+  to = "/wishlist.html"
+  status = 200
+
+[[redirects]]
+  from = "/profile"
+  to = "/profile.html"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/event-analytics"
+  to = "/event-analytics.html"
+  status = 200
