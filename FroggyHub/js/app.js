@@ -8,6 +8,15 @@ const hwThreads = navigator.hardwareConcurrency || 4;
 const isLowEnd = hwThreads <= 4 || (navigator.deviceMemory && navigator.deviceMemory <= 4);
 const DPR = window.devicePixelRatio || 1;
 
+/* ----- стабильные 100vh на мобильных (iOS/Android адресная строка) ----- */
+function setVhVar() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+setVhVar();
+window.addEventListener('resize', setVhVar, { passive: true });
+window.addEventListener('orientationchange', setVhVar, { passive: true });
+
 /* -------------------- фоновые «облачка» -------------------- */
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪','Буду позже 🙈',
@@ -153,6 +162,9 @@ const BubbleController = (() => {
       clearTimers();
     }
   });
+
+  // чистим на уход со страницы (SPA/MPA совместимо)
+  window.addEventListener('pagehide', destroy, { passive: true });
 
   return { spawn, destroy };
 })();
@@ -318,6 +330,15 @@ function bindIndexNav() {
   const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
 
+  // Мобильная клавиатура + UX подсказки (не мешает десктопу)
+  if (joinInput) {
+    // Если код может быть не только цифры — поменяй на 'text'
+    joinInput.setAttribute('inputmode', 'numeric');
+    joinInput.setAttribute('autocomplete', 'one-time-code');
+    joinInput.setAttribute('enterkeyhint', 'go');
+    joinInput.setAttribute('autocapitalize', 'characters');
+  }
+
   const goJoin = () => {
     const raw  = (joinInput?.value || '').trim();
     const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -353,6 +374,11 @@ function bindJoinPage() {
 
   if (codeHolder && codeParam) codeHolder.textContent = codeParam;
   if (!nameInput || !btnJoin) return;
+
+  // Мобильный ввод имени — без автозамены caps lock и т.п.
+  nameInput.setAttribute('autocomplete', 'name');
+  nameInput.setAttribute('autocapitalize', 'words');
+  nameInput.setAttribute('enterkeyhint', 'done');
 
   let picked = 'yes';
   statusWrap.addEventListener('click', (e)=>{
@@ -527,17 +553,19 @@ function bootBubbles() {
     BubbleController.spawn(root, desiredBubbleCount());
   }, 200);
 
-  addEventListener('resize', onResize, { passive: true });
+  window.addEventListener('resize', onResize, { passive: true });
 
   // visualViewport — устойчивее на iOS
   if (window.visualViewport) {
-    visualViewport.addEventListener('resize', onResize, { passive: true });
+    window.visualViewport.addEventListener('resize', onResize, { passive: true });
   }
 
   // если корневой контейнер меняет размер (например, CSS правки) — перестраиваем
   if ('ResizeObserver' in window) {
     const ro = new ResizeObserver(onResize);
     ro.observe(root);
+    // на смену страницы/разметки — дисконнектим наблюдатель
+    window.addEventListener('pagehide', () => { try { ro.disconnect(); } catch {} }, { passive: true });
   }
 }
 
@@ -557,4 +585,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     showScreen('screen-auth');
   }
-}, { passive: true });
+});
