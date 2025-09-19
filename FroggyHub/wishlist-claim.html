@@ -7,11 +7,9 @@
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
-    /* фон как на лобби/финалке */
     .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding:24px 16px}
-    /* список в стиле стек-секций */
     .wl-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
     .wl-item{display:flex;justify-content:space-between;align-items:center;gap:12px}
     .wl-item .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -25,14 +23,12 @@
 
   <div class="fh-content">
     <main class="final-wrap">
-      <!-- карточка в стиле финалки -->
       <section class="final-card">
         <div class="final-header">
           <div class="title">Выбор подарков</div>
         </div>
 
         <div class="final-main">
-          <!-- мета-блоки как на финалке -->
           <div class="meta">
             <div class="meta-item">
               <div class="label">Событие</div>
@@ -48,7 +44,6 @@
             </div>
           </div>
 
-          <!-- список подарков в стек-карточках -->
           <div class="lobby-panels">
             <div class="glass-section">
               <h3 class="section-title">Wishlist</h3>
@@ -72,7 +67,6 @@
     import { supa } from '/js/api.js';
 
     const qs = new URLSearchParams(location.search);
-    // поддерживаем оба варианта параметров
     let code   = (qs.get('code')  || '').trim();
     let myName = (qs.get('name')  || qs.get('guest') || '').trim();
     let eventId = qs.get('event') ? Number(qs.get('event')) : null;
@@ -95,27 +89,30 @@
 
     const sameName = (a='',b='') => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+    // ВСЕГДА подтягиваем заголовок события (и при нужде код)
     async function resolveEvent(){
-      if (eventId && code) return;
-
-      if (eventId && !code){
+      if (eventId){
         const { data, error } = await supa
-          .from('events').select('code,join_code,title').eq('id', eventId).maybeSingle();
+          .from('events')
+          .select('title, code, join_code')
+          .eq('id', eventId)
+          .maybeSingle();
         if (error || !data) throw new Error('Событие не найдено.');
-        code = data.code || data.join_code || code;
         evNameEl.textContent = data.title || 'Событие';
+        if (!code) code = data.code || data.join_code || '';
         return;
       }
 
-      if (!eventId && code){
+      if (code){
         const { data, error } = await supa
           .from('events')
-          .select('id,title,code,join_code')
+          .select('id, title, code, join_code')
           .or(`code.eq.${code},join_code.eq.${code}`)
           .maybeSingle();
         if (error || !data) throw new Error('Событие не найдено.');
         eventId = data.id;
         evNameEl.textContent = data.title || 'Событие';
+        code = data.code || data.join_code || code;
         return;
       }
 
@@ -217,7 +214,7 @@
     (async function init(){
       try{
         if (!myName) throw new Error('Не передано имя гостя.');
-        await resolveEvent();
+        await resolveEvent();   // теперь всегда выставляет название и код
         setHeader();
         await loadWishlist();
       }catch(e){
