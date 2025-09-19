@@ -24,15 +24,23 @@
   </style>
 </head>
 <body data-page="lobby">
-  <!-- гард: если нет ?event и нет черновика с id — отправляем на join -->
+  <!-- Мягкий гард: пробуем восстановить event и дописать его в URL -->
   <script>
     (function () {
       const qs = new URLSearchParams(location.search);
-      if (!qs.has('event')) {
+      if (!qs.get('event')) {
+        let eid = null;
         try {
           const d = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
-          if (!d?.id) location.replace('/join.html');
-        } catch {
+          eid = d?.id || null;
+        } catch {}
+        if (!eid) {
+          try { eid = localStorage.getItem('fh:lastEventId') || null; } catch {}
+        }
+        if (eid) {
+          qs.set('event', eid);
+          history.replaceState(null, '', location.pathname + '?' + qs.toString());
+        } else {
           location.replace('/join.html');
         }
       }
@@ -97,10 +105,13 @@
   </div>
 
   <script>
-    const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}'); } catch { return {}; } };
-    const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)); } catch {} };
+    // draft helpers
+    const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}') } catch { return {} } };
+    const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
     let draft = readDraft();
+    try { if (draft?.id) localStorage.setItem('fh:lastEventId', draft.id); } catch {}
 
+    // ui helpers
     const $ = (id) => document.getElementById(id);
     const pad = (n) => n.toString().padStart(2,'0');
     const formatWhen = (d) => {
@@ -151,16 +162,18 @@
 
     renderFromDraft();
 
+    // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
       const origin = location.origin || 'https://froggyhubapp.netlify.app';
       const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code || '—'}\nЗайди на ${origin} и введи этот код.`;
-      try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано!'); }
+      try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано в буфер обмена!'); }
       catch {
         const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); ta.remove(); alert('Приглашение скопировано!');
+        ta.select(); document.execCommand('copy'); ta.remove(); alert('Приглашение скопировано в буфер обмена!');
       }
     });
 
+    // серверная синхронизация (без автосоздания)
     async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
@@ -173,21 +186,15 @@
       const payload = {
         code: String(draft.code || ''),
         title: draft.title || 'Моё событие',
-        date: draft.date,
-        time: draft.time,
+        date: draft.date, time: draft.time,
         address: draft.address || null,
         dress_code: draft.dress || null,
         what_to_bring: draft.bring || null,
         comment: draft.notes || null,
-        wishlist: Array.isArray(draft.wishlist) ? draft.wishlist.map(i => ({
-          title: i?.title || '',
-          url: i?.url || null
-        })) : []
+        wishlist: Array.isArray(draft.wishlist) ? draft.wishlist.map(i => ({ title: i?.title || '', url: i?.url || null })) : []
       };
       const r = await fetch('/.netlify/functions/event-create', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload),
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
       });
       const data = await r.json().catch(()=> ({}));
       if (!r.ok || !data?.event?.id) throw new Error(data?.error || 'Create failed');
@@ -197,7 +204,6 @@
     async function ensureEventExistsInDb() {
       if (draft.savedToDbForCode && draft.code && String(draft.savedToDbForCode) === String(draft.code)) return;
       if (!draft.code) return;
-
       const ev = await fetchEventByCode(draft.code);
       if (ev) {
         draft = {
@@ -214,6 +220,7 @@
           savedToDbForCode: String(ev.code || ev.join_code || draft.code),
         };
         writeDraft(draft);
+        try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
         renderFromDraft();
       }
     }
@@ -223,17 +230,16 @@
       if (draft.savedToDbForCode && String(draft.savedToDbForCode) === String(draft.code)) {
         alert('Событие уже сохранено. Код: '+draft.code); return;
       }
-
       const btn = document.getElementById('saveEventBtn');
       const old = btn.textContent;
       btn.disabled = true; btn.textContent = 'Сохраняем...';
-
       try {
         const created = await saveEventToServer();
         draft.id = created.id;
         draft.code = created.code || created.join_code || draft.code;
         draft.savedToDbForCode = String(draft.code);
         writeDraft(draft);
+        try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
         renderFromDraft();
         alert('Сохранено! Код: ' + draft.code);
       } catch (e) {
