@@ -12,7 +12,7 @@
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem}
 
-    /* ——— топбар как в главном меню ——— */
+    /* ——— Топбар как в главном меню ——— */
     .fh-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}
     .fh-logo{font-weight:800;letter-spacing:.2px}
     .topbar{
@@ -127,20 +127,20 @@
     const myName = (draft?.lastJoinName || '').trim();
     const isGuestView = !!myName;
 
+    /* ——— Топбар: без «Редактировать wishlist», для гостя — «Выбрать подарок» ——— */
     function buildTopbar() {
       const bar = document.getElementById('topbar');
-      const code = encodeURIComponent(draft?.code || '');
-      const name = encodeURIComponent(myName || '');
-      const ctxHref = isGuestView
-        ? `/wishlist-claim.html?code=${code}&name=${name}`
-        : `/wishlist.html`;
-      const ctxText = isGuestView ? 'Выбрать подарок' : 'Редактировать wishlist';
-
-      bar.innerHTML = `
+      const base = `
         <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
         <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-        <a href="${ctxHref}" class="btn btn--ghost btn--sm">${ctxText}</a>
       `;
+      if (isGuestView) {
+        const code = encodeURIComponent(draft?.code || '');
+        const name = encodeURIComponent(myName || '');
+        bar.innerHTML = base + `<a href="/wishlist-claim.html?code=${code}&name=${name}" class="btn btn--ghost btn--sm">Выбрать подарок</a>`;
+      } else {
+        bar.innerHTML = base; // без «Редактировать wishlist»
+      }
     }
 
     function applyGuestVisibility() {
@@ -186,7 +186,7 @@
       const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
       if (items.length === 0) {
         const li=document.createElement('li'); li.className='hint';
-        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+        li.textContent='Пока пусто.';
         box.appendChild(li);
       } else {
         items.forEach(({title,url})=>{
@@ -285,7 +285,7 @@
 
         if (!data || data.length === 0) {
           const li=document.createElement('li'); li.className='hint';
-          li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+          li.textContent='Пока пусто.';
           box.appendChild(li);
           return;
         }
