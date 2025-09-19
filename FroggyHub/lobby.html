@@ -24,6 +24,16 @@
   </style>
 </head>
 <body data-page="lobby">
+  <!-- Гард: без ?event= — уводим на join -->
+  <script>
+    (function () {
+      const qs = new URLSearchParams(location.search);
+      if (!qs.has('event')) {
+        location.replace('/join.html');
+      }
+    })();
+  </script>
+
   <div class="fh-bg" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -53,7 +63,6 @@
           <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
         </div>
 
-        <!-- убрали текст-подсказку, оставили одну кнопку -->
         <div style="margin:.5rem 0 1rem">
           <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
         </div>
@@ -88,15 +97,8 @@
     const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
     let draft = readDraft();
 
-    // URL-код имеет приоритет
-    const urlCode = new URLSearchParams(location.search).get('code');
-    if (urlCode && /^\d{6}$/.test(urlCode)) { draft.code = urlCode; writeDraft(draft); }
-
-    // генерим при отсутствии
-    if (!draft.code || !/^\d{6}$/.test(String(draft.code))) {
-      draft.code = String(Math.floor(100000 + Math.random() * 900000));
-      writeDraft(draft);
-    }
+    // !!! Больше НЕ генерим код автоматически и НЕ подменяем из ?code
+    // draft используется только если он уже есть (создатель сохранил событие)
 
     // ---------- ui helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -116,7 +118,7 @@
       $('evDress').textContent = draft.dress   || '—';
       $('evBring').textContent = draft.bring   || '—';
       $('evNotes').textContent = draft.notes   || '—';
-      $('evCode').textContent  = draft.code;
+      $('evCode').textContent  = draft.code || '—';
       $('evWhen').textContent  = formatWhen(draft);
 
       if (draft?.date || draft?.time) {
@@ -124,11 +126,7 @@
         if (!isNaN(dt)) {
           $('cdBig').textContent = pad(dt.getHours())+':'+pad(dt.getMinutes());
           $('cdSmall').textContent = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
-        } else {
-          $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
         }
-      } else {
-        $('cdBig').textContent = '00:00'; $('cdSmall').textContent = '—';
       }
 
       const box = $('evWishlist'); box.innerHTML='';
@@ -156,7 +154,7 @@
     // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
       const origin = location.origin || 'https://froggyhubapp.netlify.app';
-      const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code}\nЗайди на ${origin} и введи этот код.`;
+      const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code || '—'}\nЗайди на ${origin} и введи этот код.`;
       try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано в буфер обмена!'); }
       catch {
         const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
@@ -165,6 +163,8 @@
     });
 
     // ---------- серверная синхронизация ----------
+    // оставляем твою логику как есть — без автосоздания события
+
     async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
@@ -175,7 +175,7 @@
 
     async function saveEventToServer() {
       const payload = {
-        code: String(draft.code),
+        code: String(draft.code || ''),
         title: draft.title || 'Моё событие',
         date: draft.date,
         time: draft.time,
@@ -199,7 +199,10 @@
     }
 
     async function ensureEventExistsInDb() {
-      if (draft.savedToDbForCode === String(draft.code)) return;
+      // если черновик уже синхронизирован — ничего не делаем
+      if (draft.savedToDbForCode && draft.code && String(draft.savedToDbForCode) === String(draft.code)) return;
+
+      if (!draft.code) return; // больше не создаём автоматически
 
       const ev = await fetchEventByCode(draft.code);
       if (ev) {
@@ -218,26 +221,14 @@
         };
         writeDraft(draft);
         renderFromDraft();
-        return;
-      }
-
-      if (!draft.date || !draft.time) return;
-
-      try {
-        const created = await saveEventToServer();
-        draft.id = created.id;
-        draft.code = created.code || created.join_code || draft.code;
-        draft.savedToDbForCode = String(draft.code);
-        writeDraft(draft);
-        renderFromDraft();
-      } catch (e) {
-        console.warn('Автосоздание не удалось — нажми «Сохранить событие».', e);
       }
     }
 
     document.getElementById('saveEventBtn')?.addEventListener('click', async () => {
       if (!draft.date || !draft.time) { alert('Сначала укажи дату и время 🙂'); return; }
-      if (draft.savedToDbForCode === String(draft.code)) { alert('Событие уже сохранено. Код: '+draft.code); return; }
+      if (draft.savedToDbForCode && String(draft.savedToDbForCode) === String(draft.code)) {
+        alert('Событие уже сохранено. Код: '+draft.code); return;
+      }
 
       const btn = document.getElementById('saveEventBtn');
       const old = btn.textContent;
