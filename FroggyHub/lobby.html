@@ -24,11 +24,18 @@
   </style>
 </head>
 <body data-page="lobby">
-  <!-- Гард: без ?event= — уводим на join -->
+  <!-- гард: если нет ?event и нет черновика с id — отправляем на join -->
   <script>
     (function () {
       const qs = new URLSearchParams(location.search);
-      if (!qs.has('event')) location.replace('/join.html');
+      if (!qs.has('event')) {
+        try {
+          const d = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
+          if (!d?.id) location.replace('/join.html');
+        } catch {
+          location.replace('/join.html');
+        }
+      }
     })();
   </script>
 
@@ -40,8 +47,7 @@
       <nav class="topbar">
         <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
         <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-        <!-- ссылка будет переписана скриптом, чтобы добавить ?event=... -->
-        <a id="editWishlistLink" href="/wishlist.html" class="btn btn--ghost btn--sm">Редактировать wishlist</a>
+        <a href="/wishlist.html" class="btn btn--ghost btn--sm">Редактировать wishlist</a>
       </nav>
     </header>
 
@@ -91,12 +97,10 @@
   </div>
 
   <script>
-    // ---------- draft helpers ----------
-    const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}') } catch { return {} } };
-    const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
-    window.draft = readDraft(); // кладём в window, чтобы другие куски могли прочитать
+    const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}'); } catch { return {}; } };
+    const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)); } catch {} };
+    let draft = readDraft();
 
-    // ---------- ui helpers ----------
     const $ = (id) => document.getElementById(id);
     const pad = (n) => n.toString().padStart(2,'0');
     const formatWhen = (d) => {
@@ -109,16 +113,16 @@
     };
 
     function renderFromDraft() {
-      $('evTitle').textContent = window.draft.title || 'Событие';
-      $('evAddr').textContent  = window.draft.address || '—';
-      $('evDress').textContent = window.draft.dress   || '—';
-      $('evBring').textContent = window.draft.bring   || '—';
-      $('evNotes').textContent = window.draft.notes   || '—';
-      $('evCode').textContent  = window.draft.code || '—';
-      $('evWhen').textContent  = formatWhen(window.draft);
+      $('evTitle').textContent = draft.title || 'Событие';
+      $('evAddr').textContent  = draft.address || '—';
+      $('evDress').textContent = draft.dress   || '—';
+      $('evBring').textContent = draft.bring   || '—';
+      $('evNotes').textContent = draft.notes   || '—';
+      $('evCode').textContent  = draft.code || '—';
+      $('evWhen').textContent  = formatWhen(draft);
 
-      if (window.draft?.date || window.draft?.time) {
-        const dt = new Date(`${window.draft.date||''}T${window.draft.time||'00:00'}`);
+      if (draft?.date || draft?.time) {
+        const dt = new Date(`${draft.date||''}T${draft.time||'00:00'}`);
         if (!isNaN(dt)) {
           $('cdBig').textContent = pad(dt.getHours())+':'+pad(dt.getMinutes());
           $('cdSmall').textContent = dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
@@ -126,7 +130,7 @@
       }
 
       const box = $('evWishlist'); box.innerHTML='';
-      const items = Array.isArray(window.draft?.wishlist) ? window.draft.wishlist : [];
+      const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
       if (items.length === 0) {
         const li=document.createElement('li'); li.className='hint';
         li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
@@ -139,31 +143,24 @@
           box.appendChild(li);
         });
       }
+
+      ['guestYes','guestNo','guestMaybe'].forEach(id=>{
+        const ul=$(id); if (ul) ul.innerHTML='';
+      });
     }
 
     renderFromDraft();
 
-    // Ссылка «Редактировать wishlist» — всегда с ?event=...
-    (function ensureWishlistLink() {
-      const a = document.getElementById('editWishlistLink');
-      if (!a) return;
-      const qs = new URLSearchParams(location.search);
-      const id = qs.get('event') || (window.draft?.id ? String(window.draft.id) : '');
-      if (id) a.href = `/wishlist.html?event=${encodeURIComponent(id)}`;
-    })();
-
-    // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
       const origin = location.origin || 'https://froggyhubapp.netlify.app';
-      const text = `Приглашаю на "${window.draft.title || 'событие'}"!\nКод для присоединения: ${window.draft.code || '—'}\nЗайди на ${origin} и введи этот код.`;
-      try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано в буфер обмена!'); }
+      const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code || '—'}\nЗайди на ${origin} и введи этот код.`;
+      try { await navigator.clipboard.writeText(text); alert('Приглашение скопировано!'); }
       catch {
         const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
-        ta.select(); document.execCommand('copy'); ta.remove(); alert('Приглашение скопировано в буфер обмена!');
+        ta.select(); document.execCommand('copy'); ta.remove(); alert('Приглашение скопировано!');
       }
     });
 
-    // ---------- серверная синхронизация (оставлена как у тебя) ----------
     async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
@@ -174,15 +171,15 @@
 
     async function saveEventToServer() {
       const payload = {
-        code: String(window.draft.code || ''),
-        title: window.draft.title || 'Моё событие',
-        date: window.draft.date,
-        time: window.draft.time,
-        address: window.draft.address || null,
-        dress_code: window.draft.dress || null,
-        what_to_bring: window.draft.bring || null,
-        comment: window.draft.notes || null,
-        wishlist: Array.isArray(window.draft.wishlist) ? window.draft.wishlist.map(i => ({
+        code: String(draft.code || ''),
+        title: draft.title || 'Моё событие',
+        date: draft.date,
+        time: draft.time,
+        address: draft.address || null,
+        dress_code: draft.dress || null,
+        what_to_bring: draft.bring || null,
+        comment: draft.notes || null,
+        wishlist: Array.isArray(draft.wishlist) ? draft.wishlist.map(i => ({
           title: i?.title || '',
           url: i?.url || null
         })) : []
@@ -198,36 +195,33 @@
     }
 
     async function ensureEventExistsInDb() {
-      if (window.draft.savedToDbForCode && window.draft.code && String(window.draft.savedToDbForCode) === String(window.draft.code)) return;
-      if (!window.draft.code) return;
+      if (draft.savedToDbForCode && draft.code && String(draft.savedToDbForCode) === String(draft.code)) return;
+      if (!draft.code) return;
 
-      const ev = await fetchEventByCode(window.draft.code);
+      const ev = await fetchEventByCode(draft.code);
       if (ev) {
-        window.draft = {
-          ...window.draft,
+        draft = {
+          ...draft,
           id: ev.id,
-          code: ev.code || ev.join_code || window.draft.code,
-          title: ev.title ?? window.draft.title,
-          date: ev.date ?? window.draft.date,
-          time: ev.time ?? window.draft.time,
-          address: ev.address ?? window.draft.address,
-          dress: ev.dress_code ?? window.draft.dress,
-          bring: ev.what_to_bring ?? window.draft.bring,
-          notes: ev.comment ?? window.draft.notes,
-          savedToDbForCode: String(ev.code || ev.join_code || window.draft.code),
+          code: ev.code || ev.join_code || draft.code,
+          title: ev.title ?? draft.title,
+          date: ev.date ?? draft.date,
+          time: ev.time ?? draft.time,
+          address: ev.address ?? draft.address,
+          dress: ev.dress_code ?? draft.dress,
+          bring: ev.what_to_bring ?? draft.bring,
+          notes: ev.comment ?? draft.notes,
+          savedToDbForCode: String(ev.code || ev.join_code || draft.code),
         };
-        writeDraft(window.draft);
+        writeDraft(draft);
         renderFromDraft();
-        // обновим ссылку wishlist если только что получили id
-        const a = document.getElementById('editWishlistLink');
-        if (a && window.draft.id) a.href = `/wishlist.html?event=${encodeURIComponent(String(window.draft.id))}`;
       }
     }
 
     document.getElementById('saveEventBtn')?.addEventListener('click', async () => {
-      if (!window.draft.date || !window.draft.time) { alert('Сначала укажи дату и время 🙂'); return; }
-      if (window.draft.savedToDbForCode && String(window.draft.savedToDbForCode) === String(window.draft.code)) {
-        alert('Событие уже сохранено. Код: '+window.draft.code); return;
+      if (!draft.date || !draft.time) { alert('Сначала укажи дату и время 🙂'); return; }
+      if (draft.savedToDbForCode && String(draft.savedToDbForCode) === String(draft.code)) {
+        alert('Событие уже сохранено. Код: '+draft.code); return;
       }
 
       const btn = document.getElementById('saveEventBtn');
@@ -236,14 +230,12 @@
 
       try {
         const created = await saveEventToServer();
-        window.draft.id = created.id;
-        window.draft.code = created.code || created.join_code || window.draft.code;
-        window.draft.savedToDbForCode = String(window.draft.code);
-        writeDraft(window.draft);
+        draft.id = created.id;
+        draft.code = created.code || created.join_code || draft.code;
+        draft.savedToDbForCode = String(draft.code);
+        writeDraft(draft);
         renderFromDraft();
-        const a = document.getElementById('editWishlistLink');
-        if (a && window.draft.id) a.href = `/wishlist.html?event=${encodeURIComponent(String(window.draft.id))}`;
-        alert('Сохранено! Код: ' + window.draft.code);
+        alert('Сохранено! Код: ' + draft.code);
       } catch (e) {
         console.error(e);
         alert('Не получилось сохранить. Попробуй ещё раз.');
