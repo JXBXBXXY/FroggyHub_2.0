@@ -13,7 +13,7 @@
     .wl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
     .wl-grid { display:flex; flex-wrap:wrap; gap:10px; }
     .wl-grid .chip { display:inline-flex; align-items:center; gap:.5rem; }
-    .wl-grid .chip button { margin-left:.25rem }
+    .wl-grid .chip button { margin-left:.25rem; }
   </style>
 </head>
 <body>
@@ -22,8 +22,7 @@
     <nav class="topbar">
       <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
       <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-      <!-- эта ссылка переписывается скриптом с ?event=... -->
-      <a id="toLobbyLink" href="/lobby.html" class="btn btn--ghost btn--sm">К событию</a>
+      <a id="toLobby" href="/lobby.html" class="btn btn--ghost btn--sm">К событию</a>
     </nav>
   </header>
 
@@ -51,35 +50,20 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script>
-    // -------- контекст события --------
-    const qs = new URLSearchParams(location.search);
-    const eventIdParam = qs.get('event') ? String(qs.get('event')) : null;
-
-    // Подхватим черновик (после создания события он уже лежит здесь)
+  <script type="module">
+    // Черновик события (его положил event-edit.html)
     let draft = {};
-    try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch {}
+    try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch { draft = {}; }
 
-    // Вычисляем надёжный eventId: приоритет — из URL, иначе из драфта
-    const eventId = eventIdParam || (draft?.id ? String(draft.id) : null);
+    // Подвяжем ссылку "К событию"
+    const toLobby = document.getElementById('toLobby');
+    if (draft?.id) toLobby.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
 
-    // Если знаем eventId — сразу пробросим его в навигацию «К событию»
-    (function ensureLobbyLink(){
-      const a = document.getElementById('toLobbyLink');
-      if (a && eventId) a.href = `/lobby.html?event=${encodeURIComponent(eventId)}`;
-    })();
-
-    // Если вообще ничего не знаем — лучше вернуть в меню (или можно оставить как есть)
-    if (!eventId) {
-      // location.replace('/index.html');
-      // не уходим сразу, чтобы пользователь мог хотя бы составить список локально
-    }
-
-    // Заголовок в правом углу
+    // Заголовок
     const wlTitle = document.getElementById('wlEventTitle');
     wlTitle.textContent = draft?.title ? `Для события: “${draft.title}”` : '';
 
-    // -------- локальное состояние вишлиста --------
+    // Локальное состояние
     const state = Array.isArray(draft?.wishlist) ? [...draft.wishlist] : [];
 
     const form = document.getElementById('form-wish-add');
@@ -117,33 +101,30 @@
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const title = document.getElementById('w-title').value.trim();
-      const url   = document.getElementById('w-url').value.trim();
-      if (!title) return;
+      const titleEl = document.getElementById('w-title');
+      const urlEl   = document.getElementById('w-url');
+      const title = titleEl.value.trim();
+      const url   = urlEl.value.trim();
+      if (!title) { titleEl.focus(); return; }
       state.push({ title, url });
-      document.getElementById('w-title').value = '';
-      document.getElementById('w-url').value = '';
+      titleEl.value = '';
+      urlEl.value = '';
       render();
     });
 
-    // сохранение в черновик и возврат
-    function saveDraftWishlist() {
+    btnCancel.addEventListener('click', () => {
+      const id = draft?.id ? `?event=${encodeURIComponent(draft.id)}` : '';
+      location.href = `/lobby.html${id}`;
+    });
+
+    btnDone.addEventListener('click', () => {
       try {
         const d = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
         d.wishlist = state;
         sessionStorage.setItem('fh:draftEvent', JSON.stringify(d));
       } catch {}
-    }
-
-    btnCancel.addEventListener('click', () => {
-      saveDraftWishlist();
-      location.href = eventId ? `/lobby.html?event=${encodeURIComponent(eventId)}` : '/index.html';
-    });
-
-    btnDone.addEventListener('click', () => {
-      saveDraftWishlist();
-      // по требованиям — после заполнения всегда в лобби события
-      location.href = eventId ? `/lobby.html?event=${encodeURIComponent(eventId)}` : '/index.html`;
+      const id = draft?.id ? `?event=${encodeURIComponent(draft.id)}` : '';
+      location.href = `/lobby.html${id}`;
     });
 
     render();
