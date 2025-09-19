@@ -30,6 +30,7 @@ const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
 function spawnBubbles(container, count) {
+  if (!container) return;
   const placed = [];
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
@@ -39,9 +40,10 @@ function spawnBubbles(container, count) {
 
     const c = container.getBoundingClientRect();
     let tries = 0, x = 0, y = 0, ok = false;
-    while (tries++ < 60 && !ок) {
-      x = 24 + Math.random() * (c.width - 160);
-      y = 24 + Math.random() * (c.height - 60);
+    // ВАЖНО: ok латиницей
+    while (tries++ < 60 && !ok) {
+      x = 24 + Math.random() * Math.max(40, c.width - 160);
+      y = 24 + Math.random() * Math.max(40, c.height - 60);
       el.style.left = `${x}px`;
       el.style.top  = `${y}px`;
       const r1 = el.getBoundingClientRect();
