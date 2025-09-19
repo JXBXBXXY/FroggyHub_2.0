@@ -11,10 +11,10 @@
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
     .box{max-width:900px;width:min(900px,100%);margin:0 auto}
-    .wl-list{list-style:none; padding:0; margin:0; display:grid; gap:.5rem}
-    .wl-item{display:flex; gap:.75rem; align-items:center; justify-content:space-between; padding:.75rem 1rem; border:1px solid rgba(255,255,255,.08); border-radius:12px}
-    .wl-item .meta{display:flex; gap:.5rem; align-items:center; flex-wrap:wrap}
-    .badge{font-size:.85em; opacity:.85; padding:.2rem .5rem; border-radius:999px; border:1px solid rgba(255,255,255,.15)}
+    .wl-list{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
+    .wl-item{display:flex;gap:.75rem;align-items:center;justify-content:space-between;padding:.75rem 1rem;border:1px solid rgba(255,255,255,.08);border-radius:12px}
+    .wl-item .meta{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .badge{font-size:.85em;opacity:.85;padding:.2rem .5rem;border-radius:999px;border:1px solid rgba(255,255,255,.15)}
     .muted{opacity:.8}
   </style>
 </head>
@@ -31,7 +31,7 @@
       <h3>Wishlist</h3>
       <ul id="list" class="wl-list"></ul>
 
-      <div class="grid" style="grid-template-columns:1fr auto; gap:.75rem; margin-top:1rem">
+      <div class="grid" style="grid-template-columns:1fr auto;gap:.75rem;margin-top:1rem">
         <a class="btn btn--ghost" id="backBtn" href="/index.html">В меню</a>
         <a class="btn btn--primary" id="toLobby">Дальше</a>
       </div>
@@ -44,8 +44,11 @@
     import { supa } from '/js/api.js';
 
     const qs = new URLSearchParams(location.search);
-    const code = (qs.get('code') || '').trim();
-    const myName = (qs.get('name') || '').trim();
+    // поддерживаем старые и новые имена параметров
+    let code   = (qs.get('code')  || '').trim();
+    let myName = (qs.get('name')  || qs.get('guest') || '').trim();
+    let eventId = qs.get('event') ? Number(qs.get('event')) : null;
+
     const evNameEl = document.getElementById('evName');
     const evCodeEl = document.getElementById('evCode');
     const guestNameEl = document.getElementById('guestName');
@@ -53,23 +56,45 @@
     const errEl  = document.getElementById('err');
     const toLobbyBtn = document.getElementById('toLobby');
 
-    evCodeEl.textContent = code || '—';
-    guestNameEl.textContent = myName || '—';
-    toLobbyBtn.href = `/lobby.html?code=${encodeURIComponent(code)}`;
+    function setHeader() {
+      evCodeEl.textContent   = code   || '—';
+      guestNameEl.textContent= myName || '—';
+      // соберём корректную ссылку в лобби
+      const sp = new URLSearchParams();
+      if (eventId) sp.set('event', String(eventId));
+      if (code)    sp.set('code', code);
+      toLobbyBtn.href = '/lobby.html' + (sp.toString() ? `?${sp.toString()}` : '');
+    }
 
-    let eventId = null;
+    function sameName(a='', b=''){ return a.trim().toLowerCase() === b.trim().toLowerCase(); }
 
-    function sameName(a='', b='') { return a.trim().toLowerCase() === b.trim().toLowerCase(); }
+    async function resolveEvent() {
+      // уже всё знаем
+      if (eventId && code) return;
 
-    async function loadEvent() {
-      const { data: ev, error } = await supa
-        .from('events')
-        .select('id,title,code,join_code')
-        .or(`code.eq.${code},join_code.eq.${code}`)
-        .maybeSingle();
-      if (error || !ev) { errEl.textContent = 'Событие не найдено.'; return; }
-      eventId = ev.id;
-      evNameEl.textContent = ev.title || 'Событие';
+      if (eventId && !code) {
+        const { data, error } = await supa.from('events')
+          .select('code,join_code,title')
+          .eq('id', eventId)
+          .maybeSingle();
+        if (error || !data) throw new Error('Событие не найдено.');
+        code = data.code || data.join_code || code;
+        evNameEl.textContent = data.title || 'Событие';
+        return;
+      }
+
+      if (!eventId && code) {
+        const { data, error } = await supa.from('events')
+          .select('id,title,code,join_code')
+          .or(`code.eq.${code},join_code.eq.${code}`)
+          .maybeSingle();
+        if (error || !data) throw new Error('Событие не найдено.');
+        eventId = data.id;
+        evNameEl.textContent = data.title || 'Событие';
+        return;
+      }
+
+      throw new Error('Не переданы параметры события.');
     }
 
     async function loadWishlist() {
@@ -79,6 +104,7 @@
         .select('id,title,url,claimed_by')
         .eq('event_id', eventId)
         .order('id', { ascending: true });
+
       if (error) { errEl.textContent = error.message; return; }
 
       if (!data || data.length === 0) {
@@ -95,9 +121,16 @@
 
         const left = document.createElement('div');
         left.className = 'meta';
+
         const title = document.createElement('div');
-        if (row.url) title.innerHTML = `<a href="${row.url}" target="_blank" rel="noopener">${row.title}</a>`;
-        else title.textContent = row.title;
+        if (row.url) {
+          const a = document.createElement('a');
+          a.href = row.url; a.target = '_blank'; a.rel = 'noopener';
+          a.textContent = row.title;
+          title.appendChild(a);
+        } else {
+          title.textContent = row.title;
+        }
         left.appendChild(title);
 
         const badge = document.createElement('span');
@@ -114,10 +147,10 @@
         if (!row.claimed_by) {
           btn.textContent = 'Заберу';
           btn.disabled = !myName;
-          btn.addEventListener('click', () => claim(row.id));
+          btn.addEventListener('click', () => claim(row.id, btn));
         } else if (mine) {
           btn.textContent = 'Отменить';
-          btn.addEventListener('click', () => unclaim(row.id));
+          btn.addEventListener('click', () => unclaim(row.id, btn));
         } else {
           btn.textContent = 'Недоступно';
           btn.disabled = true;
@@ -129,39 +162,42 @@
       });
     }
 
-    async function claim(itemId) {
+    async function callFunction(payload, btn){
       errEl.textContent = '';
+      const oldText = btn?.textContent;
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
       try {
         const res = await fetch('/.netlify/functions/events-rsvp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, guest_name: myName, claimItemId: itemId })
+          body: JSON.stringify(payload)
         });
         const data = await res.json().catch(()=> ({}));
-        if (!res.ok || data?.error) throw new Error(data.error || 'Не удалось занять предмет');
+        if (!res.ok || data?.error) throw new Error(data.error || 'Ошибка сервера');
         await loadWishlist();
-      } catch (e) { errEl.textContent = e.message || String(e); }
+      } catch (e) {
+        errEl.textContent = e.message || String(e);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = oldText; }
+      }
     }
 
-    async function unclaim(itemId) {
-      errEl.textContent = '';
-      try {
-        const res = await fetch('/.netlify/functions/events-rsvp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, guest_name: myName, unclaimItemId: itemId })
-        });
-        const data = await res.json().catch(()=> ({}));
-        if (!res.ok || data?.error) throw new Error(data.error || 'Не удалось снять бронь');
-        await loadWishlist();
-      } catch (e) { errEl.textContent = e.message || String(e); }
+    function claim(itemId, btn){
+      return callFunction({ code, guest_name: myName, claimItemId: itemId }, btn);
+    }
+    function unclaim(itemId, btn){
+      return callFunction({ code, guest_name: myName, unclaimItemId: itemId }, btn);
     }
 
     (async function init(){
-      if (!code) { errEl.textContent = 'Не передан код события.'; return; }
-      if (!myName) { errEl.textContent = 'Не передано имя гостя.'; return; }
-      await loadEvent();
-      if (eventId) await loadWishlist();
+      try {
+        if (!myName) throw new Error('Не передано имя гостя.');
+        await resolveEvent();
+        setHeader();
+        await loadWishlist();
+      } catch (e) {
+        errEl.textContent = e.message || String(e);
+      }
     })();
   </script>
 </body>
