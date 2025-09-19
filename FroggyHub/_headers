@@ -1,10 +1,26 @@
 /*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:; connect-src 'self' https://*.supabase.co https://*.supabase.net wss://*.supabase.co wss://*.supabase.net;
+  X-XSS-Protection: 0
+  # CSP: оставил 'unsafe-inline' (есть инлайновые стили/скрипты). Когда уберёшь инлайн — заменим на nonce.
+  Content-Security-Policy: default-src 'self' https:; img-src 'self' data: https:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' https:; connect-src 'self' https://*.supabase.co https://*.supabase.net wss://*.supabase.co wss://*.supabase.net; frame-ancestors 'none'; upgrade-insecure-requests
 
+# длительное кэширование неизменяемых ассетов
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# html и манифест — без долгого кэша
+/*.html
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# CORS для проксирования вызовов к Supabase (если используешь /supabase/* как прокси-роут)
+# Иначе можно удалить этот блок.
 /supabase/*
   Access-Control-Allow-Origin: *
   Access-Control-Allow-Headers: authorization, x-client-info, apikey, content-type
