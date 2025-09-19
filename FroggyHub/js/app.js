@@ -28,7 +28,7 @@ const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
-/** Надёжная раскладка пузырьков (Safari-safe) */
+/** Надёжная раскладка пузырьков без «ok» (Safari-safe) */
 function spawnBubbles(container, count) {
   if (!container) return;
   const placed = [];
@@ -289,7 +289,7 @@ function bindJoinPage() {
 
     const ev = await findEvent();
     if (!ev) {
-      errorBox && (errorBox.textContent = 'Событие с таким кодом не найдено.');
+      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
       return;
     }
 
@@ -310,24 +310,26 @@ function bindJoinPage() {
         const draft = {
           id: ev.id,
           code: ev.code || ev.join_code || codeParam || '',
-          title: ev.title || 'Событие'
+          title: ev.title || 'Событие',
+          lastJoinName: name
         };
         sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft));
         localStorage.setItem('fh:lastEventId', String(ev.id));
       } catch {}
 
-      // === ГОСТЬ: перенаправляем на страницу бронирования (таблица).
-      // Если файл /wishlist-claim.html отсутствует, уходим в lobby.html
-      const claimUrl = `/wishlist-claim.html?event=${ev.id}&from=join`;
+      // === ГОСТЬ: перенаправляем на страницу бронирования (таблица) ===
+      const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
+      const claimUrl = `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}&from=join`;
+
       try {
         const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
         if (head.ok) {
           window.location.href = claimUrl;
         } else {
-          window.location.href = `/lobby.html?event=${ev.id}`;
+          window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
         }
       } catch {
-        window.location.href = `/lobby.html?event=${ev.id}`;
+        window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
       }
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
