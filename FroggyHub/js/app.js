@@ -28,7 +28,7 @@ const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
-/** Надёжная раскладка пузырьков без «ok» (Safari-safe) */
+/** Надёжная раскладка пузырьков (Safari-safe) */
 function spawnBubbles(container, count) {
   if (!container) return;
   const placed = [];
@@ -301,11 +301,11 @@ function bindJoinPage() {
       });
       if (error) {
         console.error('[join] insert rsvp error:', error);
-        errorBox && (errorBox.textContent = error.message || 'Ошибка присоединения. Попробуйте позже.');
+        if (errorBox) errorBox.textContent = error.message || 'Ошибка присоединения. Попробуйте позже.';
         return;
       }
 
-      // Сохраним драфт
+      // Сохраним драфт + имя гостя
       try {
         const draft = {
           id: ev.id,
@@ -314,13 +314,16 @@ function bindJoinPage() {
           lastJoinName: name
         };
         sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft));
+        sessionStorage.setItem('fh:guestName', name);
         localStorage.setItem('fh:lastEventId', String(ev.id));
       } catch {}
 
-      // Редирект гостя на страницу бронирования
+      // Редирект гостя на страницу бронирования (максимально совместимые ключи)
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
       const nameForUrl = encodeURIComponent(name);
-      const claimUrl = `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}&guest=${nameForUrl}&from=join`;
+      const claimUrl =
+        `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}` +
+        `&guest=${nameForUrl}&name=${nameForUrl}&guestName=${nameForUrl}&from=join`;
 
       try {
         const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
@@ -334,12 +337,12 @@ function bindJoinPage() {
       }
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
-      errorBox && (errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.');
+      if (errorBox) errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.';
     }
   });
-} // ←←← ВАЖНО: закрываем bindJoinPage()
+} // <- конец bindJoinPage
 
-/* -------------------- wishlist bridge -------------------- */
+/* -------------------- wishlist bridge (страница создания списка) -------------------- */
 function bindWishlistBridge() {
   if (!/\/wishlist\.html/i.test(location.pathname)) return;
 
@@ -386,8 +389,8 @@ function bindWishlistBridge() {
     } catch {}
   };
 
-  done && done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
-  back && back.addEventListener('click', goLobbyWithParams);
+  if (done) done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
+  if (back) back.addEventListener('click', goLobbyWithParams);
 }
 
 /* -------------------- lobby: подставить ?event/?code из драфта при пустом URL -------------------- */
