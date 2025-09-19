@@ -40,7 +40,6 @@
     <p id="editError" class="error" role="status" aria-live="polite"></p>
   </main>
 
-  <!-- Небольшой инлайновый модуль: сохраняем черновик и ведём на wishlist.html -->
   <script type="module">
     const form = document.getElementById('editForm');
     const $ = (id) => document.getElementById(id);
@@ -58,11 +57,7 @@
         bring:   $('editBring').value.trim(),
       };
 
-      try {
-        sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft));
-      } catch {}
-
-      // дальше — отдельная страница Wishlist
+      try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft)); } catch {}
       location.href = '/wishlist.html';
     });
   </script>
