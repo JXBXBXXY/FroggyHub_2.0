@@ -51,23 +51,19 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script>
-    // --- draft из sessionStorage (его кладёт event-edit.html через app.js)
+    // --- draft из sessionStorage
     let draft = {};
     try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch { draft = {}; }
 
-    // подставим заголовок и правильные ссылки на лобби
+    // заголовок и кнопка "К событию"
     const wlTitle = document.getElementById('wlEventTitle');
     wlTitle.textContent = draft?.title ? `Для события: “${draft.title}”` : '';
 
     const linkLobby = document.getElementById('link-to-lobby');
     (function updateLobbyLink(){
-      if (draft?.id) {
-        linkLobby.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
-      } else if (draft?.code) {
-        linkLobby.href = `/lobby.html?code=${encodeURIComponent(draft.code)}`;
-      } else {
-        linkLobby.href = `/lobby.html`; // если ни id, ни code — пусть решит гард лобби
-      }
+      if (draft?.id)       linkLobby.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
+      else if (draft?.code)linkLobby.href = `/lobby.html?code=${encodeURIComponent(draft.code)}`;
+      else                 linkLobby.href = `/lobby.html`;
     })();
 
     // --- локальное состояние вишлиста
@@ -119,12 +115,13 @@
       render();
     });
 
-    btnCancel.addEventListener('click', () => {
-      // просто вернуться в лобби (с параметрами, если есть)
+    function goLobby() {
       if (draft?.id)       location.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
       else if (draft?.code)location.href = `/lobby.html?code=${encodeURIComponent(draft.code)}`;
       else                 location.href = `/lobby.html`;
-    });
+    }
+
+    btnCancel.addEventListener('click', goLobby);
 
     btnDone.addEventListener('click', () => {
       try {
@@ -132,14 +129,7 @@
         d.wishlist = state;
         sessionStorage.setItem('fh:draftEvent', JSON.stringify(d));
       } catch {}
-      // после заполнения — в лобби С ПАРАМЕТРОМ
-      if (draft?.id) {
-        location.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
-      } else if (draft?.code) {
-        location.href = `/lobby.html?code=${encodeURIComponent(draft.code)}`;
-      } else {
-        location.href = `/lobby.html`;
-      }
+      goLobby(); // ← возвращаемся в лобби С ПАРАМЕТРОМ
     });
 
     render();
