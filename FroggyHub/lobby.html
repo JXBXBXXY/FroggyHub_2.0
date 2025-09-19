@@ -11,7 +11,23 @@
     @media (min-width:640px){.fh-bg{background-position:center}}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem}
-    .lobby-grid{max-width:1200px;margin:40px auto;display:grid;gap:24px;grid-template-columns:minmax(280px,1fr) minmax(420px,620px);align-items:start}
+
+    /* ——— топбар как в главном меню ——— */
+    .fh-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}
+    .fh-logo{font-weight:800;letter-spacing:.2px}
+    .topbar{
+      display:flex;align-items:center;gap:8px;
+      background:rgba(12,34,26,.55);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      padding:6px;
+      backdrop-filter:saturate(1.2) blur(10px);
+      box-shadow:0 8px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .topbar .btn{height:34px;line-height:32px;padding:0 12px}
+    @media (max-width:480px){ .fh-logo{display:none} }
+
+    .lobby-grid{max-width:1200px;margin:16px auto 40px;display:grid;gap:24px;grid-template-columns:minmax(280px,1fr) minmax(420px,620px);align-items:start}
     .countdown-big{font-size:clamp(48px,8vw,96px);font-weight:800}
     .countdown-small{opacity:.85;margin-top:.25rem}
     .event-grid{display:grid;gap:.5rem 1rem;grid-template-columns:auto 1fr;margin-bottom:1rem}
@@ -27,7 +43,6 @@
   </style>
 </head>
 <body data-page="lobby">
-
   <div class="fh-bg" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -79,7 +94,6 @@
             <p id="wlError" class="error" style="margin-top:.5rem"></p>
           </div>
 
-          <!-- Этот блок скрывается для гостя -->
           <div class="glass-section" id="guests-block">
             <div class="section-title">👥 Гости</div>
             <div class="guests-columns">
@@ -101,13 +115,11 @@
   <script type="module">
     import { supa } from '/js/api.js';
 
-    // draft helpers
     const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}') } catch { return {} } };
     const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
     let draft = readDraft();
     try { if (draft?.id) localStorage.setItem('fh:lastEventId', draft.id); } catch {}
 
-    // ui helpers
     const $ = (id) => document.getElementById(id);
     const pad = (n) => n.toString().padStart(2,'0');
     const same = (a='',b='') => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -131,7 +143,6 @@
       `;
     }
 
-    // Скрываем гостю: блок гостей + кнопку «Сохранить событие»
     function applyGuestVisibility() {
       if (isGuestView) {
         document.getElementById('guests-block')?.setAttribute('hidden', 'hidden');
@@ -193,9 +204,8 @@
     buildTopbar();
     applyGuestVisibility();
     renderStaticParts();
-    renderWishlistDraftOnly(); // показать сразу
+    renderWishlistDraftOnly();
 
-    // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
       const origin = location.origin || 'https://froggyhubapp.netlify.app';
       const text = `Приглашаю на "${draft.title || 'событие'}"!\nКод для присоединения: ${draft.code || '—'}\nЗайди на ${origin} и введи этот код.`;
@@ -206,7 +216,6 @@
       }
     });
 
-    // серверные вспомогалки
     async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
@@ -255,11 +264,10 @@
         writeDraft(draft);
         try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
         renderStaticParts();
-        buildTopbar(); // обновить ссылку с актуальным кодом
+        buildTopbar();
       }
     }
 
-    // Загрузка wishlist из БД и рендер с claimed_by
     async function loadWishlistFromDb() {
       const box = $('evWishlist'); const err = $('wlError');
       err.textContent = '';
