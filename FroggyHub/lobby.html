@@ -25,7 +25,6 @@
 </head>
 <body data-page="lobby">
 
-
   <div class="fh-bg" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -47,37 +46,52 @@
         </div>
       </section>
 
-      <section id="lobby-right" class="lobby-right card">
+      <section id="lobby-right" class="lobby-right glass">
         <h2 id="evTitle">Событие</h2>
 
-        <div class="codeRow">
-          <div><strong>Код:</strong> <b id="evCode">—</b></div>
-          <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
-        </div>
+        <div class="lobby-panels">
 
-        <div style="margin:.5rem 0 1rem">
-          <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
-        </div>
+          <div class="glass-section">
+            <div class="section-title">🔑 Код</div>
+            <div class="codeRow">
+              <div><b id="evCode">—</b></div>
+              <button id="copyInviteBtn" class="btn btn--ghost btn--sm">Скопировать приглашение</button>
+            </div>
 
-        <div class="event-grid">
-          <div><strong>📅 Когда:</strong></div><div id="evWhen">—</div>
-          <div><strong>📍 Адрес:</strong></div><div id="evAddr">—</div>
-          <div><strong>👔 Дресс-код:</strong></div><div id="evDress">—</div>
-          <div><strong>🎒 Что взять:</strong></div><div id="evBring">—</div>
-          <div><strong>💬 Комментарий:</strong></div><div id="evNotes">—</div>
-        </div>
+            <div style="margin:.5rem 0 0">
+              <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
+            </div>
+          </div>
 
-        <h3>Wishlist</h3>
-        <ul class="list" id="evWishlist"></ul>
+          <div class="glass-section">
+            <div class="section-title">📅 Детали</div>
+            <div class="event-grid">
+              <div><strong>Когда:</strong></div><div id="evWhen">—</div>
+              <div><strong>Адрес:</strong></div><div id="evAddr">—</div>
+              <div><strong>Дресс-код:</strong></div><div id="evDress">—</div>
+              <div><strong>Что взять:</strong></div><div id="evBring">—</div>
+              <div><strong>Комментарий:</strong></div><div id="evNotes">—</div>
+            </div>
+          </div>
 
-        <div class="guests-columns">
-          <div><h4>Идут</h4><ul class="list" id="guestYes"></ul></div>
-          <div><h4>Не идут</h4><ul class="list" id="guestNo"></ul></div>
-          <div><h4>Может быть</h4><ul class="list" id="guestMaybe"></ul></div>
-        </div>
+          <div class="glass-section">
+            <div class="section-title">🎁 Wishlist</div>
+            <ul class="list" id="evWishlist"></ul>
+          </div>
 
-        <div class="actions" style="margin-top:1rem">
-          <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
+          <div class="glass-section">
+            <div class="section-title">👥 Гости</div>
+            <div class="guests-columns">
+              <div><h4>Идут</h4><ul class="list" id="guestYes"></ul></div>
+              <div><h4>Не идут</h4><ul class="list" id="guestNo"></ul></div>
+              <div><h4>Может быть</h4><ul class="list" id="guestMaybe"></ul></div>
+            </div>
+          </div>
+
+          <div class="glass-section">
+            <a class="btn btn--ghost" href="/index.html">Вернуться в меню</a>
+          </div>
+
         </div>
       </section>
     </main>
