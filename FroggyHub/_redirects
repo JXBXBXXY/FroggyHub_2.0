@@ -1,1 +1,11 @@
-/*    /index.html   200
+# Разрешаем прямой доступ к страницам
+/join              /join.html           200
+/lobby             /lobby.html          200
+/event-edit        /event-edit.html     200
+/wishlist          /wishlist.html       200
+/profile           /profile.html        200
+/login             /login.html          200
+/event-analytics   /event-analytics.html 200
+
+# НЕТ общей строки `/* /index.html 200`
+# Если когда-то понадобится SPA-роутер для /app/* — добавляйте отдельным правилом.
