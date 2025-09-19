@@ -7,18 +7,33 @@
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
+    /* фон как на лобби */
     .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
+    @media (min-width:640px){.fh-bg{background-position:center}}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem}
-    .join-card{max-width:720px;margin:48px auto}
-    .rsvp-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 0}
-    .rsvp-row .btn{opacity:.8}
-    .rsvp-row .btn.is-active{opacity:1;box-shadow:0 0 0 2px rgba(255,255,255,.15) inset}
-    .code-pill{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .7rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
-    #join-error{color:#ffb4b4;margin-top:.5rem;min-height:1.25em}
+
+    /* контейнер и сетка центра */
+    .join-wrap{max-width:920px;margin:64px auto;display:grid;gap:24px}
+    @media (max-width:640px){ .join-wrap{margin:28px auto} }
+
+    /* стек секций */
+    .join-card{background:var(--glass-bg);backdrop-filter:blur(var(--blur));-webkit-backdrop-filter:blur(var(--blur));
+      border:1px solid var(--glass-bd);border-radius:var(--r-xl);box-shadow:var(--glass-shadow);padding:18px}
+    .join-panels{display:grid;gap:12px}
+    .join-panel{background:var(--glass-bg-strong);backdrop-filter:blur(var(--blur-strong));-webkit-backdrop-filter:blur(var(--blur-strong));
+      border:1px solid var(--glass-bd);border-radius:var(--r-lg);box-shadow:var(--glass-shadow-sm);padding:14px 16px}
+    .section-title{display:flex;align-items:center;gap:.5rem;font-weight:800;opacity:.95;margin:0 0 .35rem}
+    .status-row{display:flex;gap:8px;flex-wrap:wrap}
+    .status-row .btn{padding:.5rem .8rem;border-radius:999px}
+    .actions-row{display:flex;gap:10px;flex-wrap:wrap}
+    .code-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.45rem .8rem;border-radius:999px;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-weight:800}
+    .name-input{width:100%}
   </style>
 </head>
-<body data-page="join">
+<body>
+
   <div class="fh-bg" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -26,43 +41,55 @@
       <a class="fh-logo" href="/">FroggyHub</a>
       <nav class="topbar">
         <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
+        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
       </nav>
     </header>
 
-    <main class="container">
-      <section class="card join-card">
-        <h2>Присоединиться к событию</h2>
+    <main class="join-wrap">
+      <h1 style="margin:0 4px;font-size:clamp(22px,3vw,32px);font-weight:900">Присоединиться к событию</h1>
 
-        <p style="margin:.5rem 0 1rem">
-          Код приглашения: <span class="code-pill"><strong id="join-code-text">— — — — — —</strong></span>
-        </p>
+      <section class="join-card">
+        <div class="join-panels">
 
-        <div class="grid" style="grid-template-columns:1fr;gap:12px">
-          <label>Ваше имя / ник
-            <input id="join-name" type="text" autocomplete="name" placeholder="Например, Кира" required>
-          </label>
-
-          <div>
-            <div style="opacity:.85;margin-bottom:.25rem">Ваш статус:</div>
-            <div id="join-status-wrap" class="rsvp-row">
-              <button type="button" class="btn btn--ghost is-active" data-rsvp="yes">Иду</button>
-              <button type="button" class="btn btn--ghost" data-rsvp="maybe">Может быть</button>
-              <button type="button" class="btn btn--ghost" data-rsvp="no">Не иду</button>
+          <!-- Код приглашения -->
+          <div class="join-panel">
+            <div class="section-title">🔑 Код приглашения</div>
+            <div class="code-badge">
+              <span id="join-code-text">—</span>
             </div>
           </div>
 
-          <div id="join-error" aria-live="polite"></div>
-
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <button id="btn-join" class="btn btn--primary">Присоединиться</button>
-            <a class="btn btn--ghost" href="/index.html">Отмена</a>
+          <!-- Имя -->
+          <div class="join-panel">
+            <div class="section-title">✍️ Ваше имя / ник</div>
+            <input id="join-name" class="name-input input" type="text" placeholder="Например, Кира" autocomplete="name" />
           </div>
+
+          <!-- Статус -->
+          <div class="join-panel" id="join-status-wrap">
+            <div class="section-title">🟢 Ваш статус</div>
+            <div class="status-row">
+              <button type="button" class="btn btn--chip" data-rsvp="yes">Иду</button>
+              <button type="button" class="btn btn--chip" data-rsvp="maybe">Может быть</button>
+              <button type="button" class="btn btn--chip" data-rsvp="no">Не иду</button>
+            </div>
+          </div>
+
+          <!-- Действия -->
+          <div class="join-panel">
+            <div id="join-error" class="form-error" aria-live="polite" style="min-height:1.1em;margin-bottom:.5rem"></div>
+            <div class="actions-row">
+              <button id="btn-join" class="btn btn--primary">Присоединиться</button>
+              <a class="btn btn--ghost" href="/index.html">Отмена</a>
+            </div>
+          </div>
+
         </div>
       </section>
     </main>
   </div>
 
-  <!-- НИКАКИХ других скриптов. Вся логика — в app.js/bindJoinPage(). -->
-  <script type="module" src="/js/app.js"></script>
+  <!-- app.js тянет логику; важно оставить id: join-name, btn-join, join-status-wrap, join-error, join-code-text -->
+  <script type="module" src="/app.js"></script>
 </body>
 </html>
