@@ -22,7 +22,7 @@ const FH_MESSAGES = [
   'Встречаемся у метро 🚉','Я возьму мороженое 🍦'
 ];
 
-const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pickMessage = () => FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
 const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
@@ -304,6 +304,75 @@ function bindJoinPage() {
   });
 }
 
+/* -------------------- wishlist bridge -------------------- */
+/* На случай если в wishlist.html нет логики проброса параметров */
+function bindWishlistBridge() {
+  if (!/\/wishlist\.html/i.test(location.pathname)) return;
+  const getDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}'); } catch { return {}; } };
+  const setDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)); } catch {} };
+
+  const listEl = document.getElementById('wishlist-box');
+  const form   = document.getElementById('form-wish-add');
+  const done   = document.getElementById('btn-wishlist-done');
+  const back   = document.getElementById('btn-wishlist-cancel');
+
+  // если элементов нет — ничего не ломаем
+  if (form) {
+    form.addEventListener('submit', () => {
+      // список отрисует страница; здесь ничего не делаем
+    });
+  }
+
+  const goLobbyWithParams = () => {
+    const draft = getDraft();
+    const sp = new URLSearchParams();
+    if (draft?.id) sp.set('event', draft.id);
+    else if (draft?.code) sp.set('code', String(draft.code));
+    location.href = '/lobby.html' + (sp.toString() ? `?${sp.toString()}` : '');
+  };
+
+  if (done) {
+    done.addEventListener('click', () => {
+      // синхронизируем state страницы в черновик, если список уже собран DOM-ом
+      // (страничный скрипт тоже делает это — дубль не повредит)
+      try {
+        const d = getDraft();
+        if (listEl) {
+          const chips = [...listEl.querySelectorAll('.chip')];
+          if (chips.length) {
+            d.wishlist = chips.map(ch => {
+              const a = ch.querySelector('a');
+              return a ? { title: a.textContent.trim(), url: a.getAttribute('href') } :
+                         { title: ch.firstChild?.textContent?.trim() || '', url: '' };
+            }).filter(x => x.title);
+          }
+        }
+        setDraft(d);
+      } catch {}
+      goLobbyWithParams();
+    });
+  }
+  if (back) back.addEventListener('click', goLobbyWithParams);
+}
+
+/* -------------------- lobby guard helper -------------------- */
+/* Если всё-таки открыли /lobby.html без параметров, но в черновике есть id/code — добавим их в URL */
+function ensureLobbyParamsFromDraft() {
+  if (!/\/lobby\.html/i.test(location.pathname)) return;
+  const qs = new URLSearchParams(location.search);
+  const hasEvent = qs.has('event');
+  const hasCode  = qs.has('code');
+  if (hasEvent || hasCode) return;
+
+  try {
+    const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}');
+    const sp = new URLSearchParams();
+    if (draft?.id) sp.set('event', draft.id);
+    else if (draft?.code) sp.set('code', String(draft.code));
+    if ([...sp].length) history.replaceState(null,'', location.pathname + '?' + sp.toString());
+  } catch {}
+}
+
 /* -------------------- init -------------------- */
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
@@ -320,7 +389,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindTabs();
   bindAuthForms();
   bindIndexNav();
-  bindJoinPage(); // безопасно, если страницы нет — просто не найдёт элементы
+  bindJoinPage();          // безопасно на любых страницах
+  bindWishlistBridge();    // фикс возврата из wishlist
+  ensureLobbyParamsFromDraft(); // фикс пустого /lobby.html
   bootBubbles();
 
   const session = await ensureSession();
