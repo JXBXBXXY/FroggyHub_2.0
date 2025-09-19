@@ -21,11 +21,8 @@
     #evCode{font-variant-numeric:tabular-nums}
     .guests-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:1rem}
     .guests-columns h4{margin-bottom:.5rem}
-
-    /* wishlist бейджи */
     .wl-badge{display:inline-block;font-size:.85em;opacity:.9;padding:.2rem .55rem;border-radius:999px;border:1px solid rgba(255,255,255,.15);margin-left:.5rem}
     .wl-item{display:flex;justify-content:space-between;align-items:center}
-    .wl-item a{color:inherit;text-decoration:underline}
     .hint{opacity:.8}
   </style>
 </head>
@@ -36,11 +33,7 @@
   <div class="fh-content">
     <header class="fh-header">
       <a class="fh-logo" href="/">FroggyHub</a>
-      <nav class="topbar">
-        <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
-        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-        <a href="/wishlist.html" class="btn btn--ghost btn--sm">Редактировать wishlist</a>
-      </nav>
+      <nav class="topbar" id="topbar"></nav>
     </header>
 
     <main class="lobby-grid">
@@ -122,10 +115,28 @@
     const myName = (draft?.lastJoinName || '').trim();
     const isGuestView = !!myName;
 
+    function buildTopbar() {
+      const bar = document.getElementById('topbar');
+      const code = encodeURIComponent(draft?.code || '');
+      const name = encodeURIComponent(myName || '');
+      const ctxHref = isGuestView
+        ? `/wishlist-claim.html?code=${code}&name=${name}`
+        : `/wishlist.html`;
+      const ctxText = isGuestView ? 'Выбрать подарок' : 'Редактировать wishlist';
+
+      bar.innerHTML = `
+        <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
+        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
+        <a href="${ctxHref}" class="btn btn--ghost btn--sm">${ctxText}</a>
+      `;
+    }
+
     // Скрываем гостю: блок гостей + кнопку «Сохранить событие»
-    if (isGuestView) {
-      document.getElementById('guests-block')?.setAttribute('hidden', 'hidden');
-      document.getElementById('saveEventBtn')?.setAttribute('hidden', 'hidden');
+    function applyGuestVisibility() {
+      if (isGuestView) {
+        document.getElementById('guests-block')?.setAttribute('hidden', 'hidden');
+        document.getElementById('saveEventBtn')?.setAttribute('hidden', 'hidden');
+      }
     }
 
     const formatWhen = (d) => {
@@ -136,26 +147,6 @@
       const timeFmt = pad(dt.getHours())+':'+pad(dt.getMinutes());
       return `${dateFmt}${d.time ? ' в '+timeFmt : ''}`;
     };
-
-    function renderWishlistDraftOnly() {
-      const box = $('evWishlist'); box.innerHTML='';
-      const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
-      if (items.length === 0) {
-        const li=document.createElement('li'); li.className='hint';
-        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
-        box.appendChild(li);
-      } else {
-        items.forEach(({title,url})=>{
-          const li=document.createElement('li');
-          li.className='wl-item';
-          const left=document.createElement('div');
-          if (url) left.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
-          else left.textContent=title;
-          li.appendChild(left);
-          box.appendChild(li);
-        });
-      }
-    }
 
     function renderStaticParts() {
       $('evTitle').textContent = draft.title || 'Событие';
@@ -179,8 +170,30 @@
       });
     }
 
+    function renderWishlistDraftOnly() {
+      const box = $('evWishlist'); box.innerHTML='';
+      const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
+      if (items.length === 0) {
+        const li=document.createElement('li'); li.className='hint';
+        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+        box.appendChild(li);
+      } else {
+        items.forEach(({title,url})=>{
+          const li=document.createElement('li');
+          li.className='wl-item';
+          const left=document.createElement('div');
+          if (url) left.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
+          else left.textContent=title;
+          li.appendChild(left);
+          box.appendChild(li);
+        });
+      }
+    }
+
+    buildTopbar();
+    applyGuestVisibility();
     renderStaticParts();
-    renderWishlistDraftOnly(); // что-то показать сразу
+    renderWishlistDraftOnly(); // показать сразу
 
     // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
@@ -242,6 +255,7 @@
         writeDraft(draft);
         try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
         renderStaticParts();
+        buildTopbar(); // обновить ссылку с актуальным кодом
       }
     }
 
@@ -259,7 +273,6 @@
           .order('id', { ascending: true });
 
         box.innerHTML = '';
-
         if (error) throw error;
 
         if (!data || data.length === 0) {
@@ -313,6 +326,7 @@
         writeDraft(draft);
         try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
         renderStaticParts();
+        buildTopbar();
         await loadWishlistFromDb();
         alert('Сохранено! Код: ' + draft.code);
       } catch (e) {
