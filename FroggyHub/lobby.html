@@ -21,6 +21,12 @@
     #evCode{font-variant-numeric:tabular-nums}
     .guests-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:1rem}
     .guests-columns h4{margin-bottom:.5rem}
+
+    /* wishlist бейджи */
+    .wl-badge{display:inline-block;font-size:.85em;opacity:.9;padding:.2rem .55rem;border-radius:999px;border:1px solid rgba(255,255,255,.15);margin-left:.5rem}
+    .wl-item{display:flex;justify-content:space-between;align-items:center}
+    .wl-item a{color:inherit;text-decoration:underline}
+    .hint{opacity:.8}
   </style>
 </head>
 <body data-page="lobby">
@@ -77,6 +83,7 @@
           <div class="glass-section">
             <div class="section-title">🎁 Wishlist</div>
             <ul class="list" id="evWishlist"></ul>
+            <p id="wlError" class="error" style="margin-top:.5rem"></p>
           </div>
 
           <div class="glass-section">
@@ -97,7 +104,10 @@
     </main>
   </div>
 
-  <script>
+  <!-- Делаем модуль, чтобы импортировать supabase-клиент -->
+  <script type="module">
+    import { supa } from '/js/api.js';
+
     // draft helpers
     const readDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}') } catch { return {} } };
     const writeDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)) } catch {} };
@@ -107,6 +117,9 @@
     // ui helpers
     const $ = (id) => document.getElementById(id);
     const pad = (n) => n.toString().padStart(2,'0');
+    const same = (a='',b='') => a.trim().toLowerCase() === b.trim().toLowerCase();
+    const myName = (draft?.lastJoinName || '').trim();
+
     const formatWhen = (d) => {
       if (!d?.date && !d?.time) return '—';
       const dt = new Date(`${d.date||''}T${d.time||'00:00'}`);
@@ -116,7 +129,27 @@
       return `${dateFmt}${d.time ? ' в '+timeFmt : ''}`;
     };
 
-    function renderFromDraft() {
+    function renderWishlistDraftOnly() {
+      const box = $('evWishlist'); box.innerHTML='';
+      const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
+      if (items.length === 0) {
+        const li=document.createElement('li'); li.className='hint';
+        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+        box.appendChild(li);
+      } else {
+        items.forEach(({title,url})=>{
+          const li=document.createElement('li');
+          li.className='wl-item';
+          const left=document.createElement('div');
+          if (url) left.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
+          else left.textContent=title;
+          li.appendChild(left);
+          box.appendChild(li);
+        });
+      }
+    }
+
+    function renderStaticParts() {
       $('evTitle').textContent = draft.title || 'Событие';
       $('evAddr').textContent  = draft.address || '—';
       $('evDress').textContent = draft.dress   || '—';
@@ -133,27 +166,13 @@
         }
       }
 
-      const box = $('evWishlist'); box.innerHTML='';
-      const items = Array.isArray(draft?.wishlist) ? draft.wishlist : [];
-      if (items.length === 0) {
-        const li=document.createElement('li'); li.className='hint';
-        li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
-        box.appendChild(li);
-      } else {
-        items.forEach(({title,url})=>{
-          const li=document.createElement('li');
-          if (url) li.innerHTML=`<a href="${url}" target="_blank" rel="noopener">${title}</a>`;
-          else li.textContent=title;
-          box.appendChild(li);
-        });
-      }
-
       ['guestYes','guestNo','guestMaybe'].forEach(id=>{
         const ul=$(id); if (ul) ul.innerHTML='';
       });
     }
 
-    renderFromDraft();
+    renderStaticParts();
+    renderWishlistDraftOnly(); // сразу что-то показать
 
     // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
@@ -166,7 +185,7 @@
       }
     });
 
-    // серверная синхронизация (без автосоздания)
+    // серверные вспомогалки (как и было)
     async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
@@ -214,7 +233,60 @@
         };
         writeDraft(draft);
         try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
-        renderFromDraft();
+        renderStaticParts();
+      }
+    }
+
+    // === Новое: загрузка wishlist из БД и рендер с claimed_by ===
+    async function loadWishlistFromDb() {
+      const box = $('evWishlist'); const err = $('wlError');
+      err.textContent = '';
+      if (!draft?.id) { renderWishlistDraftOnly(); return; }
+
+      try {
+        const { data, error } = await supa
+          .from('wishlist_items')
+          .select('id,title,url,claimed_by')
+          .eq('event_id', draft.id)
+          .order('id', { ascending: true });
+
+        box.innerHTML = '';
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          const li=document.createElement('li'); li.className='hint';
+          li.textContent='Пока пусто. Нажмите «Редактировать wishlist».';
+          box.appendChild(li);
+          return;
+        }
+
+        data.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'wl-item';
+
+          const left = document.createElement('div');
+          if (item.url) left.innerHTML = `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>`;
+          else left.textContent = item.title;
+
+          // бейдж
+          const badge = document.createElement('span');
+          badge.className = 'wl-badge';
+          if (!item.claimed_by) badge.textContent = 'Свободно';
+          else if (same(item.claimed_by, myName)) badge.textContent = 'Ваш выбор';
+          else badge.textContent = item.claimed_by;
+
+          left.appendChild(badge);
+          li.appendChild(left);
+          box.appendChild(li);
+        });
+      } catch (e) {
+        console.error('[wishlist] load error:', e);
+        $('evWishlist').innerHTML = '';
+        const li=document.createElement('li'); li.className='hint';
+        li.textContent='Не удалось загрузить список из БД. Показан локальный черновик.';
+        $('evWishlist').appendChild(li);
+        err.textContent = '';
       }
     }
 
@@ -233,7 +305,8 @@
         draft.savedToDbForCode = String(draft.code);
         writeDraft(draft);
         try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
-        renderFromDraft();
+        renderStaticParts();
+        await loadWishlistFromDb(); // сразу подтянуть список из БД
         alert('Сохранено! Код: ' + draft.code);
       } catch (e) {
         console.error(e);
@@ -243,7 +316,9 @@
       }
     });
 
-    ensureEventExistsInDb();
+    // Стартовая синхронизация + загрузка вишлиста из БД (если есть id)
+    await ensureEventExistsInDb();
+    await loadWishlistFromDb();
   </script>
 </body>
 </html>
