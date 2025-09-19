@@ -28,7 +28,7 @@ const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
-/** Надёжная раскладка пузырьков без «ok» (Safari-safe) */
+/** Надёжная раскладка пузырьков (Safari-safe) */
 function spawnBubbles(container, count) {
   if (!container) return;
   const placed = [];
@@ -45,7 +45,6 @@ function spawnBubbles(container, count) {
       const r1 = el.getBoundingClientRect();
       if (!placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8))) return { x, y };
     }
-    // если не получилось — всё равно вернём хоть какие координаты
     return { x: 24, y: 24 };
   };
 
@@ -290,7 +289,7 @@ function bindJoinPage() {
 
     const ev = await findEvent();
     if (!ev) {
-      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
+      errorBox && (errorBox.textContent = 'Событие с таким кодом не найдено.');
       return;
     }
 
@@ -305,8 +304,31 @@ function bindJoinPage() {
         errorBox && (errorBox.textContent = error.message || 'Ошибка присоединения. Попробуйте позже.');
         return;
       }
-      // Сразу на вишлист, чтобы участник мог занять предмет
-      window.location.href = `/wishlist.html?event=${ev.id}&from=join`;
+
+      // Сохраним драфт события для следующих страниц
+      try {
+        const draft = {
+          id: ev.id,
+          code: ev.code || ev.join_code || codeParam || '',
+          title: ev.title || 'Событие'
+        };
+        sessionStorage.setItem('fh:draftEvent', JSON.stringify(draft));
+        localStorage.setItem('fh:lastEventId', String(ev.id));
+      } catch {}
+
+      // === ГОСТЬ: перенаправляем на страницу бронирования (таблица).
+      // Если файл /wishlist-claim.html отсутствует, уходим в lobby.html
+      const claimUrl = `/wishlist-claim.html?event=${ev.id}&from=join`;
+      try {
+        const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
+        if (head.ok) {
+          window.location.href = claimUrl;
+        } else {
+          window.location.href = `/lobby.html?event=${ev.id}`;
+        }
+      } catch {
+        window.location.href = `/lobby.html?event=${ev.id}`;
+      }
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
       errorBox && (errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.');
