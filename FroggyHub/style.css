@@ -937,3 +937,32 @@ body > *{ position:relative; z-index:1; }
 .rsvps-panel .section-title { font-weight: 800; opacity: .95; margin-bottom: .35rem; display:flex; align-items:center; gap:.5rem; }
 .rsvps-panel .list { margin: 6px 0; padding-left: 18px; }
 .rsvps-panel .list li { margin: 3px 0; }
+/* === Mobile final/lobby: centered card & no clock === */
+@media (max-width: 900px){
+  /* лобби: одна колонка и центр */
+  .lobby-grid{
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: start;
+    gap: 16px;
+    padding: 16px;
+  }
+  .lobby-right{
+    width: min(680px, 94vw);
+  }
+  .lobby-left{ display: none; } /* убираем левую колонку с часами */
+
+  /* если где-то используется большой блок часов */
+  #bigClock, .countdown{ display: none !important; }
+}
+
+/* альтернативный режим через класс (если захочешь принудительно включать) */
+body.force-mobile .lobby-grid{
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 16px;
+}
+body.force-mobile .lobby-right{ width: min(680px, 94vw); }
+body.force-mobile .lobby-left{ display: none; }
+body.force-mobile #bigClock,
+body.force-mobile .countdown{ display:none !important; }
