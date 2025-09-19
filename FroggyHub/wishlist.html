@@ -22,7 +22,8 @@
     <nav class="topbar">
       <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
       <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
-      <a href="/lobby.html" class="btn btn--ghost btn--sm">К событию</a>
+      <!-- эта ссылка переписывается скриптом с ?event=... -->
+      <a id="toLobbyLink" href="/lobby.html" class="btn btn--ghost btn--sm">К событию</a>
     </nav>
   </header>
 
@@ -50,16 +51,35 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module">
-    // 1) Подхватываем черновик события из sessionStorage (его кладёт event-edit.html)
+  <script>
+    // -------- контекст события --------
+    const qs = new URLSearchParams(location.search);
+    const eventIdParam = qs.get('event') ? String(qs.get('event')) : null;
+
+    // Подхватим черновик (после создания события он уже лежит здесь)
     let draft = {};
     try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch {}
+
+    // Вычисляем надёжный eventId: приоритет — из URL, иначе из драфта
+    const eventId = eventIdParam || (draft?.id ? String(draft.id) : null);
+
+    // Если знаем eventId — сразу пробросим его в навигацию «К событию»
+    (function ensureLobbyLink(){
+      const a = document.getElementById('toLobbyLink');
+      if (a && eventId) a.href = `/lobby.html?event=${encodeURIComponent(eventId)}`;
+    })();
+
+    // Если вообще ничего не знаем — лучше вернуть в меню (или можно оставить как есть)
+    if (!eventId) {
+      // location.replace('/index.html');
+      // не уходим сразу, чтобы пользователь мог хотя бы составить список локально
+    }
 
     // Заголовок в правом углу
     const wlTitle = document.getElementById('wlEventTitle');
     wlTitle.textContent = draft?.title ? `Для события: “${draft.title}”` : '';
 
-    // 2) Локальное состояние вишлиста
+    // -------- локальное состояние вишлиста --------
     const state = Array.isArray(draft?.wishlist) ? [...draft.wishlist] : [];
 
     const form = document.getElementById('form-wish-add');
@@ -106,19 +126,24 @@
       render();
     });
 
-    btnCancel.addEventListener('click', () => {
-      // просто вернёмся в лобби не меняя wishlist
-      location.href = '/lobby.html';
-    });
-
-    btnDone.addEventListener('click', () => {
+    // сохранение в черновик и возврат
+    function saveDraftWishlist() {
       try {
         const d = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
         d.wishlist = state;
         sessionStorage.setItem('fh:draftEvent', JSON.stringify(d));
       } catch {}
-      // после заполнения — в лобби
-      location.href = '/lobby.html';
+    }
+
+    btnCancel.addEventListener('click', () => {
+      saveDraftWishlist();
+      location.href = eventId ? `/lobby.html?event=${encodeURIComponent(eventId)}` : '/index.html';
+    });
+
+    btnDone.addEventListener('click', () => {
+      saveDraftWishlist();
+      // по требованиям — после заполнения всегда в лобби события
+      location.href = eventId ? `/lobby.html?event=${encodeURIComponent(eventId)}` : '/index.html`;
     });
 
     render();
