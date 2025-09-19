@@ -305,7 +305,7 @@ function bindJoinPage() {
         return;
       }
 
-      // Сохраним драфт события для следующих страниц
+      // Сохраним драфт
       try {
         const draft = {
           id: ev.id,
@@ -317,9 +317,10 @@ function bindJoinPage() {
         localStorage.setItem('fh:lastEventId', String(ev.id));
       } catch {}
 
-      // === ГОСТЬ: перенаправляем на страницу бронирования (таблица) ===
+      // Редирект гостя на страницу бронирования
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
-      const claimUrl = `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}&from=join`;
+      const nameForUrl = encodeURIComponent(name);
+      const claimUrl = `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}&guest=${nameForUrl}&from=join`;
 
       try {
         const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
@@ -336,7 +337,7 @@ function bindJoinPage() {
       errorBox && (errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.');
     }
   });
-}
+} // ←←← ВАЖНО: закрываем bindJoinPage()
 
 /* -------------------- wishlist bridge -------------------- */
 function bindWishlistBridge() {
