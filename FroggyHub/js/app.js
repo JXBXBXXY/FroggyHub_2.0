@@ -2,6 +2,7 @@
 import { supa } from './api.js';
 
 /* -------------------- фоновые «облачка» -------------------- */
+
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪','Буду позже 🙈',
   'Закажем такси? 🚖','Добавил плейлист 🎶','У кого карты? 🎴','Забронировал столик 🍽️','Сделаем фото 📸',
@@ -38,7 +39,7 @@ function spawnBubbles(container, count) {
 
     const c = container.getBoundingClientRect();
     let tries = 0, x = 0, y = 0, ok = false;
-    while (tries++ < 60 && !ok) {
+    while (tries++ < 60 && !ок) {
       x = 24 + Math.random() * (c.width - 160);
       y = 24 + Math.random() * (c.height - 60);
       el.style.left = `${x}px`;
@@ -79,6 +80,7 @@ function spawnBubbles(container, count) {
 }
 
 /* -------------------- сессия и экраны -------------------- */
+
 const LS_KEY = 'fh_session';
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; } };
 const setSavedSession = (s) => { try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {} };
@@ -108,6 +110,7 @@ function showScreen(id) {
 }
 
 /* -------------------- навигация и общие биндинги -------------------- */
+
 function bindTabs() {
   const tabLogin = document.getElementById('tab-login');
   const tabReg   = document.getElementById('tab-register');
@@ -163,6 +166,7 @@ function bindAuthForms() {
 
         if (ok && session) {
           setSavedSession({ user: session.user, access_token: session.access_token });
+          // убираем auth-экран, чтобы менеджеры паролей его не «подсвечивали»
           document.getElementById('screen-auth')?.remove();
           showScreen('screen-home');
         }
@@ -175,6 +179,7 @@ function bindAuthForms() {
   handle(loginForm, 'login');
   handle(signupForm, 'signup');
 
+  // делегированные клики по кнопкам «Войти»/«Регистрация» (если они вне форм)
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-action="login"], [data-action="signup"], .js-login, .js-signup');
     if (!btn) return;
@@ -192,7 +197,7 @@ function bindAuthForms() {
  * ВАЖНО: любые переходы по коду ведут на /join.html (не на lobby).
  */
 function bindIndexNav() {
-  // data-go
+  // переход на редактор события
   document.addEventListener('click', (e) => {
     const navBtn = e.target.closest('[data-go]');
     if (!navBtn) return;
@@ -201,38 +206,42 @@ function bindIndexNav() {
     const mode = navBtn.getAttribute('data-mode') || '';
     if (to === 'app' && mode === 'create') {
       window.location.href = '/event-edit.html';
+      return;
     }
   });
 
+  // “Присоединиться”
   const form      = document.getElementById('join-form');
   const joinBtn   = document.getElementById('join-btn');
   const joinInput = document.getElementById('join-code');
 
   const goJoin = () => {
-    const raw  = (joinInput.value || '').trim();
+    const raw  = (joinInput?.value || '').trim();
     const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
     if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
-      joinInput.classList.add('input-error');
-      setTimeout(()=> joinInput.classList.remove('input-error'), 800);
+      if (joinInput) {
+        joinInput.classList.add('input-error');
+        setTimeout(()=> joinInput.classList.remove('input-error'), 800);
+        joinInput.focus();
+        joinInput.select?.();
+      }
       return;
     }
+    // важно: всегда идём на join.html, НЕ в лобби
     window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
   };
 
   if (form) {
     form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); });
   }
-  if (joinBtn && joinInput) {
+  if (joinBtn) {
     joinBtn.addEventListener('click', goJoin);
-    // автопереход при 6 символах
-    joinInput.addEventListener('input', () => {
-      const v = (joinInput.value || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
-      if (v.length === 6) goJoin();
-    });
   }
+  // ⛔️ автопереход при 6 символах УДАЛЁН — теперь только кликом по кнопке или Enter (submit)
 }
 
 /* -------------------- страница редактирования события -------------------- */
+
 function randomDigits(n=6){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
 function randomCode(n=6){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:n},()=>A[Math.floor(Math.random()*A.length)]).join(''); }
 
@@ -265,7 +274,10 @@ function bindEventEditPage() {
 
       if (error) throw error;
 
+      // черновик — полезно для восстановления формы
       sessionStorage.setItem('fh:draftEvent', JSON.stringify({ id: data.id, ...payload }));
+
+      // сразу на страницу вишлиста
       window.location.href = `/wishlist.html?event=${data.id}`;
     } catch (err) {
       console.error(err);
@@ -275,6 +287,7 @@ function bindEventEditPage() {
 }
 
 /* -------------------- страница join.html -------------------- */
+
 function bindJoinPage() {
   const params = new URLSearchParams(location.search);
   const codeParam  = (params.get('code') || '').toString().trim().toUpperCase();
@@ -286,20 +299,22 @@ function bindJoinPage() {
   const errorBox  = document.getElementById('join-error') || document.getElementById('joinError');
   const codeHolder= document.getElementById('join-code-text') || document.getElementById('evCode');
 
+  // визуально показываем код, если есть держатель
   if (codeHolder && codeParam) codeHolder.textContent = codeParam;
   if (!nameInput || !btnJoin) return;
 
-  // визуальный переключатель RSVP (если есть кастомные кнопки)
+  // визуальный переключатель RSVP (если есть кастомные кнопки .[data-rsvp])
   let picked = 'yes';
   statusWrap.addEventListener('click', (e)=>{
     const b = e.target.closest('[data-rsvp]');
     if (!b) return;
-    picked = b.getAttribute('data-rsvp');
+    picked = b.getAttribute('data-rsvp') || picked;
     [...statusWrap.querySelectorAll('[data-rsvp]')].forEach(x=>x.classList.toggle('is-active', x===b));
   });
 
   async function findEvent() {
     try {
+      // Если пришли по id — это приоритетно и надёжно
       if (eventIdParam) {
         const { data, error } = await supa
           .from('events')
@@ -309,6 +324,7 @@ function bindJoinPage() {
         if (error) throw error;
         return data;
       }
+      // Иначе ищем по коду (любой: числовой или буквенный)
       if (codeParam) {
         const code = codeParam.replace(/[^A-Z0-9]/g, '');
         const { data, error } = await supa
@@ -329,11 +345,13 @@ function bindJoinPage() {
   btnJoin.addEventListener('click', async ()=>{
     const name = (nameInput.value || '').trim();
     if (!name) { nameInput.focus(); return; }
+
+    // чистим ошибку
     if (errorBox) errorBox.textContent = '';
 
     const ev = await findEvent();
     if (!ev) {
-      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
+      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено. Проверь код или попроси у создателя ссылку.';
       return;
     }
 
@@ -345,7 +363,7 @@ function bindJoinPage() {
       });
       if (error) throw error;
 
-      // После RSVP — уже в лобби события
+      // После RSVP — сразу в лобби события
       window.location.href = `/lobby.html?event=${ev.id}`;
     } catch (err) {
       console.error('[join] insert rsvp error:', err);
@@ -355,6 +373,7 @@ function bindJoinPage() {
 }
 
 /* -------------------- bootstrap -------------------- */
+
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
   if (!root) return;
@@ -367,7 +386,9 @@ function bootBubbles() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Инициализация
+  $auth = document.getElementById('screen-auth');
+  $home = document.getElementById('screen-home');
+
   bindTabs();
   bindAuthForms();
   bindIndexNav();
@@ -375,7 +396,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindJoinPage();
   bootBubbles();
 
-  // Экран авторизации / домашний
   const session = await ensureSession();
   if (session) {
     document.getElementById('screen-auth')?.remove();
