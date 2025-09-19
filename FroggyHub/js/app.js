@@ -2,7 +2,6 @@
 import { supa } from './api.js';
 
 /* -------------------- фоновые «облачка» -------------------- */
-
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪','Буду позже 🙈',
   'Закажем такси? 🚖','Добавил плейлист 🎶','У кого карты? 🎴','Забронировал столик 🍽️','Сделаем фото 📸',
@@ -23,7 +22,7 @@ const FH_MESSAGES = [
   'Встречаемся у метро 🚉','Я возьму мороженое 🍦'
 ];
 
-const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pickMessage = () => FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
 const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
@@ -81,7 +80,6 @@ function spawnBubbles(container, count) {
 }
 
 /* -------------------- сессия и экраны -------------------- */
-
 const LS_KEY = 'fh_session';
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; } };
 const setSavedSession = (s) => { try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {} };
@@ -108,8 +106,7 @@ function showScreen(id) {
   });
 }
 
-/* -------------------- навигация и общие биндинги -------------------- */
-
+/* -------------------- навигация и формы -------------------- */
 function bindTabs() {
   const tabLogin = document.getElementById('tab-login');
   const tabReg   = document.getElementById('tab-register');
@@ -190,7 +187,8 @@ function bindAuthForms() {
 }
 
 /**
- * Главная: ввод кода → ТОЛЬКО на /join.html
+ * Главная: «Создать событие» и «Присоединиться по коду».
+ * Любой ввод кода → строго /join.html?code=XXXXXX
  */
 function bindIndexNav() {
   document.addEventListener('click', (e) => {
@@ -201,6 +199,7 @@ function bindIndexNav() {
     const mode = navBtn.getAttribute('data-mode') || '';
     if (to === 'app' && mode === 'create') {
       window.location.href = '/event-edit.html';
+      return;
     }
   });
 
@@ -211,18 +210,15 @@ function bindIndexNav() {
   const goJoin = () => {
     const raw  = (joinInput?.value || '').trim();
     const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    if (!/^[A-Z0-9]{6}$/.test(code)) {
+    if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
       if (joinInput) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
-        joinInput.focus(); joinInput.select?.();
+        joinInput.focus();
+        joinInput.select?.();
       }
       return;
     }
-    try {
-      sessionStorage.removeItem('fh:draftEvent');
-      sessionStorage.removeItem('fh:rsvpDone');
-    } catch {}
     window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
   };
 
@@ -230,53 +226,10 @@ function bindIndexNav() {
   if (joinBtn) joinBtn.addEventListener('click', goJoin);
 }
 
-/* -------------------- страница редактирования события -------------------- */
-
-function randomDigits(n=6){ return Array.from({length:n},()=>Math.floor(Math.random()*10)).join(''); }
-function randomCode(n=6){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({length:n},()=>A[Math.floor(Math.random()*A.length)]).join(''); }
-
-function bindEventEditPage() {
-  const form = document.getElementById('editForm');
-  if (!form) return;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const payload = {
-      title: (fd.get('title') || fd.get('editTitle') || document.getElementById('editTitle')?.value || '').toString().trim(),
-      date:  fd.get('date')  || document.getElementById('editDate')?.value  || null,
-      time:  fd.get('time')  || document.getElementById('editTime')?.value  || null,
-      address: (fd.get('address') || document.getElementById('editAddress')?.value || '').toString().trim(),
-      comment: (fd.get('notes') || document.getElementById('editNotes')?.value || '').toString().trim(),
-      dress_code: (fd.get('dress') || document.getElementById('editDress')?.value || '').toString().trim(),
-      what_to_bring: (fd.get('bring') || document.getElementById('editBring')?.value || '').toString().trim()
-    };
-
-    payload.code = randomDigits(6);
-    payload.join_code = randomCode(6);
-
-    try {
-      const { data, error } = await supa.from('events')
-        .insert(payload)
-        .select('id, code, join_code')
-        .single();
-
-      if (error) throw error;
-
-      sessionStorage.setItem('fh:draftEvent', JSON.stringify({ id: data.id, ...payload }));
-      window.location.href = `/wishlist.html?event=${data.id}`;
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось сохранить событие. Проверь подключение к базе.');
-    }
-  });
-}
-
-/* -------------------- страница join.html -------------------- */
-
+/* -------------------- join.html -------------------- */
 function bindJoinPage() {
   const params = new URLSearchParams(location.search);
-  const codeParam    = (params.get('code') || '').toString().trim().toUpperCase();
+  const codeParam  = (params.get('code') || '').toString().trim().toUpperCase();
   const eventIdParam = params.get('event') ? Number(params.get('event')) : null;
 
   const nameInput = document.querySelector('#join-name, [name="name"], #guestName');
@@ -299,7 +252,8 @@ function bindJoinPage() {
   async function findEvent() {
     try {
       if (eventIdParam) {
-        const { data, error } = await supa.from('events')
+        const { data, error } = await supa
+          .from('events')
           .select('id, code, join_code, title')
           .eq('id', eventIdParam)
           .maybeSingle();
@@ -308,7 +262,8 @@ function bindJoinPage() {
       }
       if (codeParam) {
         const code = codeParam.replace(/[^A-Z0-9]/g, '');
-        const { data, error } = await supa.from('events')
+        const { data, error } = await supa
+          .from('events')
           .select('id, code, join_code, title')
           .or(`code.eq.${code},join_code.eq.${code}`)
           .maybeSingle();
@@ -329,7 +284,7 @@ function bindJoinPage() {
 
     const ev = await findEvent();
     if (!ev) {
-      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено. Проверь код или попроси у создателя ссылку.';
+      if (errorBox) errorBox.textContent = 'Событие с таким кодом не найдено.';
       return;
     }
 
@@ -349,8 +304,7 @@ function bindJoinPage() {
   });
 }
 
-/* -------------------- bootstrap -------------------- */
-
+/* -------------------- init -------------------- */
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
   if (!root) return;
@@ -366,13 +320,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindTabs();
   bindAuthForms();
   bindIndexNav();
-  bindEventEditPage();
-  bindJoinPage();
+  bindJoinPage(); // безопасно, если страницы нет — просто не найдёт элементы
   bootBubbles();
 
   const session = await ensureSession();
   if (session) {
-    document.getElementById('screen-auth')?.remove?.();
+    document.getElementById('screen-auth')?.remove();
     showScreen('screen-home');
   } else {
     showScreen('screen-auth');
