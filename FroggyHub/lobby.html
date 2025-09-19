@@ -24,21 +24,23 @@
   </style>
 </head>
 <body data-page="lobby">
-  <!-- Мягкий гард: пробуем восстановить event и дописать его в URL -->
+  <!-- МЯГКИЙ гард: если пришли без ?event/ ?code — попробуем восстановить из draft/LS -->
   <script>
     (function () {
       const qs = new URLSearchParams(location.search);
-      if (!qs.get('event')) {
-        let eid = null;
+      if (!qs.get('event') && !qs.get('code')) {
+        let eid = null, code = null;
         try {
           const d = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}');
-          eid = d?.id || null;
+          eid  = d?.id || null;
+          code = d?.code || null;
         } catch {}
-        if (!eid) {
+        if (!eid && !code) {
           try { eid = localStorage.getItem('fh:lastEventId') || null; } catch {}
         }
-        if (eid) {
-          qs.set('event', eid);
+        if (eid || code) {
+          if (eid) qs.set('event', eid);
+          else if (code) qs.set('code', code);
           history.replaceState(null, '', location.pathname + '?' + qs.toString());
         } else {
           location.replace('/join.html');
