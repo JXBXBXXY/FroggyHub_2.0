@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Wishlist — FroggyHub</title>
   <link rel="stylesheet" href="/style.css" />
-  <link rel="icon"
-        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
     .page { max-width: 980px; margin: 32px auto; padding: 0 16px; }
     .wl-card { padding: 24px; }
@@ -51,19 +50,25 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script type="module">
-    // Черновик события (его положил event-edit.html)
     let draft = {};
     try { draft = JSON.parse(sessionStorage.getItem('fh:draftEvent') || '{}'); } catch { draft = {}; }
 
-    // Подвяжем ссылку "К событию"
-    const toLobby = document.getElementById('toLobby');
-    if (draft?.id) toLobby.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
+    // подстрахуем ID ещё и в localStorage
+    try { if (draft?.id) localStorage.setItem('fh:lastEventId', draft.id); } catch {}
 
-    // Заголовок
     const wlTitle = document.getElementById('wlEventTitle');
     wlTitle.textContent = draft?.title ? `Для события: “${draft.title}”` : '';
 
-    // Локальное состояние
+    const toLobby = document.getElementById('toLobby');
+    if (draft?.id) toLobby.href = `/lobby.html?event=${encodeURIComponent(draft.id)}`;
+    else {
+      // если id нет — попробуем подтянуть из localStorage (на всякий)
+      try {
+        const fallback = localStorage.getItem('fh:lastEventId');
+        if (fallback) toLobby.href = `/lobby.html?event=${encodeURIComponent(fallback)}`;
+      } catch {}
+    }
+
     const state = Array.isArray(draft?.wishlist) ? [...draft.wishlist] : [];
 
     const form = document.getElementById('form-wish-add');
@@ -112,9 +117,14 @@
       render();
     });
 
+    function getEventId() {
+      if (draft?.id) return draft.id;
+      try { return localStorage.getItem('fh:lastEventId') || ''; } catch { return ''; }
+    }
+
     btnCancel.addEventListener('click', () => {
-      const id = draft?.id ? `?event=${encodeURIComponent(draft.id)}` : '';
-      location.href = `/lobby.html${id}`;
+      const id = getEventId();
+      location.href = id ? `/lobby.html?event=${encodeURIComponent(id)}` : '/lobby.html';
     });
 
     btnDone.addEventListener('click', () => {
@@ -123,8 +133,8 @@
         d.wishlist = state;
         sessionStorage.setItem('fh:draftEvent', JSON.stringify(d));
       } catch {}
-      const id = draft?.id ? `?event=${encodeURIComponent(draft.id)}` : '';
-      location.href = `/lobby.html${id}`;
+      const id = getEventId();
+      location.href = id ? `/lobby.html?event=${encodeURIComponent(id)}` : '/lobby.html';
     });
 
     render();
