@@ -44,8 +44,8 @@ const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b
 
 /** количество пузырей под устройство/мощность */
 const desiredBubbleCount = () => {
-  const area = Math.max(1, (innerWidth * innerHeight) / (DPR ** 0.6)); // чуть «наказали» высокие DPR
-  const base = Math.round(area / 14000); // базовая плотность
+  const area = Math.max(1, (innerWidth * innerHeight) / (DPR ** 0.6));
+  const base = Math.round(area / 14000);
   const capDesktop = 60;
   const capMobile  = 28;
   let n = Math.min(isTouchDevice ? capMobile : capDesktop, Math.max(12, base));
@@ -108,10 +108,8 @@ const BubbleController = (() => {
       const anchor = placeNonOverlapping(el);
       requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
 
-      // цикл обновления без setInterval (чтобы не было «вечных» таймеров)
       const loop = () => {
         if (!el.isConnected || document.hidden || prefersReduced) {
-          // при скрытой вкладке/режиме reduce — обновляем реже и только текст
           schedule(() => {
             if (!el.isConnected) return;
             el.textContent = pickMessage();
@@ -152,18 +150,15 @@ const BubbleController = (() => {
     }
   };
 
-  // авто-пауза/перезапуск при смене видимости
   document.addEventListener('visibilitychange', () => {
     if (!mountedRoot) return;
     if (!document.hidden) {
-      // при возврате — «перекладываем» заново с новым количеством
       spawn(mountedRoot, desiredBubbleCount());
     } else {
       clearTimers();
     }
   });
 
-  // чистим на уход со страницы (SPA/MPA совместимо)
   window.addEventListener('pagehide', destroy, { passive: true });
 
   return { spawn, destroy };
@@ -293,13 +288,11 @@ function bindAuthForms() {
         });
         if (error) return showMsg(statusEl, error.message || 'Не удалось зарегистрироваться');
 
-        // Если включено подтверждение по e-mail, supabase вернёт user с email_confirmed_at = null
         const needsConfirm = !data.user?.email_confirmed_at;
         if (needsConfirm) {
           return showMsg(statusEl, 'Готово! Подтвердите e-mail по ссылке из письма, затем войдите.', true);
         }
 
-        // иначе — сразу логиним
         const r = await supa.auth.signInWithPassword({ email, password });
         if (r.error) return showMsg(statusEl, r.error.message || 'Не удалось войти после регистрации');
         setSavedSession({ user: r.data.session.user, access_token: r.data.session.access_token });
@@ -332,8 +325,8 @@ function bindIndexNav() {
 
   // Мобильная клавиатура + UX подсказки (не мешает десктопу)
   if (joinInput) {
-    // Если код может быть не только цифры — поменяй на 'text'
-    joinInput.setAttribute('inputmode', 'numeric');
+    // код буквенно-цифровой → оставляем текстовую клавиатуру
+    joinInput.setAttribute('inputmode', 'text');
     joinInput.setAttribute('autocomplete', 'one-time-code');
     joinInput.setAttribute('enterkeyhint', 'go');
     joinInput.setAttribute('autocapitalize', 'characters');
@@ -356,7 +349,6 @@ function bindIndexNav() {
 
   if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); }, { passive: false });
   if (joinBtn) joinBtn.addEventListener('click', goJoin, { passive: true });
-  // удобство: Enter на поле кода
   joinInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); goJoin(); } }, { passive: false });
 }
 
@@ -375,7 +367,6 @@ function bindJoinPage() {
   if (codeHolder && codeParam) codeHolder.textContent = codeParam;
   if (!nameInput || !btnJoin) return;
 
-  // Мобильный ввод имени — без автозамены caps lock и т.п.
   nameInput.setAttribute('autocomplete', 'name');
   nameInput.setAttribute('autocapitalize', 'words');
   nameInput.setAttribute('enterkeyhint', 'done');
@@ -439,7 +430,6 @@ function bindJoinPage() {
         return;
       }
 
-      // Сохраним драфт + имя гостя
       try {
         const draft = {
           id: ev.id,
@@ -452,7 +442,6 @@ function bindJoinPage() {
         localStorage.setItem('fh:lastEventId', String(ev.id));
       } catch {}
 
-      // Редирект гостя на страницу бронирования
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
       const nameForUrl = encodeURIComponent(name);
       const claimUrl =
@@ -544,10 +533,8 @@ function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
   if (!root) return;
 
-  // первый запуск
   BubbleController.spawn(root, desiredBubbleCount());
 
-  // следим не только за resize, но и за физическим viewport (iOS клавиатура/адресбар)
   const onResize = debounce(() => {
     if (!root.isConnected) return;
     BubbleController.spawn(root, desiredBubbleCount());
@@ -555,16 +542,13 @@ function bootBubbles() {
 
   window.addEventListener('resize', onResize, { passive: true });
 
-  // visualViewport — устойчивее на iOS
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', onResize, { passive: true });
   }
 
-  // если корневой контейнер меняет размер (например, CSS правки) — перестраиваем
   if ('ResizeObserver' in window) {
     const ro = new ResizeObserver(onResize);
     ro.observe(root);
-    // на смену страницы/разметки — дисконнектим наблюдатель
     window.addEventListener('pagehide', () => { try { ro.disconnect(); } catch {} }, { passive: true });
   }
 }
@@ -585,4 +569,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     showScreen('screen-auth');
   }
+  /* ---------- AUTOSAVE на финальной странице (лоби/финалка) ---------- */
+  (function autosaveFinalOnce(){
+    const path = location.pathname;
+    if (!/\/(lobby|final|invite|event)\.html$/i.test(path)) return;
+
+    const qs = new URLSearchParams(location.search);
+    const evId  = qs.get('event') || '';
+    const evCode= qs.get('code')  || '';
+    const key   = `fh:autosaved:${evId || evCode || 'draft'}`;
+
+    try { if (localStorage.getItem(key)) return; } catch {}
+
+    const tryAutoClick = () => {
+      const btn =
+        document.querySelector('[data-autosave="event"]') ||
+        [...document.querySelectorAll('button, a[role="button"]')]
+          .find(b => /сохранить событие/i.test(b.textContent || ''));
+
+      if (!btn) return false;
+      if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') return false;
+
+      btn.click?.();
+      try { localStorage.setItem(key, '1'); } catch {}
+      return true;
+    };
+
+    if (tryAutoClick()) return;
+
+    const obs = new MutationObserver(() => { if (tryAutoClick()) obs.disconnect(); });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+
+    setTimeout(() => { obs.disconnect(); tryAutoClick(); }, 8000);
+  })();
+
 });
