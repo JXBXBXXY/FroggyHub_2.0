@@ -14,9 +14,8 @@
   <meta name="format-detection" content="telephone=no" />
 </head>
 <body class="scene-intro" data-page="event-edit">
-  <!-- фон как везде -->
+  <!-- фон как на других страницах -->
   <div class="fh-bg" aria-hidden="true"></div>
-  <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true"></div>
 
   <!-- единый topbar -->
   <nav class="topbar">
@@ -28,11 +27,9 @@
   </nav>
 
   <!-- основной контент -->
-  <main class="container" role="main" style="position:relative; z-index:2;">
-    <!-- твою форму не трогаю, только усилил стили карточки классами -->
-    <form id="editForm" class="card grid edit-form" aria-describedby="editError"
-          style="max-width:860px;margin-inline:auto;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
-      <h1>Редактировать событие</h1>
+  <main class="container final-wrap" role="main">
+    <form id="editForm" class="final-card grid edit-form" aria-describedby="editError">
+      <h1 class="title">Редактировать событие</h1>
 
       <label>Название
         <input id="editTitle" required aria-required="true" />
@@ -70,7 +67,7 @@
     <p id="editError" class="error" role="status" aria-live="polite"></p>
   </main>
 
-  <!-- твой исходный скрипт формы оставлен без изменений -->
+  <!-- твой скрипт сохранён -->
   <script type="module">
     const form = document.getElementById('editForm');
     const $ = (id) => document.getElementById(id);
@@ -93,16 +90,15 @@
     });
   </script>
 
-  <!-- общий JS: подключаем, чтобы фон/пузыри были как везде -->
+  <!-- общий JS (но без пузырей) -->
   <script type="module" src="/js/app.js"></script>
 
-  <!-- локальная косметика: небольшая коррекция инпутов в этой карточке -->
+  <!-- локальная косметика -->
   <style>
-    /* чтобы инпуты в карточке были широкими и ровными */
     #editForm label { display: grid; gap: 6px; }
     #editForm input, #editForm textarea { width: 100%; }
     #editForm textarea { min-height: 88px; resize: vertical; }
-    /* на мобильных немного поджимаем */
+    .final-card h1.title { margin-top: 0; margin-bottom: 12px; }
     @media (max-width:640px){
       #editForm { padding: 14px; border-radius: 14px; }
     }
