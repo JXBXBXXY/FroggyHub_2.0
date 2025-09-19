@@ -39,7 +39,7 @@ function spawnBubbles(container, count) {
     container.appendChild(el);
 
     const c = container.getBoundingClientRect();
-    let tries = 0, x = 0, y = 0, ok = false; // латиница: ok
+    let tries = 0, x = 0, y = 0, ok = false;
     while (tries++ < 60 && !ok) {
       x = 24 + Math.random() * Math.max(40, c.width - 160);
       y = 24 + Math.random() * Math.max(40, c.height - 60);
@@ -87,8 +87,7 @@ const getSavedSession = () => { try { return JSON.parse(localStorage.getItem(LS_
 const setSavedSession = (s) => { try { s ? localStorage.setItem(LS_KEY, JSON.stringify(s)) : localStorage.removeItem(LS_KEY); } catch {} };
 
 async function ensureSession() {
-  let session = null;
-  try { session = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch {}
+  let session = getSavedSession();
   if (!session && supa?.auth) {
     try {
       const { data } = await supa.auth.getSession();
@@ -191,11 +190,9 @@ function bindAuthForms() {
 }
 
 /**
- * Главная: «Создать событие» и «Присоединиться по коду».
- * Всегда ведём на /join.html (не на lobby).
+ * Главная: ввод кода → ТОЛЬКО на /join.html
  */
 function bindIndexNav() {
-  // переход на редактор события
   document.addEventListener('click', (e) => {
     const navBtn = e.target.closest('[data-go]');
     if (!navBtn) return;
@@ -204,7 +201,6 @@ function bindIndexNav() {
     const mode = navBtn.getAttribute('data-mode') || '';
     if (to === 'app' && mode === 'create') {
       window.location.href = '/event-edit.html';
-      return;
     }
   });
 
@@ -215,28 +211,23 @@ function bindIndexNav() {
   const goJoin = () => {
     const raw  = (joinInput?.value || '').trim();
     const code = raw.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    if (!/^[A-Z0-9]{6}$|^\d{6}$/.test(code)) {
+    if (!/^[A-Z0-9]{6}$/.test(code)) {
       if (joinInput) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
-        joinInput.focus();
-        joinInput.select?.();
+        joinInput.focus(); joinInput.select?.();
       }
       return;
     }
-
-    // На всякий случай чистим черновики, чтобы «финалка» не подхватила старые данные
     try {
       sessionStorage.removeItem('fh:draftEvent');
       sessionStorage.removeItem('fh:rsvpDone');
     } catch {}
-
     window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
   };
 
   if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); });
   if (joinBtn) joinBtn.addEventListener('click', goJoin);
-  // Автопереход при 6 символах — НЕ используем (чтобы не триггерить случайные редиректы)
 }
 
 /* -------------------- страница редактирования события -------------------- */
@@ -261,7 +252,6 @@ function bindEventEditPage() {
       what_to_bring: (fd.get('bring') || document.getElementById('editBring')?.value || '').toString().trim()
     };
 
-    // fallback — коды на клиенте (если нет серверного триггера)
     payload.code = randomDigits(6);
     payload.join_code = randomCode(6);
 
@@ -309,8 +299,7 @@ function bindJoinPage() {
   async function findEvent() {
     try {
       if (eventIdParam) {
-        const { data, error } = await supa
-          .from('events')
+        const { data, error } = await supa.from('events')
           .select('id, code, join_code, title')
           .eq('id', eventIdParam)
           .maybeSingle();
@@ -319,8 +308,7 @@ function bindJoinPage() {
       }
       if (codeParam) {
         const code = codeParam.replace(/[^A-Z0-9]/g, '');
-        const { data, error } = await supa
-          .from('events')
+        const { data, error } = await supa.from('events')
           .select('id, code, join_code, title')
           .or(`code.eq.${code},join_code.eq.${code}`)
           .maybeSingle();
