@@ -86,7 +86,8 @@
             <p id="wlError" class="error" style="margin-top:.5rem"></p>
           </div>
 
-          <div class="glass-section">
+          <!-- Этот блок скрывается для гостя -->
+          <div class="glass-section" id="guests-block">
             <div class="section-title">👥 Гости</div>
             <div class="guests-columns">
               <div><h4>Идут</h4><ul class="list" id="guestYes"></ul></div>
@@ -104,7 +105,6 @@
     </main>
   </div>
 
-  <!-- Делаем модуль, чтобы импортировать supabase-клиент -->
   <script type="module">
     import { supa } from '/js/api.js';
 
@@ -118,7 +118,15 @@
     const $ = (id) => document.getElementById(id);
     const pad = (n) => n.toString().padStart(2,'0');
     const same = (a='',b='') => a.trim().toLowerCase() === b.trim().toLowerCase();
+
     const myName = (draft?.lastJoinName || '').trim();
+    const isGuestView = !!myName;
+
+    // Скрываем гостю: блок гостей + кнопку «Сохранить событие»
+    if (isGuestView) {
+      document.getElementById('guests-block')?.setAttribute('hidden', 'hidden');
+      document.getElementById('saveEventBtn')?.setAttribute('hidden', 'hidden');
+    }
 
     const formatWhen = (d) => {
       if (!d?.date && !d?.time) return '—';
@@ -172,7 +180,7 @@
     }
 
     renderStaticParts();
-    renderWishlistDraftOnly(); // сразу что-то показать
+    renderWishlistDraftOnly(); // что-то показать сразу
 
     // копирование инвайта
     document.getElementById('copyInviteBtn').addEventListener('click', async () => {
@@ -185,7 +193,7 @@
       }
     });
 
-    // серверные вспомогалки (как и было)
+    // серверные вспомогалки
     async function fetchEventByCode(code) {
       try {
         const r = await fetch('/.netlify/functions/events-get?code=' + encodeURIComponent(code));
@@ -237,7 +245,7 @@
       }
     }
 
-    // === Новое: загрузка wishlist из БД и рендер с claimed_by ===
+    // Загрузка wishlist из БД и рендер с claimed_by
     async function loadWishlistFromDb() {
       const box = $('evWishlist'); const err = $('wlError');
       err.textContent = '';
@@ -269,7 +277,6 @@
           if (item.url) left.innerHTML = `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>`;
           else left.textContent = item.title;
 
-          // бейдж
           const badge = document.createElement('span');
           badge.className = 'wl-badge';
           if (!item.claimed_by) badge.textContent = 'Свободно';
@@ -306,7 +313,7 @@
         writeDraft(draft);
         try { localStorage.setItem('fh:lastEventId', draft.id); } catch {}
         renderStaticParts();
-        await loadWishlistFromDb(); // сразу подтянуть список из БД
+        await loadWishlistFromDb();
         alert('Сохранено! Код: ' + draft.code);
       } catch (e) {
         console.error(e);
@@ -316,7 +323,6 @@
       }
     });
 
-    // Стартовая синхронизация + загрузка вишлиста из БД (если есть id)
     await ensureEventExistsInDb();
     await loadWishlistFromDb();
   </script>
