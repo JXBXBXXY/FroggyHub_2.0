@@ -28,11 +28,9 @@ const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
-/** Надёжная раскладка пузырьков (Safari-safe) */
 function spawnBubbles(container, count) {
   if (!container) return;
   const placed = [];
-
   const placeNonOverlapping = (el) => {
     const c = container.getBoundingClientRect();
     const maxX = Math.max(40, c.width  - 160);
@@ -82,7 +80,6 @@ function spawnBubbles(container, count) {
     } else {
       setInterval(()=> el.textContent = pickMessage(), 10000 + Math.random()*2000);
     }
-
     placed.push(el);
   }
 }
@@ -114,7 +111,7 @@ function showScreen(id) {
   });
 }
 
-/* -------------------- навигация и формы -------------------- */
+/* -------------------- навигация и вкладки -------------------- */
 function bindTabs() {
   const tabLogin = document.getElementById('tab-login');
   const tabReg   = document.getElementById('tab-register');
@@ -136,6 +133,7 @@ function bindTabs() {
   tabReg.addEventListener('click', () => activate('register'));
 }
 
+/* -------------------- формы входа/регистрации -------------------- */
 function bindAuthForms() {
   if (window.FH?.__authBound) return;
   window.FH = window.FH || {};
@@ -143,55 +141,91 @@ function bindAuthForms() {
 
   const loginForm  = document.getElementById('loginForm');
   const signupForm = document.getElementById('signupForm');
+  const setError = (el, msg) => { if (el) el.textContent = msg || ''; };
 
-  async function handle(form, kind) {
-    if (!form) return;
-    form.addEventListener('submit', async (ev) => {
+  async function upsertNickname(nickname) {
+    try {
+      const { data: sess } = await supa.auth.getSession();
+      const user = sess?.session?.user;
+      if (!user || !nickname) return;
+      await supa.from('profiles').upsert(
+        { id: user.id, nickname },
+        { onConflict: 'id' }
+      );
+    } catch {}
+  }
+
+  // Вход
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      const fd = new FormData(form);
+      const fd = new FormData(loginForm);
+      const emailRaw = (fd.get('email') || '').toString().trim();
       const nickname = (fd.get('nickname') || '').toString().trim();
       const password = (fd.get('password') || '').toString();
-      if (!nickname || !password) return;
+      const statusEl = document.getElementById('login-status');
+      setError(statusEl, '');
 
-      const email = nickname.includes('@') ? nickname : `${nickname}@local`;
+      if (!password || (!emailRaw && !nickname)) {
+        setError(statusEl, 'Введите e-mail или никнейм и пароль.');
+        return;
+      }
+
+      // email приоритетнее; если пустой — пробуем ник как email@fh.local
+      const email = emailRaw
+        ? emailRaw
+        : (nickname.includes('@') ? nickname : `${nickname}@fh.local`);
+
       try {
-        let ok = false, session = null;
-
-        if (kind === 'login') {
-          const { data, error } = await supa.auth.signInWithPassword({ email, password });
-          if (!error) { ok = true; session = data.session; }
-        } else {
-          const { error } = await supa.auth.signUp({ email, password });
-          if (!error) {
-            const r = await supa.auth.signInWithPassword({ email, password });
-            ok = !r.error; session = r.data.session;
-          }
-        }
-
-        if (ok && session) {
-          setSavedSession({ user: session.user, access_token: session.access_token });
-          document.getElementById('screen-auth')?.remove();
-          showScreen('screen-home');
-        }
+        const { data, error } = await supa.auth.signInWithPassword({ email, password });
+        if (error) { setError(statusEl, error.message || 'Не удалось войти'); return; }
+        setSavedSession({ user: data.session.user, access_token: data.session.access_token });
+        if (nickname) await upsertNickname(nickname);
+        document.getElementById('screen-auth')?.remove();
+        showScreen('screen-home');
       } catch (e) {
-        console.error(e);
+        setError(statusEl, e.message || 'Ошибка входа');
       }
     });
   }
 
-  handle(loginForm, 'login');
-  handle(signupForm, 'signup');
+  // Регистрация
+  if (signupForm) {
+    signupForm.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(signupForm);
+      const email = (fd.get('email') || '').toString().trim();
+      const nickname = (fd.get('nickname') || '').toString().trim();
+      const password  = (fd.get('password')  || '').toString();
+      const password2 = (fd.get('password2') || '').toString();
+      const statusEl = document.getElementById('reg-status');
+      setError(statusEl, '');
 
-  document.addEventListener('click', (ev) => {
-    const btn = ev.target.closest('[data-action="login"], [data-action="signup"], .js-login, .js-signup');
-    if (!btn) return;
-    ev.preventDefault();
-    const isLogin = btn.matches('[data-action="login"], .js-login');
-    const form = btn.closest('form') || (isLogin ? loginForm : signupForm);
-    if (!form) return;
-    if (typeof form.requestSubmit === 'function') form.requestSubmit();
-    else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-  });
+      if (!email) { setError(statusEl, 'Введите e-mail.'); return; }
+      if (!password || password.length < 4) { setError(statusEl, 'Пароль минимум 4 символа.'); return; }
+      if (password !== password2) { setError(statusEl, 'Пароли не совпадают.'); return; }
+
+      try {
+        const { error: signUpErr } = await supa.auth.signUp({ email, password });
+        if (signUpErr) { setError(statusEl, signUpErr.message || 'Не удалось зарегистрироваться'); return; }
+
+        // сразу логинимся (если подтверждение email отключено в проекте)
+        const { data, error: signInErr } = await supa.auth.signInWithPassword({ email, password });
+        if (signInErr) {
+          // если включено подтверждение — покажем сообщение и останемся на экране
+          setError(statusEl, 'Проверьте почту и подтвердите адрес, затем войдите.');
+          return;
+        }
+
+        setSavedSession({ user: data.session.user, access_token: data.session.access_token });
+        if (nickname) await upsertNickname(nickname);
+        document.getElementById('screen-auth')?.remove();
+        showScreen('screen-home');
+      } catch (e) {
+        setError(statusEl, e.message || 'Ошибка регистрации');
+      }
+    });
+  }
 }
 
 /* -------------------- главная: создать/присоединиться -------------------- */
@@ -231,7 +265,7 @@ function bindIndexNav() {
   if (joinBtn) joinBtn.addEventListener('click', goJoin);
 }
 
-/* -------------------- join.html -------------------- */
+/* -------------------- join.html (присоединение и редирект на выбор подарков) -------------------- */
 function bindJoinPage() {
   const params = new URLSearchParams(location.search);
   const codeParam  = (params.get('code') || '').toString().trim().toUpperCase();
@@ -305,7 +339,6 @@ function bindJoinPage() {
         return;
       }
 
-      // Сохраним драфт + имя гостя
       try {
         const draft = {
           id: ev.id,
@@ -318,7 +351,6 @@ function bindJoinPage() {
         localStorage.setItem('fh:lastEventId', String(ev.id));
       } catch {}
 
-      // Редирект гостя на страницу бронирования (максимально совместимые ключи)
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
       const nameForUrl = encodeURIComponent(name);
       const claimUrl =
@@ -327,11 +359,8 @@ function bindJoinPage() {
 
       try {
         const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
-        if (head.ok) {
-          window.location.href = claimUrl;
-        } else {
-          window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
-        }
+        if (head.ok) window.location.href = claimUrl;
+        else window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
       } catch {
         window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
       }
@@ -340,7 +369,7 @@ function bindJoinPage() {
       if (errorBox) errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.';
     }
   });
-} // <- конец bindJoinPage
+}
 
 /* -------------------- wishlist bridge (страница создания списка) -------------------- */
 function bindWishlistBridge() {
@@ -354,7 +383,6 @@ function bindWishlistBridge() {
   const done   = document.getElementById('btn-wishlist-done');
   const back   = document.getElementById('btn-wishlist-cancel');
 
-  // Правильная ссылка «К событию»
   const linkLobby = document.getElementById('link-to-lobby');
   if (linkLobby) {
     const d = getDraft();
@@ -393,13 +421,11 @@ function bindWishlistBridge() {
   if (back) back.addEventListener('click', goLobbyWithParams);
 }
 
-/* -------------------- lobby: подставить ?event/?code из драфта при пустом URL -------------------- */
+/* -------------------- lobby: подтянем ?event/?code из драфта при пустом URL -------------------- */
 function ensureLobbyParamsFromDraft() {
   if (!/\/lobby\.html/i.test(location.pathname)) return;
-
   const qs = new URLSearchParams(location.search);
   if (qs.has('event') || qs.has('code')) return;
-
   try {
     const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}');
     const sp = new URLSearchParams();
