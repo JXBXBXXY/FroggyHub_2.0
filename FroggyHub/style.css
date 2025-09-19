@@ -748,3 +748,73 @@ button:not([disabled]){ cursor:pointer; }
   display: none !important;
   visibility: hidden !important;
 }
+
+/* =======  APPENDED RESPONSIVE / MOBILE FIXES  ======= */
+/* MOBILE FIX: улучшенные тач-таргеты и анти-скейл текста iOS */
+html{ -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button,.btn,[role="button"]{ min-height:44px; }
+
+/* MOBILE FIX: безопасные зоны для topbar */
+.topbar{
+  -webkit-backdrop-filter: blur(6px);
+  padding-top: calc(10px + env(safe-area-inset-top));
+}
+
+/* MOBILE FIX: iOS 100vh глюк — используем dvh/svh при наличии */
+@supports (height: 100dvh){
+  .wrap{ grid-template-rows: 48dvh auto; min-height: 100dvh; }
+  body.scene-intro .wrap, body.scene-final .wrap{ grid-template-rows: 100dvh 0; }
+}
+
+/* MOBILE FIX: Лобби в одну колонку на планшетах/телефонах */
+@media (max-width: 900px){
+  .lobby-grid{ grid-template-columns: 1fr; gap: 16px; padding: 16px; }
+  .guests-columns{ grid-template-columns: 1fr; }
+}
+
+/* MOBILE FIX: более мягкий blur/тени на телефонах для перфоманса */
+@media (max-width: 640px){
+  .lobby-right.glass{
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  }
+  .glass-section{
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* MOBILE FIX: кнопки в шапке компактнее на узких экранах */
+@media (max-width: 420px){
+  .btn-sm{ padding: 6px 8px; font-size: 12px; }
+  .topbar-right{ gap:6px; }
+}
+
+/* MOBILE FIX: меню «join» — столбцом */
+@media (max-width: 600px){
+  .menu-grid{ grid-template-columns: 1fr; }
+  .join-row{ grid-template-columns: 1fr; }
+}
+
+/* MOBILE FIX: типографика — не мельчить ниже 14px */
+@media (max-width: 640px){
+  body{ font-size: clamp(14px, 4vw, 16px); }
+}
+
+/* MOBILE FIX: инпуты не вываливаются из гридов */
+@media (max-width: 640px){
+  .grid > * { min-width: 0; }
+  input, textarea { min-width: 0; }
+}
+
+/* MOBILE FIX: sticky-оверскролл на iOS */
+@supports (-webkit-touch-callout: none){
+  .topbar{ position: sticky; }
+}
+
+/* MOBILE FIX: выравнивание карточек профиля/листов */
+@media (max-width: 640px){
+  .event-item{ align-items:flex-start; }
+  .event-actions{ width:100%; justify-content:flex-end; }
+}
