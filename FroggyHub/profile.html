@@ -7,51 +7,85 @@
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
+    /* фон */
     .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
-    .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
-    .box{max-width:900px;width:min(900px,100%);margin:0 auto}
-    .grid2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
-    @media (max-width:720px){.grid2{grid-template-columns:1fr}}
+
+    /* контентный контейнер — без центрирования шапки */
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding:0 1rem 2rem}
+
+    /* топбар как на главной */
+    .fh-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0}
+    .fh-logo{font-weight:800;letter-spacing:.2px}
+    .topbar{
+      display:flex;align-items:center;gap:8px;
+      background:rgba(12,34,26,.55);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      padding:6px;
+      backdrop-filter:saturate(1.2) blur(10px);
+      box-shadow:0 8px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .topbar .btn{height:34px;line-height:32px;padding:0 12px}
+    @media (max-width:480px){ .fh-logo{display:none} }
+
+    /* карточка профиля */
+    .profile-wrap{max-width:980px;margin:24px auto 0}
+    .profile-card{padding:1.25rem}
+    @media (min-width:720px){
+      .profile-card{padding:1.5rem}
+      .profile-grid{
+        display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;align-items:end
+      }
+      .profile-actions{grid-column:2 / 3;justify-content:flex-start}
+    }
+    @media (max-width:719.98px){
+      .profile-grid{display:grid;gap:10px}
+      .profile-actions{display:flex;gap:.5rem;justify-content:flex-end}
+    }
+    .muted{opacity:.85}
   </style>
 </head>
 <body>
   <div class="fh-bg" aria-hidden="true"></div>
 
   <div class="fh-content">
-    <!-- ЕДИНЫЙ ТОПБАР -->
-    <nav class="topbar">
-      <div class="topbar-left">
-        <a href="/" class="logo">FroggyHub</a>
+    <!-- TOPBAR -->
+    <header class="fh-header">
+      <a class="fh-logo" href="/">FroggyHub</a>
+      <nav class="topbar">
+        <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
+        <a href="/profile.html" class="btn btn--ghost btn--sm">Профиль</a>
+        <a href="/settings.html" class="btn btn--ghost btn--sm">Настройки</a>
+      </nav>
+    </header>
+
+    <!-- CARD -->
+    <main class="profile-wrap">
+      <div class="card glass profile-card">
+        <h2 style="margin-bottom:.75rem">Профиль</h2>
+
+        <div class="glass-section" style="margin-top:.25rem">
+          <div class="section-title">Аккаунт</div>
+
+          <form id="form" class="profile-grid" autocomplete="off">
+            <label>E-mail
+              <input id="email" class="input" type="email" readonly>
+            </label>
+
+            <label>Имя / Никнейм
+              <input id="nickname" class="input" minlength="2" placeholder="Ваш ник">
+            </label>
+
+            <div class="profile-actions row" style="gap:.5rem">
+              <button id="save" class="btn btn--primary" type="submit">Сохранить</button>
+              <button id="logout" class="btn btn--ghost" type="button">Выйти</button>
+            </div>
+
+            <p id="msg" class="muted" aria-live="polite" style="grid-column:1/-1;margin:.25rem 0 0"></p>
+          </form>
+        </div>
       </div>
-      <div class="topbar-right">
-        <a class="btn btn-sm btn-ghost" href="/index.html">Меню</a>
-        <a class="btn btn-sm btn-ghost" href="/profile.html" aria-current="page">Профиль</a>
-        <button id="nav-settings" class="btn btn-sm btn-ghost" data-role="settings" type="button">Настройки</button>
-      </div>
-    </nav>
-
-    <main class="card box">
-      <h2 style="margin-bottom:.75rem">Профиль</h2>
-
-      <section class="glass-section">
-        <div class="section-title">Аккаунт</div>
-
-        <form id="form" class="grid2" autocomplete="off">
-          <label>E-mail
-            <input id="email" class="input" type="email" readonly>
-          </label>
-          <label>Имя / Никнейм
-            <input id="nickname" class="input" minlength="2" placeholder="Ваш ник">
-          </label>
-
-          <div class="row end" style="grid-column:1 / -1; gap:.5rem; margin-top:.5rem">
-            <button id="save" class="btn btn--primary" type="submit">Сохранить</button>
-            <button id="logout" class="btn btn--ghost" type="button">Выйти</button>
-          </div>
-          <p id="msg" class="hint" style="grid-column:1 / -1" aria-live="polite"></p>
-        </form>
-      </section>
     </main>
   </div>
 
@@ -69,11 +103,11 @@
       const { data: sess } = await supa.auth.getSession();
       const session = sess?.session;
       if (!session) { location.href = '/'; return; }
-
       const user = session.user;
       emailEl.value = user.email || '';
       nickEl.value  = (user.user_metadata?.nickname || '').trim();
 
+      // Попробуем ник из profiles
       try {
         const { data } = await supa.from('profiles').select('nickname').eq('id', user.id).maybeSingle();
         if (data?.nickname && !nickEl.value) nickEl.value = data.nickname;
@@ -89,12 +123,12 @@
       const user = sess?.session?.user;
       if (!user) { location.href = '/'; return; }
 
+      // 1) auth user_metadata
       const { error: authErr } = await supa.auth.updateUser({ data: { nickname } });
       if (authErr) { msgEl.textContent = 'Ошибка: ' + authErr.message; return; }
 
-      try {
-        await supa.from('profiles').upsert({ id: user.id, nickname }, { onConflict: 'id' });
-      } catch {}
+      // 2) в profiles (если доступны политики)
+      try { await supa.from('profiles').upsert({ id: user.id, nickname }, { onConflict: 'id' }); } catch {}
 
       msgEl.textContent = 'Готово ✅';
       setTimeout(()=> msgEl.textContent = '', 1500);
