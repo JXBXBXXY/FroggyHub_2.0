@@ -305,7 +305,8 @@ function bindJoinPage() {
         errorBox && (errorBox.textContent = error.message || 'Ошибка присоединения. Попробуйте позже.');
         return;
       }
-      window.location.href = `/lobby.html?event=${ev.id}`;
+      // Сразу на вишлист, чтобы участник мог занять предмет
+      window.location.href = `/wishlist.html?event=${ev.id}&from=join`;
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
       errorBox && (errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.');
