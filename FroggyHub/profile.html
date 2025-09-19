@@ -7,55 +7,50 @@
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
-    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
+    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
-    .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem}
-    .page{max-width:980px;margin:40px auto;display:grid;gap:24px;grid-template-columns:minmax(280px,1fr)}
-    .muted{opacity:.85}
-    .form-grid{display:grid;gap:12px}
-    @media (min-width:720px){
-      .form-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    }
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
+    .box{max-width:900px;width:min(900px,100%);margin:0 auto}
+    .grid2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+    @media (max-width:720px){.grid2{grid-template-columns:1fr}}
   </style>
 </head>
-<body data-page="profile">
+<body>
   <div class="fh-bg" aria-hidden="true"></div>
 
   <div class="fh-content">
-    <!-- общий топбар как на финалке -->
-    <header class="fh-header">
-      <a class="fh-logo" href="/">FroggyHub</a>
-      <nav class="topbar">
-        <a href="/index.html" class="btn btn--ghost btn--sm">Меню</a>
-        <a href="/profile.html" class="btn btn--ghost btn--sm is-active">Профиль</a>
-        <a href="/wishlist.html" class="btn btn--ghost btn--sm">Редактировать wishlist</a>
-      </nav>
-    </header>
+    <!-- ЕДИНЫЙ ТОПБАР -->
+    <nav class="topbar">
+      <div class="topbar-left">
+        <a href="/" class="logo">FroggyHub</a>
+      </div>
+      <div class="topbar-right">
+        <a class="btn btn-sm btn-ghost" href="/index.html">Меню</a>
+        <a class="btn btn-sm btn-ghost" href="/profile.html" aria-current="page">Профиль</a>
+        <button id="nav-settings" class="btn btn-sm btn-ghost" data-role="settings" type="button">Настройки</button>
+      </div>
+    </nav>
 
-    <main class="page">
-      <section class="glass">
-        <h2>Профиль</h2>
+    <main class="card box">
+      <h2 style="margin-bottom:.75rem">Профиль</h2>
 
-        <div class="glass-section">
-          <div class="section-title">Аккаунт</div>
-          <form id="form" class="form-grid" autocomplete="off">
-            <div class="form-2col">
-              <label>E-mail
-                <input id="email" class="input" type="email" readonly>
-              </label>
-              <label>Имя / Никнейм
-                <input id="nickname" class="input" minlength="2" placeholder="Ваш ник">
-              </label>
-            </div>
+      <section class="glass-section">
+        <div class="section-title">Аккаунт</div>
 
-            <div class="row end" style="gap:.5rem">
-              <button id="save" class="btn btn--primary" type="submit">Сохранить</button>
-              <button id="logout" class="btn btn--ghost" type="button">Выйти</button>
-            </div>
+        <form id="form" class="grid2" autocomplete="off">
+          <label>E-mail
+            <input id="email" class="input" type="email" readonly>
+          </label>
+          <label>Имя / Никнейм
+            <input id="nickname" class="input" minlength="2" placeholder="Ваш ник">
+          </label>
 
-            <p id="msg" class="muted" aria-live="polite"></p>
-          </form>
-        </div>
+          <div class="row end" style="grid-column:1 / -1; gap:.5rem; margin-top:.5rem">
+            <button id="save" class="btn btn--primary" type="submit">Сохранить</button>
+            <button id="logout" class="btn btn--ghost" type="button">Выйти</button>
+          </div>
+          <p id="msg" class="hint" style="grid-column:1 / -1" aria-live="polite"></p>
+        </form>
       </section>
     </main>
   </div>
@@ -79,33 +74,24 @@
       emailEl.value = user.email || '';
       nickEl.value  = (user.user_metadata?.nickname || '').trim();
 
-      // подтянем из profiles, если есть
       try {
-        const { data } = await supa
-          .from('profiles')
-          .select('nickname')
-          .eq('id', user.id)
-          .maybeSingle();
+        const { data } = await supa.from('profiles').select('nickname').eq('id', user.id).maybeSingle();
         if (data?.nickname && !nickEl.value) nickEl.value = data.nickname;
       } catch {}
     }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nickname = (nickEl.value || '').trim();
-      if (nickname.length < 2) { nickEl.focus(); return; }
-
       msgEl.textContent = 'Сохраняем…';
+      const nickname = (nickEl.value || '').trim();
 
       const { data: sess } = await supa.auth.getSession();
       const user = sess?.session?.user;
       if (!user) { location.href = '/'; return; }
 
-      // 1) user_metadata
       const { error: authErr } = await supa.auth.updateUser({ data: { nickname } });
       if (authErr) { msgEl.textContent = 'Ошибка: ' + authErr.message; return; }
 
-      // 2) sync в profiles (если RLS позволяет)
       try {
         await supa.from('profiles').upsert({ id: user.id, nickname }, { onConflict: 'id' });
       } catch {}
@@ -115,7 +101,8 @@
     });
 
     $('logout')?.addEventListener('click', async () => {
-      try { await supa.auth.signOut(); } finally { location.href = '/'; }
+      await supa.auth.signOut();
+      location.href = '/';
     });
 
     load();
