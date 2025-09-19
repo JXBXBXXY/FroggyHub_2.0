@@ -28,30 +28,38 @@ const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
+/** Надёжная раскладка пузырьков без «ok» (Safari-safe) */
 function spawnBubbles(container, count) {
   if (!container) return;
   const placed = [];
+
+  const placeNonOverlapping = (el) => {
+    const c = container.getBoundingClientRect();
+    const maxX = Math.max(40, c.width  - 160);
+    const maxY = Math.max(40, c.height -  60);
+    for (let tries = 0; tries < 80; tries++) {
+      const x = 24 + Math.random() * maxX;
+      const y = 24 + Math.random() * maxY;
+      el.style.left = `${x}px`;
+      el.style.top  = `${y}px`;
+      const r1 = el.getBoundingClientRect();
+      if (!placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8))) return { x, y };
+    }
+    // если не получилось — всё равно вернём хоть какие координаты
+    return { x: 24, y: 24 };
+  };
+
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.className = 'fh-bubble';
     el.textContent = pickMessage();
     container.appendChild(el);
 
-    const c = container.getBoundingClientRect();
-    let tries = 0, x = 0, y = 0, ok = false;
-    while (tries++ < 60 && !ок) {
-      x = 24 + Math.random() * Math.max(40, c.width - 160);
-      y = 24 + Math.random() * Math.max(40, c.height - 60);
-      el.style.left = `${x}px`;
-      el.style.top  = `${y}px`;
-      const r1 = el.getBoundingClientRect();
-      ok = !placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8));
-    }
+    const anchor = placeNonOverlapping(el);
     requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
 
     if (!prefersReduced) {
-      const anchor = { x, y };
-      const loop = () => {
+      (function loop(){
         const visibleMs = 3000 + Math.random() * 1000;
         setTimeout(() => {
           el.classList.remove('fh-bubble--in');
@@ -64,17 +72,18 @@ function spawnBubbles(container, count) {
             const c2 = container.getBoundingClientRect();
             const nx = Math.max(8, Math.min(c2.width  - width  - 8, anchor.x + dx));
             const ny = Math.max(8, Math.min(c2.height - height - 8, anchor.y + dy));
-            el.style.left = `${nx}px`; el.style.top = `${ny}px`;
+            el.style.left = `${nx}px`;
+            el.style.top  = `${ny}px`;
             el.classList.remove('fh-bubble--out');
             requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
             loop();
           }, { once: true });
         }, visibleMs);
-      };
-      loop();
+      })();
     } else {
       setInterval(()=> el.textContent = pickMessage(), 10000 + Math.random()*2000);
     }
+
     placed.push(el);
   }
 }
@@ -186,7 +195,7 @@ function bindAuthForms() {
   });
 }
 
-/* -------------------- главная: переходы -------------------- */
+/* -------------------- главная: создать/присоединиться -------------------- */
 function bindIndexNav() {
   document.addEventListener('click', (e) => {
     const navBtn = e.target.closest('[data-go]');
@@ -260,7 +269,7 @@ function bindJoinPage() {
       if (codeParam) {
         const code = codeParam.replace(/[^A-Z0-9]/g, '');
         const { data, error } = await supa
-          .from('events')             // ← фикс опечатки (было fromsupa.from)
+          .from('events')
           .select('id, code, join_code, title')
           .or(`code.eq.${code},join_code.eq.${code}`)
           .maybeSingle();
@@ -272,25 +281,6 @@ function bindJoinPage() {
       console.error('[join] findEvent error:', e);
       return null;
     }
-  }
-
-  // универсальная вставка RSVP с фолбэками по названию колонки имени
-  async function insertRsvpFlexible(evId, guestName, status) {
-    const tryPayloads = [
-      { event_id: evId, user_name: guestName, status },
-      { event_id: evId, name: guestName,      status },
-      { event_id: evId, guest_name: guestName, status },
-    ];
-    for (const payload of tryPayloads) {
-      const { error } = await supa.from('rsvps').insert(payload);
-      if (!error) return { ok: true };
-      // если это ошибка типа «column … does not exist» — пробуем следующий вариант
-      const msg = (error.message || '').toLowerCase();
-      if (msg.includes('column') && msg.includes('does not exist')) continue;
-      // прочие ошибки возвращаем сразу (например, RLS)
-      return { ok: false, error };
-    }
-    return { ok: false, error: { message: 'Не нашёл подходящую колонку имени в rsvps (user_name/name/guest_name).' } };
   }
 
   btnJoin.addEventListener('click', async ()=>{
@@ -305,17 +295,20 @@ function bindJoinPage() {
     }
 
     try {
-      const res = await insertRsvpFlexible(ev.id, name, picked);
-      if (!res.ok) {
-        console.error('[join] insert rsvp error:', res.error);
-        if (errorBox) errorBox.textContent =
-          res.error?.message || 'Ошибка присоединения. Проверьте права (RLS) и структуру таблицы rsvps.';
+      const { error } = await supa.from('rsvps').insert({
+        event_id: ev.id,
+        user_name: name,
+        status: picked
+      });
+      if (error) {
+        console.error('[join] insert rsvp error:', error);
+        errorBox && (errorBox.textContent = error.message || 'Ошибка присоединения. Попробуйте позже.');
         return;
       }
       window.location.href = `/lobby.html?event=${ev.id}`;
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
-      if (errorBox) errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.';
+      errorBox && (errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.');
     }
   });
 }
@@ -332,7 +325,7 @@ function bindWishlistBridge() {
   const done   = document.getElementById('btn-wishlist-done');
   const back   = document.getElementById('btn-wishlist-cancel');
 
-  // Подправим ссылку "К событию", если есть
+  // Правильная ссылка «К событию»
   const linkLobby = document.getElementById('link-to-lobby');
   if (linkLobby) {
     const d = getDraft();
@@ -340,9 +333,7 @@ function bindWishlistBridge() {
     else if (d?.code)linkLobby.href = `/lobby.html?code=${encodeURIComponent(d.code)}`;
   }
 
-  if (form) {
-    form.addEventListener('submit', () => { /* список отрисует сама страница */ });
-  }
+  if (form) form.addEventListener('submit', () => { /* страница сама отрисует */ });
 
   const goLobbyWithParams = () => {
     const d = getDraft();
@@ -369,11 +360,11 @@ function bindWishlistBridge() {
     } catch {}
   };
 
-  if (done)  done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
-  if (back)  back.addEventListener('click', goLobbyWithParams);
+  done && done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
+  back && back.addEventListener('click', goLobbyWithParams);
 }
 
-/* -------------------- lobby guard helper -------------------- */
+/* -------------------- lobby: подставить ?event/?code из драфта при пустом URL -------------------- */
 function ensureLobbyParamsFromDraft() {
   if (!/\/lobby\.html/i.test(location.pathname)) return;
 
@@ -405,9 +396,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindTabs();
   bindAuthForms();
   bindIndexNav();
-  bindJoinPage();              // безопасно на любых страницах
-  bindWishlistBridge();        // мостик из wishlist → lobby
-  ensureLobbyParamsFromDraft(); // подставляем ?event/?code при пустом лобби
+  bindJoinPage();
+  bindWishlistBridge();
+  ensureLobbyParamsFromDraft();
   bootBubbles();
 
   const session = await ensureSession();
