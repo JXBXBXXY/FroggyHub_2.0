@@ -7,36 +7,64 @@
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
   <style>
-    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
+    /* фон как на лобби/финалке */
+    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat}
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
-    .fh-content{position:relative;z-index:20;min-height:100svh;padding:2rem 1rem;display:grid;place-items:start center}
-    .box{max-width:900px;width:min(900px,100%);margin:0 auto}
-    .wl-list{list-style:none;margin:0;padding:0;display:grid;gap:.5rem}
-    .wl-item{display:flex;gap:.75rem;align-items:center;justify-content:space-between;padding:.75rem 1rem;border:1px solid rgba(255,255,255,.08);border-radius:12px}
-    .wl-item .meta{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
-    .badge{font-size:.85em;opacity:.85;padding:.2rem .5rem;border-radius:999px;border:1px solid rgba(255,255,255,.15)}
+    .fh-content{position:relative;z-index:20;min-height:100svh;padding:24px 16px}
+    /* список в стиле стек-секций */
+    .wl-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+    .wl-item{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .wl-item .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .badge{font-size:.85rem;opacity:.9;padding:.2rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.18)}
     .muted{opacity:.8}
+    .actions-row{display:flex;gap:10px;flex-wrap:wrap}
   </style>
 </head>
 <body>
   <div class="fh-bg" aria-hidden="true"></div>
+
   <div class="fh-content">
-    <main class="card box">
-      <h1 id="title">Выбор подарков</h1>
-      <p class="muted">
-        Событие: <strong id="evName">—</strong> · Код: <strong id="evCode">—</strong><br/>
-        Вы вошли как: <strong id="guestName">—</strong>
-      </p>
+    <main class="final-wrap">
+      <!-- карточка в стиле финалки -->
+      <section class="final-card">
+        <div class="final-header">
+          <div class="title">Выбор подарков</div>
+        </div>
 
-      <h3>Wishlist</h3>
-      <ul id="list" class="wl-list"></ul>
+        <div class="final-main">
+          <!-- мета-блоки как на финалке -->
+          <div class="meta">
+            <div class="meta-item">
+              <div class="label">Событие</div>
+              <div id="evName">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Код</div>
+              <div id="evCode">—</div>
+            </div>
+            <div class="meta-item">
+              <div class="label">Вы вошли как</div>
+              <div id="guestName">—</div>
+            </div>
+          </div>
 
-      <div class="grid" style="grid-template-columns:1fr auto;gap:.75rem;margin-top:1rem">
-        <a class="btn btn--ghost" id="backBtn" href="/index.html">В меню</a>
-        <a class="btn btn--primary" id="toLobby">Дальше</a>
-      </div>
+          <!-- список подарков в стек-карточках -->
+          <div class="lobby-panels">
+            <div class="glass-section">
+              <h3 class="section-title">Wishlist</h3>
+              <ul id="list" class="wl-list"></ul>
+            </div>
 
-      <p id="err" class="error" role="status" aria-live="polite" style="margin-top:.5rem"></p>
+            <div class="glass-section">
+              <div class="actions-row">
+                <a class="btn btn--ghost" id="backBtn" href="/index.html">В меню</a>
+                <a class="btn btn--primary" id="toLobby">Дальше</a>
+              </div>
+              <p id="err" class="error" role="status" aria-live="polite" style="margin-top:.5rem"></p>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -44,7 +72,7 @@
     import { supa } from '/js/api.js';
 
     const qs = new URLSearchParams(location.search);
-    // поддерживаем старые и новые имена параметров
+    // поддерживаем оба варианта параметров
     let code   = (qs.get('code')  || '').trim();
     let myName = (qs.get('name')  || qs.get('guest') || '').trim();
     let eventId = qs.get('event') ? Number(qs.get('event')) : null;
@@ -56,35 +84,32 @@
     const errEl  = document.getElementById('err');
     const toLobbyBtn = document.getElementById('toLobby');
 
-    function setHeader() {
-      evCodeEl.textContent   = code   || '—';
-      guestNameEl.textContent= myName || '—';
-      // соберём корректную ссылку в лобби
+    function setHeader(){
+      evCodeEl.textContent = code || '—';
+      guestNameEl.textContent = myName || '—';
       const sp = new URLSearchParams();
       if (eventId) sp.set('event', String(eventId));
-      if (code)    sp.set('code', code);
+      if (code) sp.set('code', code);
       toLobbyBtn.href = '/lobby.html' + (sp.toString() ? `?${sp.toString()}` : '');
     }
 
-    function sameName(a='', b=''){ return a.trim().toLowerCase() === b.trim().toLowerCase(); }
+    const sameName = (a='',b='') => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-    async function resolveEvent() {
-      // уже всё знаем
+    async function resolveEvent(){
       if (eventId && code) return;
 
-      if (eventId && !code) {
-        const { data, error } = await supa.from('events')
-          .select('code,join_code,title')
-          .eq('id', eventId)
-          .maybeSingle();
+      if (eventId && !code){
+        const { data, error } = await supa
+          .from('events').select('code,join_code,title').eq('id', eventId).maybeSingle();
         if (error || !data) throw new Error('Событие не найдено.');
         code = data.code || data.join_code || code;
         evNameEl.textContent = data.title || 'Событие';
         return;
       }
 
-      if (!eventId && code) {
-        const { data, error } = await supa.from('events')
+      if (!eventId && code){
+        const { data, error } = await supa
+          .from('events')
           .select('id,title,code,join_code')
           .or(`code.eq.${code},join_code.eq.${code}`)
           .maybeSingle();
@@ -97,7 +122,7 @@
       throw new Error('Не переданы параметры события.');
     }
 
-    async function loadWishlist() {
+    async function loadWishlist(){
       listEl.innerHTML = '';
       const { data, error } = await supa
         .from('wishlist_items')
@@ -105,9 +130,9 @@
         .eq('event_id', eventId)
         .order('id', { ascending: true });
 
-      if (error) { errEl.textContent = error.message; return; }
+      if (error){ errEl.textContent = error.message; return; }
 
-      if (!data || data.length === 0) {
+      if (!data || data.length === 0){
         const li = document.createElement('li');
         li.className = 'muted';
         li.textContent = 'Вишлист пока пуст.';
@@ -123,7 +148,7 @@
         left.className = 'meta';
 
         const title = document.createElement('div');
-        if (row.url) {
+        if (row.url){
           const a = document.createElement('a');
           a.href = row.url; a.target = '_blank'; a.rel = 'noopener';
           a.textContent = row.title;
@@ -144,11 +169,11 @@
         btn.className = 'btn btn--ghost btn--sm';
 
         const mine = sameName(row.claimed_by || '', myName);
-        if (!row.claimed_by) {
+        if (!row.claimed_by){
           btn.textContent = 'Заберу';
           btn.disabled = !myName;
           btn.addEventListener('click', () => claim(row.id, btn));
-        } else if (mine) {
+        } else if (mine){
           btn.textContent = 'Отменить';
           btn.addEventListener('click', () => unclaim(row.id, btn));
         } else {
@@ -162,11 +187,11 @@
       });
     }
 
-    async function callFunction(payload, btn){
+    async function callFn(payload, btn){
       errEl.textContent = '';
-      const oldText = btn?.textContent;
-      if (btn) { btn.disabled = true; btn.textContent = '…'; }
-      try {
+      const old = btn?.textContent;
+      if (btn){ btn.disabled = true; btn.textContent = '…'; }
+      try{
         const res = await fetch('/.netlify/functions/events-rsvp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -175,27 +200,27 @@
         const data = await res.json().catch(()=> ({}));
         if (!res.ok || data?.error) throw new Error(data.error || 'Ошибка сервера');
         await loadWishlist();
-      } catch (e) {
+      }catch(e){
         errEl.textContent = e.message || String(e);
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = oldText; }
+      }finally{
+        if (btn){ btn.disabled = false; btn.textContent = old; }
       }
     }
 
     function claim(itemId, btn){
-      return callFunction({ code, guest_name: myName, claimItemId: itemId }, btn);
+      return callFn({ code, guest_name: myName, claimItemId: itemId }, btn);
     }
     function unclaim(itemId, btn){
-      return callFunction({ code, guest_name: myName, unclaimItemId: itemId }, btn);
+      return callFn({ code, guest_name: myName, unclaimItemId: itemId }, btn);
     }
 
     (async function init(){
-      try {
+      try{
         if (!myName) throw new Error('Не передано имя гостя.');
         await resolveEvent();
         setHeader();
         await loadWishlist();
-      } catch (e) {
+      }catch(e){
         errEl.textContent = e.message || String(e);
       }
     })();
