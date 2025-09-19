@@ -34,6 +34,17 @@
   --danger:#ff6b6b;
   --frog-hero-max: 540px;
   --frog-hero-min: 360px;
+
+  /* стек мини-карточек (используется в lobby и join) */
+  --glass-bg: rgba(15,48,32,.62);
+  --glass-bg-strong: rgba(15,48,32,.78);
+  --glass-bd: rgba(255,255,255,.10);
+  --glass-shadow: 0 12px 36px rgba(0,0,0,.40);
+  --glass-shadow-sm: 0 8px 24px rgba(0,0,0,.32);
+  --r-xl: 20px;
+  --r-lg: 14px;
+  --blur: 10px;
+  --blur-strong: 16px;
 }
 
 *{box-sizing:border-box}
@@ -540,49 +551,42 @@ body.scene-intro .speech{display:block}
 .countdown-small { margin-top: 6px; opacity: .85; }
 .lobby-right.card { background: rgba(255,255,255,.06); border-radius: 16px; padding: 20px; backdrop-filter: blur(6px); }
 
+/* стек мини-секций для лобби */
+.lobby-right.glass{
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-bd);
+  border-radius: var(--r-xl);
+  box-shadow: var(--glass-shadow);
+  padding: 18px;
+}
+.lobby-panels{ display:grid; gap:12px; }
+.glass-section{
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--blur-strong));
+  -webkit-backdrop-filter: blur(var(--blur-strong));
+  border: 1px solid var(--glass-bd);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow-sm);
+  padding: 14px 16px;
+}
+.section-title{
+  display:flex; align-items:center; gap:.5rem;
+  font-weight:800; opacity:.95; margin:0 0 .35rem 0;
+}
+
 .event-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 16px; }
 .guests-columns { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
 .list { margin: 8px 0; padding-left: 18px; }
 .list li { margin: 3px 0; }
 
+/* (старые хедер-классы оставлены для обратной совместимости) */
 .fh-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; }
 .fh-logo { font-weight:800; text-decoration:none; }
 .fh-nav a, .fh-nav button { margin-left:12px; }
-.topbar a, .topbar button { margin-left:12px; }
 
-/* фон меню без кувшинок */
-.bg-frog {
-  --bg1: #e5f5ef;
-  --bg2: #d8f1ea;
-  background: radial-gradient(1200px 800px at 50% -200px, var(--bg1), var(--bg2));
-  min-height: 100vh;
-}
-
-.final-layout { display:grid; grid-template-columns: 1fr 1.3fr; gap:32px; max-width:1200px; margin:32px auto; padding:0 16px; }
-.final-left { display:grid; align-content:center; justify-items:center; position:relative; }
-.frog-stump { width:320px; height:220px; background:url('/assets/stump.png') center/contain no-repeat; opacity:.95; }
-.final-count { position:absolute; top:18%; transform:translateY(-50%); text-align:center; }
-.cd-time { font-size:64px; font-weight:800; line-height:1; color:#0d5135; text-shadow:0 1px 0 #fff6; }
-.cd-date { margin-top:4px; font-size:16px; color:#2d6a4f; }
-
-.final-right { display:grid; align-content:start; }
-.final-card { background:#f5fff9; border:1px solid #bfe3d3; box-shadow:0 10px 30px #083d2a15; border-radius:16px; padding:20px; }
-.final-head h1 { font-size:28px; margin:0 0 12px; color:#0b3d2a; }
-.pill-group { display:flex; gap:8px; }
-.final-meta .meta-row { padding:6px 0; color:#0b3d2a; }
-.final-actions { display:flex; gap:12px; align-items:center; margin:16px 0; flex-wrap:wrap; }
-.rsvp .btn { margin-right:8px; }
-.final-stats { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin:8px 0 12px; }
-.final-stats .stat { background:#e9fbf3; border:1px solid #cbeada; border-radius:12px; padding:12px; text-align:center; }
-.final-stats .n { font-size:22px; font-weight:700; color:#0b3d2a; }
-.final-wishlist h2 { margin:8px 0 10px; color:#0b3d2a; }
-.wl-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap:12px; }
-.wl-card { background:#fff; border:1px solid #d9efe4; border-radius:12px; padding:12px; }
-.wl-tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; }
-.wl-free { background:#d7fbe8; color:#0b3d2a; }
-.wl-taken { background:#ffe3e3; color:#7a1c1c; }
-
-/* Top bar */
+/* ЕДИНЫЙ TOPBAR для всех страниц */
 .topbar{
   position: sticky; top: 0; z-index: 50;
   display:flex; align-items:center; justify-content:space-between;
@@ -743,48 +747,4 @@ button:not([disabled]){ cursor:pointer; }
 #stumpImg {
   display: none !important;
   visibility: hidden !important;
-}
-
-/* ====== ДОБАВЛЕНО: стек из маленьких заблюренных секций в Lobby ====== */
-:root{
-  --glass-bg: rgba(15,48,32,.62);
-  --glass-bg-strong: rgba(15,48,32,.78);
-  --glass-bd: rgba(255,255,255,.10);
-  --glass-shadow: 0 12px 36px rgba(0,0,0,.40);
-  --glass-shadow-sm: 0 8px 24px rgba(0,0,0,.32);
-  --r-xl: 20px;
-  --r-lg: 14px;
-  --blur: 10px;
-  --blur-strong: 16px;
-}
-
-/* контейнер справа в лобби (поверх общего .card) */
-.lobby-right.glass{
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
-  border: 1px solid var(--glass-bd);
-  border-radius: var(--r-xl);
-  box-shadow: var(--glass-shadow);
-  padding: 18px;
-}
-
-/* сетка секций */
-.lobby-panels{ display:grid; gap:12px; }
-
-/* каждая маленькая карточка */
-.glass-section{
-  background: var(--glass-bg-strong);
-  backdrop-filter: blur(var(--blur-strong));
-  -webkit-backdrop-filter: blur(var(--blur-strong));
-  border: 1px solid var(--glass-bd);
-  border-radius: var(--r-lg);
-  box-shadow: var(--glass-shadow-sm);
-  padding: 14px 16px;
-}
-
-/* заголовки секций */
-.section-title{
-  display:flex; align-items:center; gap:.5rem;
-  font-weight:800; opacity:.95; margin:0 0 .35rem 0;
 }
