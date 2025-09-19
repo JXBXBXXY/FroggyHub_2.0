@@ -28,9 +28,11 @@ const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
 const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
+/** Надёжная раскладка пузырьков (Safari-safe) */
 function spawnBubbles(container, count) {
   if (!container) return;
   const placed = [];
+
   const placeNonOverlapping = (el) => {
     const c = container.getBoundingClientRect();
     const maxX = Math.max(40, c.width  - 160);
@@ -80,6 +82,7 @@ function spawnBubbles(container, count) {
     } else {
       setInterval(()=> el.textContent = pickMessage(), 10000 + Math.random()*2000);
     }
+
     placed.push(el);
   }
 }
@@ -111,7 +114,7 @@ function showScreen(id) {
   });
 }
 
-/* -------------------- навигация и вкладки -------------------- */
+/* -------------------- навигация и формы -------------------- */
 function bindTabs() {
   const tabLogin = document.getElementById('tab-login');
   const tabReg   = document.getElementById('tab-register');
@@ -133,7 +136,6 @@ function bindTabs() {
   tabReg.addEventListener('click', () => activate('register'));
 }
 
-/* -------------------- формы входа/регистрации -------------------- */
 function bindAuthForms() {
   if (window.FH?.__authBound) return;
   window.FH = window.FH || {};
@@ -141,21 +143,15 @@ function bindAuthForms() {
 
   const loginForm  = document.getElementById('loginForm');
   const signupForm = document.getElementById('signupForm');
-  const setError = (el, msg) => { if (el) el.textContent = msg || ''; };
 
-  async function upsertNickname(nickname) {
-    try {
-      const { data: sess } = await supa.auth.getSession();
-      const user = sess?.session?.user;
-      if (!user || !nickname) return;
-      await supa.from('profiles').upsert(
-        { id: user.id, nickname },
-        { onConflict: 'id' }
-      );
-    } catch {}
-  }
+  const showMsg = (el, msg, ok=false) => {
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('error', !ok);
+    el.classList.toggle('hint', ok);
+  };
 
-  // Вход
+  // --- Вход
   if (loginForm) {
     loginForm.addEventListener('submit', async (ev) => {
       ev.preventDefault();
@@ -164,65 +160,66 @@ function bindAuthForms() {
       const nickname = (fd.get('nickname') || '').toString().trim();
       const password = (fd.get('password') || '').toString();
       const statusEl = document.getElementById('login-status');
-      setError(statusEl, '');
 
-      if (!password || (!emailRaw && !nickname)) {
-        setError(statusEl, 'Введите e-mail или никнейм и пароль.');
-        return;
-      }
+      if (!emailRaw && !nickname) return showMsg(statusEl, 'Введите e-mail или никнейм');
+      if (!password) return showMsg(statusEl, 'Введите пароль');
 
-      // email приоритетнее; если пустой — пробуем ник как email@fh.local
-      const email = emailRaw
-        ? emailRaw
-        : (nickname.includes('@') ? nickname : `${nickname}@fh.local`);
+      const email = emailRaw || (nickname ? `${nickname}@local` : '');
+      showMsg(statusEl, 'Входим…', true);
 
       try {
         const { data, error } = await supa.auth.signInWithPassword({ email, password });
-        if (error) { setError(statusEl, error.message || 'Не удалось войти'); return; }
+        if (error) return showMsg(statusEl, error.message || 'Не удалось войти');
         setSavedSession({ user: data.session.user, access_token: data.session.access_token });
-        if (nickname) await upsertNickname(nickname);
         document.getElementById('screen-auth')?.remove();
         showScreen('screen-home');
       } catch (e) {
-        setError(statusEl, e.message || 'Ошибка входа');
+        showMsg(statusEl, e.message || 'Ошибка входа');
       }
     });
   }
 
-  // Регистрация
+  // --- Регистрация
   if (signupForm) {
     signupForm.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const fd = new FormData(signupForm);
       const email = (fd.get('email') || '').toString().trim();
       const nickname = (fd.get('nickname') || '').toString().trim();
-      const password  = (fd.get('password')  || '').toString();
+      const password = (fd.get('password') || '').toString();
       const password2 = (fd.get('password2') || '').toString();
       const statusEl = document.getElementById('reg-status');
-      setError(statusEl, '');
 
-      if (!email) { setError(statusEl, 'Введите e-mail.'); return; }
-      if (!password || password.length < 4) { setError(statusEl, 'Пароль минимум 4 символа.'); return; }
-      if (password !== password2) { setError(statusEl, 'Пароли не совпадают.'); return; }
+      if (!email)  return showMsg(statusEl, 'Укажите e-mail');
+      if (!/\S+@\S+\.\S+/.test(email)) return showMsg(statusEl, 'Неверный формат e-mail');
+      if (!nickname || nickname.length < 2) return showMsg(statusEl, 'Укажите ник (минимум 2 символа)');
+      if (password.length < 6) return showMsg(statusEl, 'Пароль минимум 6 символов');
+      if (password !== password2) return showMsg(statusEl, 'Пароли не совпадают');
+
+      showMsg(statusEl, 'Создаём аккаунт…', true);
 
       try {
-        const { error: signUpErr } = await supa.auth.signUp({ email, password });
-        if (signUpErr) { setError(statusEl, signUpErr.message || 'Не удалось зарегистрироваться'); return; }
+        const { data, error } = await supa.auth.signUp({
+          email,
+          password,
+          options: { data: { nickname } }
+        });
+        if (error) return showMsg(statusEl, error.message || 'Не удалось зарегистрироваться');
 
-        // сразу логинимся (если подтверждение email отключено в проекте)
-        const { data, error: signInErr } = await supa.auth.signInWithPassword({ email, password });
-        if (signInErr) {
-          // если включено подтверждение — покажем сообщение и останемся на экране
-          setError(statusEl, 'Проверьте почту и подтвердите адрес, затем войдите.');
-          return;
+        // Если включено подтверждение по e-mail, supabase вернёт user с email_confirmed_at = null
+        const needsConfirm = !data.user?.email_confirmed_at;
+        if (needsConfirm) {
+          return showMsg(statusEl, 'Готово! Подтвердите e-mail по ссылке из письма, затем войдите.', true);
         }
 
-        setSavedSession({ user: data.session.user, access_token: data.session.access_token });
-        if (nickname) await upsertNickname(nickname);
+        // иначе — сразу логиним
+        const r = await supa.auth.signInWithPassword({ email, password });
+        if (r.error) return showMsg(statusEl, r.error.message || 'Не удалось войти после регистрации');
+        setSavedSession({ user: r.data.session.user, access_token: r.data.session.access_token });
         document.getElementById('screen-auth')?.remove();
         showScreen('screen-home');
       } catch (e) {
-        setError(statusEl, e.message || 'Ошибка регистрации');
+        showMsg(statusEl, e.message || 'Ошибка регистрации');
       }
     });
   }
@@ -265,7 +262,7 @@ function bindIndexNav() {
   if (joinBtn) joinBtn.addEventListener('click', goJoin);
 }
 
-/* -------------------- join.html (присоединение и редирект на выбор подарков) -------------------- */
+/* -------------------- join.html -------------------- */
 function bindJoinPage() {
   const params = new URLSearchParams(location.search);
   const codeParam  = (params.get('code') || '').toString().trim().toUpperCase();
@@ -339,6 +336,7 @@ function bindJoinPage() {
         return;
       }
 
+      // Сохраним драфт + имя гостя
       try {
         const draft = {
           id: ev.id,
@@ -351,6 +349,7 @@ function bindJoinPage() {
         localStorage.setItem('fh:lastEventId', String(ev.id));
       } catch {}
 
+      // Редирект гостя на страницу бронирования
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
       const nameForUrl = encodeURIComponent(name);
       const claimUrl =
@@ -371,7 +370,7 @@ function bindJoinPage() {
   });
 }
 
-/* -------------------- wishlist bridge (страница создания списка) -------------------- */
+/* -------------------- wishlist bridge -------------------- */
 function bindWishlistBridge() {
   if (!/\/wishlist\.html/i.test(location.pathname)) return;
 
@@ -390,7 +389,7 @@ function bindWishlistBridge() {
     else if (d?.code)linkLobby.href = `/lobby.html?code=${encodeURIComponent(d.code)}`;
   }
 
-  if (form) form.addEventListener('submit', () => { /* страница сама отрисует */ });
+  if (form) form.addEventListener('submit', () => {});
 
   const goLobbyWithParams = () => {
     const d = getDraft();
@@ -417,15 +416,17 @@ function bindWishlistBridge() {
     } catch {}
   };
 
-  if (done) done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
-  if (back) back.addEventListener('click', goLobbyWithParams);
+  done && done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
+  back && back.addEventListener('click', goLobbyWithParams);
 }
 
-/* -------------------- lobby: подтянем ?event/?code из драфта при пустом URL -------------------- */
+/* -------------------- lobby: автоподстановка параметров из драфта -------------------- */
 function ensureLobbyParamsFromDraft() {
   if (!/\/lobby\.html/i.test(location.pathname)) return;
+
   const qs = new URLSearchParams(location.search);
   if (qs.has('event') || qs.has('code')) return;
+
   try {
     const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}');
     const sp = new URLSearchParams();
