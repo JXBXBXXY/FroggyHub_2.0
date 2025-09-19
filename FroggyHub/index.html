@@ -12,6 +12,7 @@
     .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
     .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem;}
     .screen[hidden]{display:none !important;}
+
     #fh-message-clouds{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
     .fh-bubble{position:absolute;padding:8px 14px;border-radius:16px;background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.12);backdrop-filter:saturate(150%) blur(6px);-webkit-backdrop-filter:saturate(150%) blur(6px);
@@ -38,7 +39,6 @@
       </div>
     </nav>
 
-    <!-- Экран авторизации -->
     <section id="screen-auth" class="screen container" role="main" hidden>
       <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
         <div class="auth-head">
@@ -60,37 +60,38 @@
         <!-- Вход -->
         <section id="pane-login" class="pane" role="tabpanel" aria-labelledby="tab-login">
           <form id="loginForm" class="grid" novalidate autocomplete="off">
-            <label>E-mail (или никнейм)
-              <input id="login-email" name="email" type="email" placeholder="you@email.com" autocomplete="username">
+            <label>E-mail
+              <input id="login-email" name="email" type="email" inputmode="email" placeholder="you@example.com" autocomplete="username">
             </label>
-            <label>Никнейм (если вход по нику)
+            <div class="hint">или введите никнейм ниже (для старых аккаунтов)</div>
+            <label>Никнейм
               <input id="login-nickname" name="nickname" type="text" placeholder="Никнейм" autocomplete="nickname">
             </label>
             <label>Пароль
               <input id="login-password" name="password" type="password" placeholder="••••••••" minlength="4" required autocomplete="current-password">
             </label>
             <button id="login-btn" class="btn btn-primary btn-xl w-100" type="submit">Войти</button>
-            <div id="login-status" class="error" aria-live="polite"></div>
+            <div id="login-status" class="error" aria-live="polite" style="margin-top:.5rem"></div>
           </form>
         </section>
 
         <!-- Регистрация -->
         <section id="pane-register" class="pane is-hidden" role="tabpanel" aria-labelledby="tab-register">
           <form id="signupForm" class="grid" novalidate autocomplete="off">
-            <label>E-mail <span style="opacity:.7">(обязательно)</span>
-              <input id="signup-email" name="email" type="email" required autocomplete="email" placeholder="you@email.com">
+            <label>E-mail <small>(обязательно)</small>
+              <input id="signup-email" name="email" type="email" required inputmode="email" placeholder="you@example.com" autocomplete="email">
             </label>
-            <label>Имя / Никнейм <span style="opacity:.7">(отобразится в приложении)</span>
-              <input id="signup-nickname" name="nickname" minlength="2" autocomplete="nickname" placeholder="Ваш ник">
+            <label>Имя / Никнейм <small>(отобразится в приложении)</small>
+              <input id="signup-nickname" name="nickname" required minlength="2" autocomplete="nickname" placeholder="Ваш ник">
             </label>
             <label>Пароль
-              <input id="signup-password" name="password" type="password" required minlength="4" autocomplete="new-password" placeholder="Пароль">
+              <input id="signup-password" name="password" type="password" required minlength="6" autocomplete="new-password" placeholder="Минимум 6 символов">
             </label>
             <label>Повтор пароля
-              <input id="signup-password2" name="password2" type="password" required minlength="4" autocomplete="new-password" placeholder="Повторите пароль">
+              <input id="signup-password2" name="password2" type="password" required minlength="6" autocomplete="new-password" placeholder="Ещё раз пароль">
             </label>
             <button id="signup-btn" class="btn btn-primary btn-xl w-100" type="submit">Зарегистрироваться</button>
-            <div id="reg-status" class="error" aria-live="polite"></div>
+            <div id="reg-status" class="error" aria-live="polite" style="margin-top:.5rem"></div>
           </form>
         </section>
       </div>
@@ -108,7 +109,6 @@
           <div class="menu-grid">
             <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
 
-            <!-- Гости: вводят код → попадают на join.html -->
             <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off">
               <input
                 id="join-code"
@@ -127,18 +127,16 @@
     </section>
   </div>
 
-  <!-- нормализация кода перед отправкой в join -->
+  <!-- нормализация кода перед отправкой -->
   <script>
     (function () {
       const form = document.getElementById('join-form');
       const input = document.getElementById('join-code');
       if (!form || !input) return;
-
       input.addEventListener('input', () => {
         const v = input.value.replace(/\s+/g,'').slice(0,6);
         input.value = v.toUpperCase();
       });
-
       form.addEventListener('submit', (e) => {
         const code = (input.value || '').trim().toUpperCase();
         if (!/^[A-Z0-9]{6}$/.test(code)) {
