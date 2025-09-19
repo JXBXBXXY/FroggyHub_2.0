@@ -909,3 +909,26 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+/* === Global glass background for all pages === */
+:root{
+  /* можно править центра/масштаб здесь, если нужно */
+  --fh-bg-image: url("/assets/froggy_glass_bg.jpeg");
+  --fh-bg-tint: rgba(11,36,27,.55);
+}
+
+/* фиксированный фото-фон + затемняющая вуаль */
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:0;
+  background:#0b241b var(--fh-bg-image) center 45%/cover no-repeat;
+  pointer-events:none;
+}
+body::after{
+  content:"";
+  position:fixed; inset:0; z-index:0;
+  background:var(--fh-bg-tint);
+  pointer-events:none;
+}
+
+/* контент всегда выше фона */
+body > *{ position:relative; z-index:1; }
