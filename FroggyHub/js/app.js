@@ -1,6 +1,13 @@
 // app.js
 import { supa } from './api.js';
 
+/* -------------------- среда/флаги -------------------- */
+const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const hwThreads = navigator.hardwareConcurrency || 4;
+const isLowEnd = hwThreads <= 4 || (navigator.deviceMemory && navigator.deviceMemory <= 4);
+const DPR = window.devicePixelRatio || 1;
+
 /* -------------------- фоновые «облачка» -------------------- */
 const FH_MESSAGES = [
   'Я приду к 19:00 ✨','Я возьму пиццу 🍕','Кто возьмёт колу? 🥤','Ребят, постучите в дверь 🚪','Буду позже 🙈',
@@ -22,48 +29,97 @@ const FH_MESSAGES = [
   'Встречаемся у метро 🚉','Я возьму мороженое 🍦'
 ];
 
-const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pickMessage = () => FH_MESSAGES[Math.floor(Math.random() * FH_MESSAGES.length)];
 const debounce = (fn, wait=100) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; };
 const rectsOverlap=(a,b,p=0)=>!(a.right+p<b.left||a.left-p>b.right||a.bottom+p<b.top||a.top-p>b.bottom);
-const desiredBubbleCount=()=>Math.min(80,Math.max(20,Math.round((innerWidth*innerHeight)/12000)));
 
-/** Надёжная раскладка пузырьков (Safari-safe) */
-function spawnBubbles(container, count) {
-  if (!container) return;
-  const placed = [];
+/** количество пузырей под устройство/мощность */
+const desiredBubbleCount = () => {
+  const area = Math.max(1, (innerWidth * innerHeight) / (DPR ** 0.6)); // чуть «наказали» высокие DPR
+  const base = Math.round(area / 14000); // базовая плотность
+  const capDesktop = 60;
+  const capMobile  = 28;
+  let n = Math.min(isTouchDevice ? capMobile : capDesktop, Math.max(12, base));
+  if (prefersReduced) n = Math.min(n, 12);
+  if (isLowEnd) n = Math.round(n * 0.6);
+  return Math.max(8, n);
+};
 
-  const placeNonOverlapping = (el) => {
-    const c = container.getBoundingClientRect();
-    const maxX = Math.max(40, c.width  - 160);
-    const maxY = Math.max(40, c.height -  60);
-    for (let tries = 0; tries < 80; tries++) {
-      const x = 24 + Math.random() * maxX;
-      const y = 24 + Math.random() * maxY;
-      el.style.left = `${x}px`;
-      el.style.top  = `${y}px`;
-      const r1 = el.getBoundingClientRect();
-      if (!placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8))) return { x, y };
-    }
-    return { x: 24, y: 24 };
+/* ---------- безопасный контроллер пузырей (без утечек) ---------- */
+const BubbleController = (() => {
+  let timers = new Set();
+  let mountedRoot = null;
+
+  const clearTimers = () => {
+    timers.forEach(id => clearTimeout(id));
+    timers.clear();
   };
 
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement('div');
-    el.className = 'fh-bubble';
-    el.textContent = pickMessage();
-    container.appendChild(el);
+  const destroy = () => {
+    clearTimers();
+    if (mountedRoot) mountedRoot.innerHTML = '';
+    mountedRoot = null;
+  };
 
-    const anchor = placeNonOverlapping(el);
-    requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
+  const schedule = (fn, ms) => {
+    const id = setTimeout(() => {
+      timers.delete(id);
+      fn();
+    }, ms);
+    timers.add(id);
+  };
 
-    if (!prefersReduced) {
-      (function loop(){
+  const spawn = (container, count) => {
+    destroy();
+    if (!container) return;
+    mountedRoot = container;
+
+    const placed = [];
+    const placeNonOverlapping = (el) => {
+      const c = container.getBoundingClientRect();
+      const maxX = Math.max(40, c.width  - 160);
+      const maxY = Math.max(40, c.height -  60);
+      for (let tries = 0; tries < 80; tries++) {
+        const x = 24 + Math.random() * maxX;
+        const y = 24 + Math.random() * maxY;
+        el.style.left = `${x}px`;
+        el.style.top  = `${y}px`;
+        const r1 = el.getBoundingClientRect();
+        if (!placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8))) return { x, y };
+      }
+      return { x: 24, y: 24 };
+    };
+
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('div');
+      el.className = 'fh-bubble';
+      el.textContent = pickMessage();
+      container.appendChild(el);
+
+      const anchor = placeNonOverlapping(el);
+      requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
+
+      // цикл обновления без setInterval (чтобы не было «вечных» таймеров)
+      const loop = () => {
+        if (!el.isConnected || document.hidden || prefersReduced) {
+          // при скрытой вкладке/режиме reduce — обновляем реже и только текст
+          schedule(() => {
+            if (!el.isConnected) return;
+            el.textContent = pickMessage();
+            loop();
+          }, 8000 + Math.random()*3000);
+          return;
+        }
+
         const visibleMs = 3000 + Math.random() * 1000;
-        setTimeout(() => {
+        schedule(() => {
+          if (!el.isConnected) return;
           el.classList.remove('fh-bubble--in');
           el.classList.add('fh-bubble--out');
-          el.addEventListener('transitionend', () => {
+
+          const onEnd = () => {
+            if (!el.isConnected) return;
+            el.removeEventListener('transitionend', onEnd);
             el.textContent = pickMessage();
             const dx = Math.random()*80 - 40;
             const dy = Math.random()*80 - 40;
@@ -76,15 +132,34 @@ function spawnBubbles(container, count) {
             el.classList.remove('fh-bubble--out');
             requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
             loop();
-          }, { once: true });
-        }, visibleMs);
-      })();
-    } else {
-      setInterval(()=> el.textContent = pickMessage(), 10000 + Math.random()*2000);
-    }
+          };
 
-    placed.push(el);
-  }
+          el.addEventListener('transitionend', onEnd, { once: true });
+        }, visibleMs);
+      };
+
+      loop();
+      placed.push(el);
+    }
+  };
+
+  // авто-пауза/перезапуск при смене видимости
+  document.addEventListener('visibilitychange', () => {
+    if (!mountedRoot) return;
+    if (!document.hidden) {
+      // при возврате — «перекладываем» заново с новым количеством
+      spawn(mountedRoot, desiredBubbleCount());
+    } else {
+      clearTimers();
+    }
+  });
+
+  return { spawn, destroy };
+})();
+
+/** Надёжная раскладка пузырьков (Safari-safe) — публичная оболочка для обратной совместимости */
+function spawnBubbles(container, count) {
+  BubbleController.spawn(container, count);
 }
 
 /* -------------------- сессия и экраны -------------------- */
@@ -132,8 +207,8 @@ function bindTabs() {
     tabReg.setAttribute('aria-selected', String(!loginActive));
   };
 
-  tabLogin.addEventListener('click', () => activate('login'));
-  tabReg.addEventListener('click', () => activate('register'));
+  tabLogin.addEventListener('click', () => activate('login'), { passive: true });
+  tabReg.addEventListener('click', () => activate('register'), { passive: true });
 }
 
 function bindAuthForms() {
@@ -228,7 +303,7 @@ function bindAuthForms() {
 /* -------------------- главная: создать/присоединиться -------------------- */
 function bindIndexNav() {
   document.addEventListener('click', (e) => {
-    const navBtn = e.target.closest('[data-go]');
+    const navBtn = e.target.closest?.('[data-go]');
     if (!navBtn) return;
     e.preventDefault();
     const to = navBtn.getAttribute('data-go');
@@ -237,7 +312,7 @@ function bindIndexNav() {
       window.location.href = '/event-edit.html';
       return;
     }
-  });
+  }, { passive: false });
 
   const form      = document.getElementById('join-form');
   const joinBtn   = document.getElementById('join-btn');
@@ -258,8 +333,10 @@ function bindIndexNav() {
     window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
   };
 
-  if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); });
-  if (joinBtn) joinBtn.addEventListener('click', goJoin);
+  if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); }, { passive: false });
+  if (joinBtn) joinBtn.addEventListener('click', goJoin, { passive: true });
+  // удобство: Enter на поле кода
+  joinInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); goJoin(); } }, { passive: false });
 }
 
 /* -------------------- join.html -------------------- */
@@ -279,11 +356,11 @@ function bindJoinPage() {
 
   let picked = 'yes';
   statusWrap.addEventListener('click', (e)=>{
-    const b = e.target.closest('[data-rsvp]');
+    const b = e.target.closest?.('[data-rsvp]');
     if (!b) return;
     picked = b.getAttribute('data-rsvp') || picked;
     [...statusWrap.querySelectorAll('[data-rsvp]')].forEach(x=>x.classList.toggle('is-active', x===b));
-  });
+  }, { passive: true });
 
   async function findEvent() {
     try {
@@ -367,7 +444,7 @@ function bindJoinPage() {
       console.error('[join] insert rsvp exception:', err);
       if (errorBox) errorBox.textContent = 'Ошибка присоединения. Попробуйте позже.';
     }
-  });
+  }, { passive: true });
 }
 
 /* -------------------- wishlist bridge -------------------- */
@@ -389,7 +466,7 @@ function bindWishlistBridge() {
     else if (d?.code)linkLobby.href = `/lobby.html?code=${encodeURIComponent(d.code)}`;
   }
 
-  if (form) form.addEventListener('submit', () => {});
+  if (form) form.addEventListener('submit', () => {}, { passive: true });
 
   const goLobbyWithParams = () => {
     const d = getDraft();
@@ -416,8 +493,8 @@ function bindWishlistBridge() {
     } catch {}
   };
 
-  done && done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); });
-  back && back.addEventListener('click', goLobbyWithParams);
+  done && done.addEventListener('click', () => { syncFromDOMToDraft(); goLobbyWithParams(); }, { passive: true });
+  back && back.addEventListener('click', goLobbyWithParams, { passive: true });
 }
 
 /* -------------------- lobby: автоподстановка параметров из драфта -------------------- */
@@ -440,12 +517,28 @@ function ensureLobbyParamsFromDraft() {
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
   if (!root) return;
-  root.innerHTML = '';
-  spawnBubbles(root, desiredBubbleCount());
-  addEventListener('resize', debounce(() => {
-    root.innerHTML = '';
-    spawnBubbles(root, desiredBubbleCount());
-  }, 200));
+
+  // первый запуск
+  BubbleController.spawn(root, desiredBubbleCount());
+
+  // следим не только за resize, но и за физическим viewport (iOS клавиатура/адресбар)
+  const onResize = debounce(() => {
+    if (!root.isConnected) return;
+    BubbleController.spawn(root, desiredBubbleCount());
+  }, 200);
+
+  addEventListener('resize', onResize, { passive: true });
+
+  // visualViewport — устойчивее на iOS
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', onResize, { passive: true });
+  }
+
+  // если корневой контейнер меняет размер (например, CSS правки) — перестраиваем
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(onResize);
+    ro.observe(root);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -464,4 +557,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     showScreen('screen-auth');
   }
-});
+}, { passive: true });
