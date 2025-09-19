@@ -203,87 +203,125 @@
       $('nickname').value = nick || '';
     }
 
-    /* -------- load my events (owner) -------- */
-    async function loadMyEvents() {
-      const up = $('list-upcoming'); const past = $('list-past');
-      up.innerHTML = ''; past.innerHTML = '';
-      try {
-        // Пытаемся разными способами получить «мои» события
-        let q = supa.from('events')
-          .select('id, title, code, join_code, date, time')
-          .order('date', { ascending: true })
-          .order('time', { ascending: true })
-          .limit(200);
+    /* -------- load my events (owner + fallbacks) -------- */
+async function loadMyEvents() {
+  const up = $('list-upcoming'); const past = $('list-past');
+  up.innerHTML = ''; past.innerHTML = '';
 
-        q = q.or([
-          `owner_id.eq.${user.id}`,
-          `created_by.eq.${user.id}`,
-          `creator_id.eq.${user.id}`,
-          `creator_email.eq.${user.email||''}`
-        ].join(','));
+  const bucket = { upcoming: [], past: [] };
+  const pushToBucket = (arr=[]) => {
+    const now = new Date();
+    arr.forEach(ev => {
+      const dt = (ev.date || ev.time) ? new Date(`${ev.date||''}T${ev.time||'00:00'}`) : null;
+      const isPast = dt && !isNaN(dt) ? dt < now : false;
+      (isPast ? bucket.past : bucket.upcoming).push(ev);
+    });
+  };
+// перед render(...)
+bucket.upcoming.sort((a,b)=> new Date(`${a.date||''}T${a.time||'00:00'}`) - new Date(`${b.date||''}T${b.time||'00:00'}`));
+bucket.past.sort((a,b)=> new Date(`${b.date||''}T${b.time||'00:00'}`) - new Date(`${a.date||''}T${a.time||'00:00'}`));
+  const render = (list, box) => {
+    if (!list.length) {
+      const hint = document.createElement('div');
+      hint.className = 'hint'; hint.textContent = 'Пусто.';
+      box.appendChild(hint); return;
+    }
+    list.forEach(ev => {
+      const li = document.createElement('div'); li.className = 'event-card';
 
-        const { data, error } = await q;
-        if (error) throw error;
+      const meta = document.createElement('div'); meta.className = 'event-meta';
+      const title = document.createElement('strong'); title.textContent = ev.title || 'Событие';
+      const when  = document.createElement('span');   when.className = 'muted'; when.textContent = formatWhen(ev.date, ev.time);
+      const code  = document.createElement('span');   code.className = 'chip mono'; code.textContent = ev.code || ev.join_code || '—';
+      meta.append(title, when, code);
 
-        const now = new Date();
-        const bucket = { upcoming: [], past: [] };
+      const actions = document.createElement('div'); actions.className = 'profile-actions';
+      const btnOpen = document.createElement('a'); btnOpen.className = 'btn btn--ghost btn--sm'; btnOpen.href = `/lobby.html?event=${ev.id}`; btnOpen.textContent = 'Открыть';
+      const btnEdit = document.createElement('a'); btnEdit.className = 'btn btn--ghost btn--sm'; btnEdit.href = `/event-edit.html?event=${ev.id}`; btnEdit.textContent = 'Редактировать';
+      actions.append(btnOpen, btnEdit);
 
-        (data||[]).forEach(ev => {
-          const dt = new Date(`${ev.date||''}T${ev.time||'00:00'}`);
-          const isPast = isNaN(dt) ? false : (dt < now);
-          (isPast ? bucket.past : bucket.upcoming).push(ev);
-        });
+      li.append(meta, actions);
+      box.appendChild(li);
+    });
+  };
 
-        const render = (list, box) => {
-          if (!list.length) {
-            const hint = document.createElement('div');
-            hint.className = 'hint';
-            hint.textContent = 'Пусто.';
-            box.appendChild(hint);
-            return;
-          }
-          list.forEach(ev => {
-            const li = document.createElement('div');
-            li.className = 'event-card';
+  try {
+    // 1) Нормальный путь: ищем «мои» события по возможным полям владельца
+    let q = supa.from('events')
+      .select('id,title,code,join_code,date,time,owner_id,created_by,creator_id,creator_email')
+      .order('date', { ascending: true })
+      .order('time', { ascending: true })
+      .limit(200);
 
-            const meta = document.createElement('div');
-            meta.className = 'event-meta';
-            const title = document.createElement('strong');
-            title.textContent = ev.title || 'Событие';
-            const when = document.createElement('span');
-            when.className = 'muted';
-            when.textContent = formatWhen(ev.date, ev.time);
-            const code = document.createElement('span');
-            code.className = 'chip mono'; /* << чип для кода */
-            code.textContent = ev.code || ev.join_code || '—';
-            meta.append(title, when, code);
+    q = q.or([
+      `owner_id.eq.${user.id}`,
+      `created_by.eq.${user.id}`,
+      `creator_id.eq.${user.id}`,
+      `creator_email.eq.${user.email||''}`
+    ].join(','));
 
-            const actions = document.createElement('div');
-            actions.className = 'profile-actions';
-            const btnOpen = document.createElement('a');
-            btnOpen.className = 'btn btn--ghost btn--sm';
-            btnOpen.href = `/lobby.html?event=${ev.id}`;
-            btnOpen.textContent = 'Открыть';
-            const btnEdit = document.createElement('a');
-            btnEdit.className = 'btn btn--ghost btn--sm';
-            btnEdit.href = `/event-edit.html?event=${ev.id}`;
-            btnEdit.textContent = 'Редактировать';
-            actions.append(btnOpen, btnEdit);
+    let { data: ownerEvents, error } = await q;
+    if (error) ownerEvents = [];
 
-            li.append(meta, actions);
-            box.appendChild(li);
-          });
-        };
+    // 2) Фолбэк: достаём событие(я) из локальных следов (lastEventId / draftEvent)
+    const fbIds = new Set(); const fbCodes = new Set();
+    try { const lastId = localStorage.getItem('fh:lastEventId'); if (lastId) fbIds.add(Number(lastId)); } catch {}
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('fh:draftEvent')||'null');
+      if (draft?.id) fbIds.add(Number(draft.id));
+      if (draft?.code) fbCodes.add(String(draft.code));
+    } catch {}
 
-        render(bucket.upcoming, up);
-        render(bucket.past, past);
-      } catch (e) {
-        console.error('[profile] loadMyEvents', e);
-        $('list-upcoming').innerHTML =
-          '<div class="hint">Не удалось загрузить события.</div>';
+    let fbEvents = [];
+    if ((ownerEvents?.length||0) === 0 && (fbIds.size || fbCodes.size)) {
+      if (fbIds.size) {
+        const { data } = await supa.from('events')
+          .select('id,title,code,join_code,date,time').in('id', Array.from(fbIds));
+        fbEvents = fbEvents.concat(data||[]);
+      }
+      if (fbCodes.size) {
+        for (const c of fbCodes) {
+          const { data } = await supa.from('events')
+            .select('id,title,code,join_code,date,time')
+            .or(`code.eq.${c},join_code.eq.${c}`).limit(1);
+          if (data && data[0]) fbEvents.push(data[0]);
+        }
       }
     }
 
+    // 3) Фолбэк по участию (если есть доступ к rsvps)
+    let rsvpEvents = [];
+    try {
+      const myNick = (user.user_metadata?.nickname || '').trim();
+      const { data: rsvps } = await supa.from('rsvps')
+        .select('event_id,user_id,user_name')
+        .or([
+          `user_id.eq.${user.id}`,
+          myNick ? `user_name.ilike.${myNick}` : 'user_name.eq.__none__'
+        ].join(','))
+        .limit(200);
+
+      const ids = Array.from(new Set((rsvps||[]).map(r => r.event_id))).filter(Boolean);
+      if (ids.length) {
+        const { data } = await supa.from('events')
+          .select('id,title,code,join_code,date,time')
+          .in('id', ids).order('date', { ascending: true }).order('time', { ascending: true });
+        rsvpEvents = data || [];
+      }
+    } catch { /* нет доступа — пропускаем */ }
+
+    // Итог: объединяем по id и рисуем
+    const merged = new Map();
+    [...(ownerEvents||[]), ...fbEvents, ...rsvpEvents].forEach(ev => { if (ev) merged.set(ev.id, ev); });
+    pushToBucket(Array.from(merged.values()));
+
+    render(bucket.upcoming, up);
+    render(bucket.past, past);
+  } catch (e) {
+    console.error('[profile] loadMyEvents', e);
+    up.innerHTML = '<div class="hint">Не удалось загрузить события.</div>';
+  }
+}
     /* -------- account forms -------- */
     $('form-nick').addEventListener('submit', async (e)=>{
       e.preventDefault();
