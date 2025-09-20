@@ -91,8 +91,8 @@ const BubbleController = (() => {
       for (let tries = 0; tries < 80; tries++) {
         const x = 24 + Math.random() * maxX;
         const y = 24 + Math.random() * maxY;
-        el.style.left = ${x}px;
-        el.style.top  = ${y}px;
+        el.style.left = `${x}px`;
+        el.style.top  = `${y}px`;
         const r1 = el.getBoundingClientRect();
         if (!placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8))) return { x, y };
       }
@@ -134,8 +134,8 @@ const BubbleController = (() => {
             const c2 = container.getBoundingClientRect();
             const nx = Math.max(8, Math.min(c2.width  - width  - 8, anchor.x + dx));
             const ny = Math.max(8, Math.min(c2.height - height - 8, anchor.y + dy));
-            el.style.left = ${nx}px;
-            el.style.top  = ${ny}px;
+            el.style.left = `${nx}px`;
+            el.style.top  = `${ny}px`;
             el.classList.remove('fh-bubble--out');
             requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
             loop();
@@ -246,7 +246,7 @@ function bindAuthForms() {
       if (!emailRaw && !nickname) return showMsg(statusEl, 'Введите e-mail или никнейм');
       if (!password) return showMsg(statusEl, 'Введите пароль');
 
-      const email = emailRaw || (nickname ? ${nickname}@local : '');
+      const email = emailRaw || (nickname ? `${nickname}@local` : '');
       showMsg(statusEl, 'Входим…', true);
 
       try {
@@ -342,7 +342,7 @@ function bindIndexNav() {
       }
       return;
     }
-    window.location.href = /join.html?code=${encodeURIComponent(code)};
+    window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
   };
 
   if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); }, { passive: false });
@@ -393,7 +393,7 @@ function bindJoinPage() {
         const { data, error } = await supa
           .from('events')
           .select('id, code, join_code, title')
-          .or(code.eq.${code},join_code.eq.${code})
+          .or(`code.eq.${code},join_code.eq.${code}`)
           .maybeSingle();
         if (error) throw error;
         return data;
@@ -443,15 +443,15 @@ function bindJoinPage() {
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
       const nameForUrl = encodeURIComponent(name);
       const claimUrl =
-        /wishlist-claim.html?event=${ev.id}&code=${codeForUrl} +
-        &guest=${nameForUrl}&name=${nameForUrl}&guestName=${nameForUrl}&from=join;
+        `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}` +
+        `&guest=${nameForUrl}&name=${nameForUrl}&guestName=${nameForUrl}&from=join`;
 
       try {
         const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
         if (head.ok) window.location.href = claimUrl;
-        else window.location.href = /lobby.html?event=${ev.id}&code=${codeForUrl};
+        else window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
       } catch {
-        window.location.href = /lobby.html?event=${ev.id}&code=${codeForUrl};
+        window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
       }
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
@@ -475,8 +475,8 @@ function bindWishlistBridge() {
   const linkLobby = document.getElementById('link-to-lobby');
   if (linkLobby) {
     const d = getDraft();
-    if (d?.id)       linkLobby.href = /lobby.html?event=${encodeURIComponent(d.id)};
-    else if (d?.code)linkLobby.href = /lobby.html?code=${encodeURIComponent(d.code)};
+    if (d?.id)       linkLobby.href = `/lobby.html?event=${encodeURIComponent(d.id)}`;
+    else if (d?.code)linkLobby.href = `/lobby.html?code=${encodeURIComponent(d.code)}`;
   }
 
   if (form) form.addEventListener('submit', () => {}, { passive: true });
@@ -486,7 +486,7 @@ function bindWishlistBridge() {
     const sp = new URLSearchParams();
     if (d?.id) sp.set('event', d.id);
     else if (d?.code) sp.set('code', String(d.code));
-    location.href = '/lobby.html' + (sp.toString() ? ?${sp.toString()} : '');
+    location.href = '/lobby.html' + (sp.toString() ? `?${sp.toString()}` : '');
   };
 
   const syncFromDOMToDraft = () => {
@@ -568,7 +568,7 @@ function bindProfileRsvpViewer() {
     const wrap = document.createElement('div');
     wrap.className = 'glass-section rsvps-panel';
     wrap.dataset.for = String(evId);
-    wrap.innerHTML = 
+    wrap.innerHTML = `
       <div class="section-title">Кто идёт</div>
       <div class="stats">
         <span class="badge yes">Да: ${groups.yes.length}</span>
@@ -578,18 +578,18 @@ function bindProfileRsvpViewer() {
       <div class="guests-columns">
         <div>
           <div class="bubble-head">Да</div>
-          <ul class="list">${groups.yes.map(n=><li>${n}</li>).join('') || '<li>—</li>'}</ul>
+          <ul class="list">${groups.yes.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
         </div>
         <div>
           <div class="bubble-head">Может быть</div>
-          <ul class="list">${groups.maybe.map(n=><li>${n}</li>).join('') || '<li>—</li>'}</ul>
+          <ul class="list">${groups.maybe.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
         </div>
         <div>
           <div class="bubble-head">Нет</div>
-          <ul class="list">${groups.no.map(n=><li>${n}</li>).join('') || '<li>—</li>'}</ul>
+          <ul class="list">${groups.no.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
         </div>
       </div>
-    ;
+    `;
     return wrap;
   };
 
@@ -698,7 +698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qs = new URLSearchParams(location.search);
     const evId  = qs.get('event') || '';
     const evCode= qs.get('code')  || '';
-    const key   = fh:autosaved:${evId || evCode || 'draft'};
+    const key   = `fh:autosaved:${evId || evCode || 'draft'}`;
 
     try { if (localStorage.getItem(key)) return; } catch {}
 
