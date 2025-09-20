@@ -11,7 +11,7 @@ const DPR = window.devicePixelRatio || 1;
 /* ----- стабильные 100vh на мобильных (iOS/Android адресная строка) ----- */
 function setVhVar() {
   const vh = window.innerHeight * 0.01;
-  document.documentElement.style.setProperty('--vh', ${vh}px);
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
 setVhVar();
 window.addEventListener('resize', setVhVar, { passive: true });
