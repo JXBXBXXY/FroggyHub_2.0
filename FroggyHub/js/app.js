@@ -858,17 +858,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     return r.width > 0 && r.height > 0 &&
            cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0;
   }
-  function findFirstVisible(selectors){
-    const list = (Array.isArray(selectors) ? selectors : String(selectors).split(','))
-      .map(s => s.trim()).filter(Boolean);
-    for (const sel of list){
-      const nodes = document.querySelectorAll(sel);
-      for (let i=0;i<nodes.length;i++){
-        if (isVisible(nodes[i])) { log('found', sel, nodes[i]); return nodes[i]; }
-      }
+  function findFirstVisible(selectors, matchRe){
+  const list = (Array.isArray(selectors) ? selectors : String(selectors).split(','))
+    .map(s => s.trim()).filter(Boolean);
+
+  for (const sel of list){
+    const nodes = document.querySelectorAll(sel);
+    for (let i = 0; i < nodes.length; i++){
+      const el = nodes[i];
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const visible = r.width > 0 && r.height > 0 &&
+                      cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0;
+      const textOk = !matchRe || matchRe.test((el.textContent || '').trim());
+      if (visible && textOk) return el;
     }
-    return null;
   }
+  return null;
+}
 
   async function isNewUserWindow() {
     try {
@@ -914,14 +921,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)){
   S.push({
     id: 'final-save',
-    // сначала ищем явную кнопку с data-autosave, потом — обычные кнопки в карточке
+    // сначала явный data-атрибут, затем разные варианты кнопок в карточке
     sels: [
       '[data-autosave="event"]',
-      '.final-card .btn-primary',
+      '.final-card .btn--primary',
       '.final-actions .btn',
-      'button'
+      '.final-card button',
+      '.final-card a[role="button"]'
     ],
-    text: 'Сохраните событие, чтобы пригласить друзей 🎉'
+    text: 'Сохраните событие, чтобы пригласить друзей 🎉',
+    matchText: /сохран/i   // искать именно кнопку «Сохранить…»
   });
 }
 
@@ -1018,21 +1027,21 @@ function animateSpotlightTo(targetPx){
   arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
 }
 
-    function resolveTarget(step, done){
-      currentEl = findFirstVisible(step.sels);
-      if (currentEl){ place(); return done(); }
+   function resolveTarget(step, done){
+  currentEl = findFirstVisible(step.sels, step.matchText);
+  if (currentEl){ place(); return done(); }
 
-      const t0 = performance.now();
-      const obs = new MutationObserver(() => {
-        currentEl = findFirstVisible(step.sels);
-        if (currentEl || performance.now() - t0 > 6000){
-          obs.disconnect();
-          if (!currentEl) { currentEl = phantom; log('fallback center for step', step.id); }
-          place(); done();
-        }
-      });
-      obs.observe(document.body, { childList:true, subtree:true, attributes:true });
+  const t0 = performance.now();
+  const obs = new MutationObserver(() => {
+    currentEl = findFirstVisible(step.sels, step.matchText);
+    if (currentEl || performance.now() - t0 > 6000){
+      obs.disconnect();
+      if (!currentEl) { currentEl = phantom; log('fallback center for step', step.id); }
+      place(); done();
     }
+  });
+  obs.observe(document.body, { childList:true, subtree:true, attributes:true });
+}
 
     function finish(){
       try { localStorage.setItem(doneKey, '1'); } catch {}
