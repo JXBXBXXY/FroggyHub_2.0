@@ -845,8 +845,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
+  // 1) Вшиваем минимальный CSS, если его нет
+  const STYLE_ID = 'fh-tour-css';
+  if (!document.getElementById(STYLE_ID)){
+    const st = document.createElement('style');
+    st.id = STYLE_ID;
+    st.textContent = `
+      .tour-layer{position:fixed;inset:0;z-index:2147483647;pointer-events:none;opacity:0;transition:opacity .2s ease}
+      .tour-layer.on{opacity:1}
+      .tour-backdrop{position:absolute;inset:0;pointer-events:auto;background:
+        radial-gradient(circle at var(--x,50%) var(--y,50%), transparent 0 var(--r,140vh), rgba(0,0,0,.55) calc(var(--r,140vh) + 1px));
+        backdrop-filter: blur(2px);}
+      .tour-card{position:absolute;max-width:380px;background:rgba(17,27,23,.96);color:#e8f5ec;
+        border:1px solid rgba(255,255,255,.08);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);
+        padding:14px 14px 12px;pointer-events:auto}
+      .tour-title{font-size:16px;line-height:1.35;margin-bottom:10px}
+      .tour-actions{display:flex;gap:8px;justify-content:flex-end}
+      .tour-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e8f5ec;
+        border-radius:10px;padding:8px 12px;cursor:pointer}
+      .tour-btn.primary{background:#2bb673;border-color:#2bb673;color:#042}
+      .tour-arrow{position:absolute;width:12px;height:12px;background:rgba(17,27,23,.96);
+        border-left:1px solid rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.08);
+        transform:rotate(45deg)}
+    `;
+    document.head.appendChild(st);
+  }
+
   const DEBUG_TOUR = false;
-  const TOUR_VERSION = 'v2';
+  const TOUR_VERSION = 'v2'; // bump, чтобы не мешали старые ключи
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
   const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); }
@@ -855,91 +881,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!el) return false;
     const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 &&
-           cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0;
+    return r.width>0 && r.height>0 && cs.display!=='none' && cs.visibility!=='hidden' && Number(cs.opacity)>0;
   }
   function findFirstVisible(selectors, matchRe){
-  const list = (Array.isArray(selectors) ? selectors : String(selectors).split(','))
-    .map(s => s.trim()).filter(Boolean);
-
-  for (const sel of list){
-    const nodes = document.querySelectorAll(sel);
-    for (let i = 0; i < nodes.length; i++){
-      const el = nodes[i];
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      const visible = r.width > 0 && r.height > 0 &&
-                      cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0;
-      const textOk = !matchRe || matchRe.test((el.textContent || '').trim());
-      if (visible && textOk) return el;
+    const list = (Array.isArray(selectors)?selectors:String(selectors).split(',')).map(s=>s.trim()).filter(Boolean);
+    for (const sel of list){
+      const nodes = document.querySelectorAll(sel);
+      for (let i=0;i<nodes.length;i++){
+        const el = nodes[i];
+        if (!isVisible(el)) continue;
+        if (matchRe && !matchRe.test((el.textContent||'').trim())) continue;
+        return el;
+      }
     }
+    return null;
   }
-  return null;
-}
 
-  async function isNewUserWindow() {
-  try {
-    // показываем, если ещё ни разу не показывали на этой странице
-    return !localStorage.getItem(pageOnceKey);
-  } catch {
-    return true;
-  }
-}
+  // Показываем тур 1 раз на страницу — без «48 часов» и без проверки reduce-motion
+  async function isNewUserWindow(){ try { return !localStorage.getItem(pageOnceKey); } catch { return true; } }
 
   function stepsConfigForPath(){
     const S = [];
     const authVisible = !!document.querySelector('#screen-auth:not([hidden])');
 
-    // HOME
     if ((/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') && !authVisible){
       S.push({ id:'home-create',
-        sels: ['[data-tour="home-create"]','[data-onb="create"]','#create-event'],
+        sels:['[data-tour="home-create"]','[data-onb="create"]','#create-event'],
         text:'Создай событие здесь' });
       S.push({ id:'home-join',
-        sels: ['[data-tour="home-join"]','[data-onb="join"]','#join-code','#join-form'],
+        sels:['[data-tour="home-join"]','[data-onb="join"]','#join-code','#join-form'],
         text:'Есть код? Введите его здесь, чтобы присоединиться.' });
       S.push({ id:'home-profile',
-        sels: ['[data-tour="home-profile"]','#nav-profile','a[href*="profile"]'],
+        sels:['[data-tour="home-profile"]','#nav-profile','a[href*="profile"]'],
         text:'Ваши события и вишлисты — в профиле.' });
     }
 
-    // LOGIN
-    if (/\/login(\.html)?$/i.test(location.pathname)){
-      S.push({ id:'login-form', sels:['[data-tour="auth-login"]','#loginForm'], text:'Войдите в аккаунт здесь.' });
-      S.push({ id:'login-reg',  sels:['#tab-register','[data-tour="auth-register"]'], text:'Нет аккаунта? Зарегистрируйтесь.' });
+    if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)){
+      S.push({
+        id:'final-save',
+        sels:[
+          '[data-autosave="event"]',
+          '.final-card .btn--primary',
+          '.final-actions .btn',
+          '.final-card button',
+          '.final-card a[role="button"]'
+        ],
+        matchText:/сохран/i,
+        text:'Сохраните событие, чтобы пригласить друзей 🎉'
+      });
     }
 
-    // JOIN
-    if (/\/join(\.html)?$/i.test(location.pathname)){
-      S.push({ id:'join-name',  sels:['#join-name','[name="name"]','#guestName'], text:'Напишите, как вас подписать в гостях.' });
-      S.push({ id:'join-rsvp',  sels:['[data-rsvp]','#join-status-wrap'],       text:'Выберите, пойдёте ли вы на событие.' });
-      S.push({ id:'join-go',    sels:['#btn-join','#joinSubmit'],               text:'Готово? Жмите, чтобы присоединиться.' });
-    }
-
-    // LOBBY + FINAL
-if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)){
-  S.push({
-    id: 'final-save',
-    // сначала явный data-атрибут, затем разные варианты кнопок в карточке
-    sels: [
-      '[data-autosave="event"]',
-      '.final-card .btn--primary',
-      '.final-actions .btn',
-      '.final-card button',
-      '.final-card a[role="button"]'
-    ],
-    text: 'Сохраните событие, чтобы пригласить друзей 🎉',
-    matchText: /сохран/i   // искать именно кнопку «Сохранить…»
-  });
-}
-
-    // PROFILE
     if (/\/profile(\.html)?$/i.test(location.pathname)){
       S.push({ id:'prof-events', sels:['.event-card','.event-item','[data-event-id]'], text:'Ваши события — здесь.' });
-      S.push({ id:'prof-rsvp',   sels:['[data-action="show-rsvps"]'],                   text:'Посмотрите, кто идёт.' });
+      S.push({ id:'prof-rsvp',   sels:['[data-action="show-rsvps"]'],               text:'Посмотрите, кто идёт.' });
     }
 
-    log('steps for path', location.pathname, S.map(s=>s.id));
     return S;
   }
 
@@ -958,120 +954,91 @@ if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)){
       '  </div>' +
       '  <div class="tour-arrow"></div>' +
       '</div>';
-    layer.style.zIndex = '2147483647';
     document.body.appendChild(layer);
 
     const backdrop = layer.querySelector('.tour-backdrop');
     const card     = layer.querySelector('.tour-card');
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
-// внутри runTour, после создания элементов layer/backdrop
-function animateSpotlightTo(targetPx){
-  const start = Math.max(targetPx * 1.18, targetPx + 40);
-  backdrop.style.setProperty('--r', start + 'px');
-  requestAnimationFrame(() => {
-    backdrop.style.setProperty('--r', targetPx + 'px');
-  });
-}
 
-    // «фантом», если не нашли target — центрируем карточку
     const phantom = document.createElement('div');
-    phantom.style.cssText = 'position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);pointer-events:none;';
+    phantom.style.cssText='position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);pointer-events:none;';
     document.body.appendChild(phantom);
 
-    let i = -1;
-    let currentEl = null;
+    let i=-1, currentEl=null;
 
-  function place(){
-  if (!currentEl) return;
-  const r = currentEl.getBoundingClientRect();
-
-  // центр «дыры» в градиенте — во viewport-координатах
-  const x = r.left + r.width / 2;
-  const y = r.top  + r.height / 2;
-  const radius = Math.round(Math.hypot(r.width, r.height) / 2) + 14;
-
-  backdrop.style.setProperty('--x', x + 'px');
-  backdrop.style.setProperty('--y', y + 'px');
-
-  // плавное сужение вместо прямой установки:
-  animateSpotlightTo(radius);
-
-  const cw = Math.min(380, Math.max(260, r.width || 320));
-  card.style.width = cw + 'px';
-
-  const below = (r.bottom + 16 + 160 < window.innerHeight);
-  let px = r.left + (r.width - cw) / 2;
-  let py = below ? (r.bottom + 12) : (r.top - (card.offsetHeight || 160) - 12);
-
-  // «фантом» — центр экрана
-  if (currentEl === phantom){
-    px = (window.innerWidth - cw) / 2;
-    py = window.innerHeight * 0.65 - (card.offsetHeight || 160) / 2;
-  }
-
-  // в пределах вьюпорта
-  px = Math.max(12, Math.min(px, window.innerWidth  - cw  - 12));
-  py = Math.max(12, Math.min(py, window.innerHeight - (card.offsetHeight || 160) - 12));
-
-  card.style.left = px + 'px';
-  card.style.top  = py + 'px';
-
-  // стрелка
-  const ax = r.left + r.width / 2 - 6;
-  const arrowX = (currentEl === phantom) ? (px + cw/2 - 6) : Math.max(px + 12, Math.min(ax, px + cw - 24));
-  const arrowY = (currentEl === phantom) ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
-  arrow.style.left = arrowX + 'px';
-  arrow.style.top  = arrowY + 'px';
-  arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
-}
-
-   function resolveTarget(step, done){
-  currentEl = findFirstVisible(step.sels, step.matchText);
-  if (currentEl){ place(); return done(); }
-
-  const t0 = performance.now();
-  const obs = new MutationObserver(() => {
-    currentEl = findFirstVisible(step.sels, step.matchText);
-    if (currentEl || performance.now() - t0 > 6000){
-      obs.disconnect();
-      if (!currentEl) { currentEl = phantom; log('fallback center for step', step.id); }
-      place(); done();
+    function animateSpotlightTo(targetPx){
+      const start=Math.max(targetPx*1.18, targetPx+40);
+      backdrop.style.setProperty('--r', start+'px');
+      requestAnimationFrame(()=> backdrop.style.setProperty('--r', targetPx+'px'));
     }
-  });
-  obs.observe(document.body, { childList:true, subtree:true, attributes:true });
-}
+    function place(){
+      if (!currentEl) return;
+      const r=currentEl.getBoundingClientRect();
+      const x=r.left+r.width/2, y=r.top+r.height/2;
+      const radius=Math.round(Math.hypot(r.width,r.height)/2)+14;
+      backdrop.style.setProperty('--x', x+'px');
+      backdrop.style.setProperty('--y', y+'px');
+      animateSpotlightTo(radius);
 
+      const cw=Math.min(380, Math.max(260, r.width||320));
+      card.style.width=cw+'px';
+      const below=(r.bottom+16+160<window.innerHeight);
+      let px=r.left+(r.width-cw)/2;
+      let py=below ? (r.bottom+12) : (r.top-(card.offsetHeight||160)-12);
+
+      if (currentEl===phantom){
+        px=(window.innerWidth-cw)/2;
+        py=window.innerHeight*0.65-(card.offsetHeight||160)/2;
+      }
+      px=Math.max(12, Math.min(px, window.innerWidth-cw-12));
+      py=Math.max(12, Math.min(py, window.innerHeight-(card.offsetHeight||160)-12));
+      card.style.left=px+'px';
+      card.style.top =py+'px';
+
+      const ax=r.left+r.width/2-6;
+      const arrowX=(currentEl===phantom)?(px+cw/2-6):Math.max(px+12, Math.min(ax, px+cw-24));
+      const arrowY=(currentEl===phantom)?(py-6):(below ? (py-6) : (py+card.offsetHeight-6));
+      arrow.style.left=arrowX+'px';
+      arrow.style.top =arrowY+'px';
+      arrow.style.transform=below?'rotate(45deg)':'rotate(225deg)';
+    }
+    function resolveTarget(step, done){
+      currentEl = findFirstVisible(step.sels, step.matchText);
+      if (currentEl){ place(); return done(); }
+      const t0=performance.now();
+      const obs=new MutationObserver(()=>{
+        currentEl = findFirstVisible(step.sels, step.matchText);
+        if (currentEl || performance.now()-t0>6000){
+          obs.disconnect();
+          if (!currentEl) currentEl=phantom;
+          place(); done();
+        }
+      });
+      obs.observe(document.body,{childList:true,subtree:true,attributes:true});
+    }
     function finish(){
-      try { localStorage.setItem(doneKey, '1'); } catch {}
+      try { localStorage.setItem(doneKey,'1'); } catch {}
       layer.remove(); phantom.remove();
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place);
       document.removeEventListener('click', onDocClick, true);
-      log('finish');
     }
-
     function show(idx){
-      i = idx;
-      if (i >= steps.length) return finish();
-      const step = steps[i];
-      titleEl.textContent = step.text;
+      i=idx;
+      if (i>=steps.length) return finish();
+      const step=steps[i];
+      titleEl.textContent=step.text;
       layer.classList.add('on');
-      backdrop.style.setProperty('--r', '140vh');
-      log('show step', i, step.id, step.sels);
-
-      resolveTarget(step, () => {
-        requestAnimationFrame(() => requestAnimationFrame(place));
-      });
+      backdrop.style.setProperty('--r','140vh');
+      resolveTarget(step, ()=> requestAnimationFrame(()=>requestAnimationFrame(place)));
     }
-
     function onDocClick(e){
       if (e.target.closest('.tour-card') || e.target.closest('.tour-backdrop')) return;
-      const step = steps[i];
-      if (!step) return;
-      if (currentEl !== phantom){
-        const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
-        if (hit) { log('advance by target click'); show(i+1); }
+      const step=steps[i]; if (!step) return;
+      if (currentEl!==phantom){
+        const hit=step.sels.some(sel=> e.target.closest && e.target.closest(sel));
+        if (hit) show(i+1);
       }
     }
 
@@ -1081,34 +1048,30 @@ function animateSpotlightTo(targetPx){
 
     layer.addEventListener('click', (e)=>{
       const act = e.target.closest('[data-act]')?.getAttribute('data-act');
-      if (act === 'skip') return finish();
-      if (act === 'next') { log('advance by button'); return show(i+1); }
+      if (act==='skip') return finish();
+      if (act==='next') return show(i+1);
     }, { passive:true });
 
     requestAnimationFrame(()=> show(0));
   }
 
   window.FH_startSpotlightTour = async function startSpotlightTour(){
-    try { if (localStorage.getItem(pageOnceKey)) { log('already shown once'); return; } } catch {}
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
+    try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
     const okNew = await isNewUserWindow();
-    if (!okNew) { log('not a new user window'); return; }
+    if (!okNew) return;
 
     let steps = stepsConfigForPath();
     const t0 = performance.now();
-
     if (!steps.length){
       await new Promise((resolve)=>{
-        const obs = new MutationObserver(()=>{
+        const obs=new MutationObserver(()=>{
           steps = stepsConfigForPath();
-          if (steps.length || performance.now()-t0 > 6000){ obs.disconnect(); resolve(); }
+          if (steps.length || performance.now()-t0>6000){ obs.disconnect(); resolve(); }
         });
-        obs.observe(document.body, { childList:true, subtree:true });
+        obs.observe(document.body,{childList:true,subtree:true});
       });
-      if (!steps.length) { log('no steps after wait'); return; }
+      if (!steps.length) return;
     }
-
     runTour(steps, pageOnceKey);
   };
 })();
