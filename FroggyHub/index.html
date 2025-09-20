@@ -2,55 +2,57 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <!-- базовый viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title>FroggyHub — события и вишлисты</title>
 
-  <!-- базовые стили -->
   <link rel="stylesheet" href="style.css">
-
-  <!-- иконка -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
-
-  <!-- iOS safe-area + запрет авто-линков телефонов -->
   <meta name="format-detection" content="telephone=no">
-
-  <!-- системные подсказки ОС/браузеру -->
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b241b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-  <!-- подсказки загрузчику -->
-  <link rel="preload" as="image" href="/assets/frog_idle.png" imagesrcset="/assets/frog_idle.png 1x" imagesizes="(max-width:640px) 60vw, 520px">
-  <link rel="preload" as="image" href="/assets/stump.png" imagesrcset="/assets/stump.png 1x" imagesizes="(max-width:640px) 60vw, 220px">
+  <link rel="preload" as="image" href="/assets/frog_idle.png">
+  <link rel="preload" as="image" href="/assets/stump.png">
   <link rel="dns-prefetch" href="//supabase.co">
   <link rel="dns-prefetch" href="//supabase.net">
 
-  <!-- Минимальный CSS для онбординг-подсказки (append-only) -->
+  <!-- 👇 спотлайт-тур: один слой и карточка -->
   <style>
-    .onb-layer{position:fixed;inset:0;z-index:60;pointer-events:none;}
-    .onb-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .2s;}
-    .onb-layer.on .onb-backdrop{opacity:1;}
-    .onb-spot{position:absolute;border-radius:12px;box-shadow:0 0 0 2px rgba(79,226,167,.9),0 0 0 8px rgba(79,226,167,.25);transition:all .2s;}
-    .onb-card{
-      position:absolute;max-width:320px;background:rgba(0,0,0,.55);
-      border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;
-      color:#eaf7f1;box-shadow:0 12px 30px rgba(0,0,0,.4);backdrop-filter:saturate(1.2) blur(6px);
-      pointer-events:auto;
+    .tour-layer{position:fixed;inset:0;z-index:70;pointer-events:auto;display:none}
+    .tour-layer.on{display:block}
+    /* затемнение с «дыркой» через radial-gradient управляем переменными */
+    .tour-backdrop{
+      position:absolute;inset:0;
+      background:
+        radial-gradient(circle at var(--x,50%) var(--y,50%),
+          rgba(0,0,0,0) 0,
+          rgba(0,0,0,0) calc(var(--r,140vh) - 1px),
+          rgba(0,0,0,.55) calc(var(--r,140vh)),
+          rgba(0,0,0,.55) 100%);
+      transition: background .45s cubic-bezier(.2,.7,.2,1);
     }
-    .onb-card .ttl{font-weight:900;margin:0 0 6px;}
-    .onb-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
-    .onb-close{background:transparent;border:1px solid rgba(255,255,255,.28);color:#eaf7f1;padding:6px 10px;border-radius:10px;cursor:pointer}
-    .onb-ok{background:linear-gradient(180deg,#2e7a62,#1f5c49);border:1px solid rgba(255,255,255,.18);color:#e9fff2;padding:6px 10px;border-radius:10px;cursor:pointer}
-    .onb-arrow{position:absolute;width:10px;height:10px;background:rgba(0,0,0,.55);border-left:1px solid rgba(255,255,255,.14);border-top:1px solid rgba(255,255,255,.14);transform:rotate(45deg)}
-    @media (max-width:640px){ .onb-card{max-width:min(92vw,360px);} }
+    .tour-card{
+      position:absolute;max-width:min(380px,92vw);
+      background:rgba(10,30,22,.95);
+      border:1px solid rgba(79,226,167,.35);
+      color:#eaffef;border-radius:14px;padding:12px 14px;
+      box-shadow:0 16px 42px rgba(0,0,0,.45);
+      backdrop-filter:saturate(1.2) blur(4px)
+    }
+    .tour-title{font-weight:800}
+    .tour-actions{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+    .tour-btn{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#eaffef;cursor:pointer}
+    .tour-btn.primary{background:linear-gradient(180deg,#2e7a62,#1f5c49);border-color:#2e7a62}
+    .tour-arrow{position:absolute;width:12px;height:12px;background:rgba(10,30,22,.95);
+      border-left:1px solid rgba(79,226,167,.35);border-top:1px solid rgba(79,226,167,.35);
+      transform:rotate(45deg)}
+    @media (max-width:640px){ .tour-card{max-width:min(330px,94vw)} }
   </style>
 </head>
 
 <body class="scene-intro" data-page="index">
-  <!-- фоновые сообщения/«облачка» -->
   <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -86,7 +88,6 @@
           <button id="tab-register" class="tab" role="tab" aria-controls="pane-register" aria-selected="false">Регистрация</button>
         </div>
 
-        <!-- Вход -->
         <section id="pane-login" class="pane" role="tabpanel" aria-labelledby="tab-login">
           <form id="loginForm" class="grid" novalidate autocomplete="off">
             <label>E-mail
@@ -104,7 +105,6 @@
           </form>
         </section>
 
-        <!-- Регистрация -->
         <section id="pane-register" class="pane is-hidden" role="tabpanel" aria-labelledby="tab-register">
           <form id="signupForm" class="grid" novalidate autocomplete="off">
             <label>E-mail <small>(обязательно)</small>
@@ -130,32 +130,20 @@
     <section id="screen-home" class="screen visible" role="main">
       <div id="hero" class="hero hero-frog">
         <img class="frog" src="/assets/frog_idle.png" alt="Froggy"
-             width="520" height="520" loading="lazy" decoding="async"
-             srcset="/assets/frog_idle.png 1x"
-             sizes="(max-width: 640px) 72vw, 520px" />
+             width="520" height="520" loading="lazy" decoding="async">
         <img class="stump" src="/assets/stump.png" alt="" aria-hidden="true"
-             width="220" height="120" loading="lazy" decoding="async"
-             srcset="/assets/stump.png 1x"
-             sizes="(max-width: 640px) 35vw, 220px" />
+             width="220" height="120" loading="lazy" decoding="async">
       </div>
 
-      <!-- Фикс-панель только на главной -->
-      <div class="menu-deck" data-onb="deck">
-        <div class="panel">
+      <div class="menu-deck">
+        <div class="panel" data-onb="deck">
           <div class="menu-grid">
             <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create" data-onb="create">Создать событие</button>
 
             <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate data-onb="join">
-              <input
-                id="join-code"
-                class="input"
-                name="code"
-                inputmode="text"
-                maxlength="6"
-                placeholder="Введите 6-значный код"
-                pattern="[A-Za-z0-9]{6}"
-                aria-label="Код приглашения из 6 символов"
-                title="6 символов: буквы или цифры">
+              <input id="join-code" class="input" name="code" inputmode="text" maxlength="6"
+                     placeholder="Введите 6-значный код" pattern="[A-Za-z0-9]{6}"
+                     aria-label="Код приглашения из 6 символов" title="6 символов: буквы или цифры">
               <button id="join-btn" type="submit" class="btn">Дальше</button>
             </form>
           </div>
@@ -164,17 +152,10 @@
     </section>
   </div>
 
-  <!-- Слой для первого онбординга -->
-  <div id="onb-layer" class="onb-layer" hidden aria-hidden="true"></div>
+  <noscript><div class="panel" style="max-width:720px;margin:16px auto">Для работы FroggyHub требуется включённый JavaScript.</div></noscript>
 
-  <noscript>
-    <div class="panel" style="max-width:720px;margin:16px auto">
-      Для работы FroggyHub требуется включённый JavaScript.
-    </div>
-  </noscript>
-
-  <!-- нормализация кода перед отправкой -->
   <script>
+    /* маска ввода кода */
     (function () {
       const form = document.getElementById('join-form');
       const input = document.getElementById('join-code');
@@ -185,21 +166,12 @@
       });
       form.addEventListener('submit', (e) => {
         const code = (input.value || '').trim().toUpperCase();
-        if (!/^[A-Z0-9]{6}$/.test(code)) {
-          e.preventDefault();
-          input.focus(); input.select();
-        } else {
-          input.value = code;
-          try {
-            sessionStorage.removeItem('fh:draftEvent');
-            sessionStorage.removeItem('fh:rsvpDone');
-          } catch {}
-        }
+        if (!/^[A-Z0-9]{6}$/.test(code)) { e.preventDefault(); input.focus(); input.select(); }
+        else input.value = code;
       });
     })();
   </script>
 
-  <!-- модульное приложение -->
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>
