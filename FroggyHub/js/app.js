@@ -856,6 +856,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
+  // --- утилиты видимости/поиска
+  function isVisible(el){
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const hasSize = (r.width > 0 && r.height > 0);
+    const style = window.getComputedStyle(el);
+    const shown = style && style.visibility !== 'hidden' && style.display !== 'none' && +style.opacity !== 0;
+    return hasSize && shown;
+  }
+  function pickVisible(selector, scope){
+    const root = scope || document;
+    const list = root.querySelectorAll(selector);
+    for (let i = 0; i < list.length; i++){
+      const el = list[i];
+      if (isVisible(el)) return el;
+    }
+    return null;
+  }
+  function firstVisibleAmong(selectors, scope){
+    // selectors может быть строкой с запятыми или массивом
+    const arr = Array.isArray(selectors) ? selectors : String(selectors).split(',').map(s=>s.trim()).filter(Boolean);
+    for (const sel of arr){
+      const el = pickVisible(sel, scope);
+      if (el) return el;
+    }
+    return null;
+  }
+
   async function isNewUserWindow() {
     try {
       if (localStorage.getItem(pageOnceKey)) return false;
@@ -871,46 +899,67 @@ document.addEventListener('DOMContentLoaded', async () => {
   function stepsConfigForPath() {
     const steps = [];
 
+    // ограничим область текущим экраном, если он существует
+    const home    = document.querySelector('#screen-home:not([hidden])') || null;
+    const auth    = document.querySelector('#screen-auth:not([hidden])') || null;
+    const lobby   = /\/lobby(\.html)?$/i.test(location.pathname) ? document : null;
+    const join    = /\/join(\.html)?$/i.test(location.pathname) ? document : null;
+    const profile = /\/profile(\.html)?$/i.test(location.pathname) ? document : null;
+
     // HOME
-    if (/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') {
-      steps.push({ sel: '[data-tour="home-create"], #create-event', text: 'Создай событие здесь' });
-      steps.push({ sel: '[data-tour="home-join"], #join-form, #join-code', text: 'Есть код? Введите его здесь, чтобы присоединиться.' });
-      steps.push({ sel: '[data-tour="home-profile"], #nav-profile, a[href*="profile"]', text: 'Ваши события и вишлисты — в профиле.' });
+    if ((/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') && home && !auth) {
+      steps.push({
+        sels: ['[data-tour="home-create"]', '#create-event'],
+        text: 'Создай событие здесь',
+        scope: home
+      });
+      steps.push({
+        sels: ['[data-tour="home-join"]', '#join-form', '#join-code'],
+        text: 'Есть код? Введите его здесь, чтобы присоединиться.',
+        scope: home
+      });
+      steps.push({
+        sels: ['[data-tour="home-profile"]', '#nav-profile', 'a[href*="profile"]'],
+        text: 'Ваши события и вишлисты — в профиле.',
+        scope: home
+      });
     }
 
     // LOGIN
     if (/\/login(\.html)?$/i.test(location.pathname)) {
-      steps.push({ sel: '[data-tour="auth-login"], #loginForm', text: 'Войдите в аккаунт здесь.' });
-      steps.push({ sel: '#tab-register, [data-tour="auth-register"]', text: 'Нет аккаунта? Зарегистрируйтесь.' });
+      steps.push({ sels: ['[data-tour="auth-login"]', '#loginForm'], text: 'Войдите в аккаунт здесь.', scope: document });
+      steps.push({ sels: ['#tab-register', '[data-tour="auth-register"]'], text: 'Нет аккаунта? Зарегистрируйтесь.', scope: document });
     }
 
     // JOIN
-    if (/\/join(\.html)?$/i.test(location.pathname)) {
-      steps.push({ sel: '#join-name, [name="name"]', text: 'Напишите, как вас подписать в гостях.' });
-      steps.push({ sel: '[data-rsvp], #join-status-wrap', text: 'Выберите, пойдёте ли вы на событие.' });
-      steps.push({ sel: '#btn-join, #joinSubmit', text: 'Готово? Жмите, чтобы присоединиться.' });
+    if (join) {
+      steps.push({ sels: ['#join-name', '[name="name"]', '#guestName'], text: 'Напишите, как вас подписать в гостях.', scope: join });
+      steps.push({ sels: ['[data-rsvp]', '#join-status-wrap'], text: 'Выберите, пойдёте ли вы на событие.', scope: join });
+      steps.push({ sels: ['#btn-join', '#joinSubmit'], text: 'Готово? Жмите, чтобы присоединиться.', scope: join });
     }
 
     // LOBBY
-    if (/\/lobby(\.html)?$/i.test(location.pathname)) {
-      steps.push({ sel: '[data-autosave="event"], button, a[role="button"]', text: 'Сохраните событие, когда всё готово.' });
+    if (lobby) {
+      steps.push({ sels: ['[data-autosave="event"]', 'button', 'a[role="button"]'], text: 'Сохраните событие, когда всё готово.', scope: lobby });
     }
 
     // PROFILE
-    if (/\/profile(\.html)?$/i.test(location.pathname)) {
-      steps.push({ sel: '.event-card, .event-item, [data-event-id]', text: 'Ваши события — здесь.' });
-      steps.push({ sel: '[data-action="show-rsvps"]', text: 'Посмотрите, кто идёт.' });
+    if (profile) {
+      steps.push({ sels: ['.event-card', '.event-item', '[data-event-id]'], text: 'Ваши события — здесь.', scope: profile });
+      steps.push({ sels: ['[data-action="show-rsvps"]'], text: 'Посмотрите, кто идёт.', scope: profile });
     }
 
-    return steps
-      .map(function (s) { return { sel: s.sel, text: s.text, el: document.querySelector(s.sel) }; })
-      .filter(function (s) { return !!s.el; });
+    // материализуем в элементы (только видимые)
+    return steps.map(s => {
+      const el = firstVisibleAmong(s.sels, s.scope);
+      return el ? { selList: s.sels, text: s.text, el, scope: s.scope || document } : null;
+    }).filter(Boolean);
   }
 
   function runTour(steps, doneKey) {
     if (!steps.length) return;
 
-    var layer = document.createElement('div');
+    const layer = document.createElement('div');
     layer.className = 'tour-layer';
     layer.innerHTML =
       '<div class="tour-backdrop"></div>' +
@@ -924,31 +973,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       '</div>';
     document.body.appendChild(layer);
 
-    var backdrop = layer.querySelector('.tour-backdrop');
-    var card     = layer.querySelector('.tour-card');
-    var titleEl  = layer.querySelector('.tour-title');
-    var arrow    = layer.querySelector('.tour-arrow');
+    const backdrop = layer.querySelector('.tour-backdrop');
+    const card     = layer.querySelector('.tour-card');
+    const titleEl  = layer.querySelector('.tour-title');
+    const arrow    = layer.querySelector('.tour-arrow');
 
-    var i = -1;
+    let i = -1;
+    let placingTimer = 0;
 
     function place() {
-      var step = steps[i]; if (!step) return;
+      const step = steps[i]; if (!step) return;
 
-      var r = step.el.getBoundingClientRect();
-      var x = r.left + window.scrollX + r.width / 2;
-      var y = r.top  + window.scrollY + r.height / 2;
-      var radius = Math.round(Math.hypot(r.width, r.height) / 2) + 14;
+      // если элемент пропал/перерисовался — попробуем найти заново
+      if (!document.body.contains(step.el) || !isVisible(step.el)) {
+        const found = firstVisibleAmong(step.selList, step.scope);
+        if (found) step.el = found;
+        else return; // подождём следующего тика / мутации
+      }
+
+      const r = step.el.getBoundingClientRect();
+      const x = r.left + window.scrollX + r.width / 2;
+      const y = r.top  + window.scrollY + r.height / 2;
+      const radius = Math.round(Math.hypot(r.width, r.height) / 2) + 14;
 
       backdrop.style.setProperty('--x', x + 'px');
       backdrop.style.setProperty('--y', y + 'px');
       backdrop.style.setProperty('--r', radius + 'px');
 
-      var cw = Math.min(380, Math.max(260, r.width));
+      const cw = Math.min(380, Math.max(260, r.width));
       card.style.width = cw + 'px';
 
-      var below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
-      var px = r.left + window.scrollX + (r.width - cw) / 2;
-      var py = below
+      const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
+      let px = r.left + window.scrollX + (r.width - cw) / 2;
+      let py = below
         ? r.bottom + window.scrollY + 12
         : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
@@ -958,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.style.left = px + 'px';
       card.style.top  = py + 'px';
 
-      var ax = r.left + window.scrollX + r.width / 2 - 6;
+      const ax = r.left + window.scrollX + r.width / 2 - 6;
       if (below) {
         arrow.style.left = Math.max(px + 12, Math.min(ax, px + cw - 24)) + 'px';
         arrow.style.top  = (py - 6) + 'px';
@@ -970,60 +1027,82 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    function ensureInView(cb){
+      clearTimeout(placingTimer);
+      const step = steps[i]; if (!step) return cb && cb();
+
+      const r = step.el.getBoundingClientRect();
+      const fullyVisible = r.top >= 0 && r.left >= 0 && r.bottom <= (window.innerHeight || document.documentElement.clientHeight) && r.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+      if (!fullyVisible){
+        step.el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        placingTimer = setTimeout(() => { place(); cb && cb(); }, 250);
+      } else {
+        place(); cb && cb();
+      }
+    }
+
     function finish() {
-      try { localStorage.setItem(doneKey, '1'); } catch (e) {}
+      try { localStorage.setItem(doneKey, '1'); } catch {}
       layer.remove();
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place);
+      window.removeEventListener('resize', onRelayout);
+      window.removeEventListener('scroll', onRelayout);
       document.removeEventListener('click', clickAdvance, true);
+      mo.disconnect();
     }
 
     function show(idx) {
       i = idx;
-      if (i >= steps.length) { finish(); return; }
+      if (i >= steps.length) return finish();
 
       titleEl.textContent = steps[i].text;
       layer.classList.add('on');
       backdrop.style.setProperty('--r', '140vh');
-      place();
-      requestAnimationFrame(function(){ requestAnimationFrame(place); });
+      ensureInView();
     }
 
     function clickAdvance(e) {
-      var step = steps[i];
+      const step = steps[i];
       if (!step) return;
-      if (e.target.closest(step.sel)) show(i + 1);
+      // если кликнули по подсвечиваемому элементу — тоже двигаем дальше
+      if (e.target.closest && step.selList.some(sel => e.target.closest(sel))) {
+        show(i + 1);
+      }
     }
 
-    window.addEventListener('resize', place, { passive: true });
-    window.addEventListener('scroll', place, { passive: true });
+    function onRelayout(){ place(); }
+
+    // следим за исчезновением/появлением цели шага
+    const mo = new MutationObserver(() => place());
+    mo.observe(document.body, { childList:true, subtree:true, attributes:true });
+
+    window.addEventListener('resize', onRelayout, { passive:true });
+    window.addEventListener('scroll', onRelayout, { passive:true });
     document.addEventListener('click', clickAdvance, true);
 
-    layer.addEventListener('click', function (e) {
-      var actEl = e.target.closest('[data-act]');
-      if (!actEl) return;
-      var act = actEl.getAttribute('data-act');
-      if (act === 'skip') { finish(); return; }
-      if (act === 'next') { show(i + 1); return; }
-    }, { passive: true });
+    layer.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+      if (act === 'skip') return finish();
+      if (act === 'next') return show(i + 1);
+    }, { passive:true });
 
-    requestAnimationFrame(function(){ show(0); });
+    requestAnimationFrame(() => show(0));
   }
 
   window.FH_startSpotlightTour = async function startSpotlightTour() {
-    try { if (localStorage.getItem(pageOnceKey)) return; } catch (e) {}
-    var prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
+    const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (prefersReduced) return;
 
-    var okNew = await isNewUserWindow();
+    const okNew = await isNewUserWindow();
     if (!okNew) return;
 
-    var steps = stepsConfigForPath();
-    var t0 = performance.now();
+    let steps = stepsConfigForPath();
+    const t0 = performance.now();
 
     if (!steps.length) {
-      await new Promise(function (resolve) {
-        var obs = new MutationObserver(function () {
+      await new Promise((resolve) => {
+        const obs = new MutationObserver(() => {
           steps = stepsConfigForPath();
           if (steps.length || (performance.now() - t0) > 6000) { obs.disconnect(); resolve(); }
         });
