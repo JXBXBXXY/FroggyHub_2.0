@@ -27,6 +27,38 @@
   <link rel="preload" as="image" href="/assets/stump.png" imagesrcset="/assets/stump.png 1x" imagesizes="(max-width:640px) 60vw, 220px">
   <link rel="dns-prefetch" href="//supabase.co">
   <link rel="dns-prefetch" href="//supabase.net">
+
+  <!-- APPENDED: легкие стили чеклиста, чтобы не править style.css -->
+  <style>
+    #checklist {
+      margin: 18px 0;
+      padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      background: rgba(0,0,0,.25);
+      box-shadow: 0 6px 18px rgba(0,0,0,.28);
+    }
+    #checklist h3 { margin: 0 0 10px; font-size: 1rem; font-weight: 800; }
+    #checklist ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    #checklist li { display: flex; align-items: center; gap: 8px; font-size: .95rem; }
+    #checklist li.done { opacity: .6; text-decoration: line-through; }
+    #checklist li::before { content: "⬜"; }
+    #checklist li.done::before { content: "✅"; }
+    /* контейнер для тостов */
+    #toastLayer{
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+      z-index: 1200; display: grid; gap: 8px; pointer-events: none;
+    }
+    #toastLayer .toast-box{
+      background: rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      padding:10px 14px;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      transition: opacity .2s ease, transform .2s ease;
+      pointer-events: auto;
+    }
+  </style>
 </head>
 
 <body class="scene-intro" data-page="index">
@@ -141,8 +173,26 @@
           </div>
         </div>
       </div>
+
+      <!-- APPENDED: Чеклист шагов -->
+      <div id="checklist" hidden>
+        <h3>Что дальше?</h3>
+        <ul>
+          <li data-step="create">Создай событие</li>
+          <li data-step="share">Поделись кодом</li>
+          <li data-step="rsvp">Отметься в RSVP</li>
+          <li data-step="wishlist">Добавь подарок в wishlist</li>
+        </ul>
+      </div>
+      <!-- /Чеклист -->
     </section>
   </div>
+
+  <!-- APPENDED: слой для коучмарок (у вас уже есть логика runOnboardingIfNeeded) -->
+  <div id="coachLayer" aria-hidden="true"></div>
+
+  <!-- APPENDED: слой для тостов -->
+  <div id="toastLayer" aria-live="polite" aria-atomic="true"></div>
 
   <noscript>
     <div class="panel" style="max-width:720px;margin:16px auto">
