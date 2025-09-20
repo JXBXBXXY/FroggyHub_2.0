@@ -441,108 +441,313 @@ body.force-mobile .final-card { padding: 14px; border-radius: 14px; }
 .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap;}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--panel-bd);box-shadow:0 10px 26px var(--shadow);padding:10px 16px;border-radius:12px;z-index:1200;}
 
-/* ======= TOASTS (новые) ======= */
-#toastLayer{ position: fixed; left: 0; right: 0; bottom: 16px; z-index: 1200; display: grid; place-items: center; pointer-events: none; }
-.toast-box{
-  pointer-events:auto;
-  background: rgba(0,0,0,.65);
-  border:1px solid rgba(255,255,255,.14);
-  color:#eaffef;
-  border-radius:12px; padding:10px 14px; margin:6px;
-  box-shadow:0 10px 26px rgba(0,0,0,.45);
-  animation: toastIn .18s ease;
-  max-width:min(92vw,560px);
+#cookieCard{
+  position: fixed; right: 24px; bottom: 24px; z-index: 1000;
+  width: 340px; max-width: calc(100% - 32px);
+  background: var(--surface);
+  color: var(--text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 18px 20px; gap: 12px; border-radius: 16px;
+  box-shadow: 0 12px 30px var(--shadow);
+  border: 1px solid rgba(255,255,255,.06);
+  margin: 0;
 }
-@keyframes toastIn{ from{ transform: translateY(6px); opacity:0; } to{ transform:none; opacity:1; } }
+#cookieSvg{ width: 50px; }
+#cookieSvg g path{ fill: var(--muted); }
+.cookieHeading{ font-size: 1.1rem; font-weight: 800; color: var(--text); }
+.cookieDescription{ text-align: center; font-size: .85rem; color: var(--muted); }
 
-/* ======= COACHMARKS (новые) ======= */
-#coachLayer{
-  position:fixed; inset:0; z-index:1100; pointer-events:none;
+.buttonContainer{ display: flex; gap: 12px; }
+.acceptButton{ background: var(--brand); }
+.acceptButton:hover{ background: var(--brand-600); }
+.declineButton{ border: 2px solid var(--brand-600); }
+
+body.scene-final #slides,
+body.scene-final .pads{ display:none !important; }
+body.scene-pond .speech, body.scene-final .speech{display:none}
+body.scene-intro .speech{display:block}
+
+/* ===== BREAKPOINTS ===== */
+@media (max-width: 960px){
+  #finalLayout{ flex-direction:column; align-items:stretch; gap:18px; }
+  #finalLeft{ order:0; text-align:center; }
+  #finalRight{ order:1; width:100%; }
+  #bigClock{ margin-bottom:12px; }
+  .dashboard{grid-template-columns:1fr}
+  .final-main .meta{grid-template-columns:1fr}
 }
-.coach-backdrop{
-  position:absolute; inset:0; background:rgba(0,0,0,.45); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
-  opacity:0; transition:opacity .2s ease; pointer-events:auto;
+@media (max-width:760px){ .row2{grid-template-columns:1fr} }
+
+@media (max-width: 640px){
+  .container{ padding:16px; }
+  .final-card{ padding:14px; border-radius:14px; }
+  input, textarea, button{ font-size:16px; }
+  .pill{ padding:12px 14px; }
+  body{font-size:clamp(14px,4vw,16px)}
+  .card{padding:16px;margin:14px 0}
+  .card.inner{padding:12px}
+  .panel{padding:16px;margin:12px 5vw}
+  .grid{gap:10px}
+  .grid>*{min-width:0}
+  input,textarea{min-width:0}
+  .bar-actions,.btn-group{flex-direction:column}
 }
-.coach-backdrop.on{ opacity:1; }
-.coach-card{
-  position:absolute; max-width:min(92vw, 420px);
-  background: rgba(20,70,45,.9);
-  border:1px solid rgba(255,255,255,.12);
-  box-shadow:0 18px 44px rgba(0,0,0,.55);
-  border-radius:14px; padding:12px 14px;
-  color:#eaffef; font-size:14px; line-height:1.35;
-  transform: translateY(6px); opacity:0;
-  transition: transform .2s ease, opacity .2s ease;
+/* === Analytics page === */
+.ea-list, .wl-list{list-style:none;margin:0;padding:0;}
+.ea-item{display:grid;grid-template-columns:64px 1fr 120px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
+.ea-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;}
+.ea-status{text-align:right;}
+.wl-item{display:grid;grid-template-columns:1fr 200px;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--card-border);}
+.wl-claimed{display:flex;align-items:center;gap:8px;}
+.wl-ava{width:32px;height:32px;border-radius:50%;object-fit:cover;}
+@media (max-width:640px){
+  .ea-item{grid-template-columns:1fr;text-align:center;}
+  .ea-avatar{margin:0 auto;}
+  .ea-status{text-align:center;margin-top:4px;}
+  .wl-item{grid-template-columns:1fr;text-align:center;}
+  .wl-claimed{justify-content:center;margin-top:4px;}
 }
-.coach-card.on{ transform:none; opacity:1; }
-.coach-card .coach-actions{ display:flex; gap:8px; margin-top:10px; justify-content:flex-end; }
-.coach-card .btn{ min-height:36px; padding:8px 12px; }
-.coach-spot{
-  position:absolute; border-radius:999px; border:2px solid #43e68d; box-shadow:0 0 0 6px rgba(67,230,141,.18);
-  pointer-events:none; transition: all .2s ease;
-}
-.coach-arrow{
-  position:absolute; width:14px; height:14px; transform:rotate(45deg); background: rgba(20,70,45,.9);
-  border-left:1px solid rgba(255,255,255,.12); border-top:1px solid rgba(255,255,255,.12);
+/* RSVP and wishlist indicators */
+.rsvp-yes{color:#35c97f;}
+.rsvp-maybe{color:#f0b429;}
+.rsvp-no{color:#ff6b6b;}
+.wl-free{color:#35c97f;}
+.wl-taken{color:#f0b429;}
+
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:700;font-size:.85rem}
+.badge.yes,.badge.free{background:#35c97f;color:#0a1e14}
+.badge.maybe{background:#f0b429;color:#0a1e14}
+.badge.no{background:#ff6b6b;color:#0a1e14}
+.badge.taken{background:#f0b429;color:#0a1e14}
+.progress{height:8px;background:#133b25;border-radius:6px;overflow:hidden;display:flex;margin:4px 0 12px}
+.progress>div{height:100%}
+.progress .yes{background:#35c97f}
+.progress .maybe{background:#f0b429}
+.progress .no{background:#ff6b6b}
+.progress .free{background:#35c97f}
+.progress .taken{background:#f0b429}
+
+/* Event edit form */
+.edit-form .save-row{display:flex;justify-content:flex-end;}
+@media(max-width:600px){
+  .edit-form{padding-bottom:80px;}
+  .edit-form .save-row{position:fixed;left:0;right:0;bottom:0;background:var(--card-dark);border-top:1px solid var(--card-border);padding:12px 20px;}
 }
 
-/* === Global glass background for all pages === */
-:root{
-  /* можно править центра/масштаб здесь, если нужно */
-  --fh-bg-image: url("/assets/froggy_glass_bg.jpeg");
-  --fh-bg-tint: rgba(11,36,27,.55);
+[data-user-badge]{ flex:none; min-width:auto; padding:6px 10px; box-shadow:none; cursor:default; }
+
+/* Lobby layout */
+.lobby-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(420px, 700px);
+  gap: 24px;
+  padding: 24px;
+  align-items: start;
+}
+.lobby-left { position: relative; min-height: 420px; display:flex; align-items:center; justify-content:center; }
+.countdown { position:absolute; top:24px; left:50%; transform:translateX(-50%); text-align:center; }
+.countdown-big { font-size: clamp(40px, 8vw, 72px); line-height: 1; font-weight: 800; }
+.countdown-small { margin-top: 6px; opacity: .85; }
+.lobby-right.card { background: rgba(255,255,255,.06); border-radius: 16px; padding: 20px; backdrop-filter: blur(6px); }
+
+/* стек мини-секций для лобби */
+.lobby-right.glass{
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--glass-bd);
+  border-radius: var(--r-xl);
+  box-shadow: var(--glass-shadow);
+  padding: 18px;
+}
+.lobby-panels{ display:grid; gap:12px; }
+.glass-section{
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--blur-strong));
+  -webkit-backdrop-filter: blur(var(--blur-strong));
+  border: 1px solid var(--glass-bd);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow-sm);
+  padding: 14px 16px;
+}
+.section-title{
+  display:flex; align-items:center; gap:.5rem;
+  font-weight:800; opacity:.95; margin:0 0 .35rem 0;
 }
 
-/* фиксированный фото-фон + затемняющая вуаль */
-body::before{
-  content:"";
-  position:fixed; inset:0; z-index:0;
-  background:#0b241b var(--fh-bg-image) center 45%/cover no-repeat;
-  pointer-events:none;
+.event-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 16px; }
+.guests-columns { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+.list { margin: 8px 0; padding-left: 18px; }
+.list li { margin: 3px 0; }
+
+/* (старые хедер-классы оставлены для обратной совместимости) */
+.fh-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; }
+.fh-logo { font-weight:800; text-decoration:none; }
+.fh-nav a, .fh-nav button { margin-left:12px; }
+
+/* ЕДИНЫЙ TOPBAR для всех страниц */
+.topbar{
+  position: sticky; top: 0; z-index: 50;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px;
+  background:rgba(0,0,0,.15); backdrop-filter:blur(6px);
+  border-bottom:1px solid rgba(255,255,255,.06);
 }
-body::after{
-  content:"";
-  position:fixed; inset:0; z-index:0;
-  background:var(--fh-bg-tint);
-  pointer-events:none;
+.topbar .logo{ font-weight:800; letter-spacing:.3px; color:#cdeed9; text-decoration:none; }
+.topbar-right{ display:flex; gap:8px; }
+.btn-sm{ padding:6px 10px; font-size:12px; border-radius:12px; }
+.btn-ghost{ background:transparent; border:1px solid rgba(255,255,255,.18); }
+.btn-ghost:hover{ background:rgba(255,255,255,.06); }
+
+/* Layout helpers */
+.container{ max-width:980px; margin:32px auto; padding:0 16px; }
+.panel{ background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.08); border-radius:20px; box-shadow:0 10px 28px rgba(0,0,0,.3); padding:18px; }
+
+/* Menu */
+.menu-deck{position:fixed; left:50%; transform:translateX(-50%); bottom:8vh; width:min(880px,92vw);}
+.menu-grid{display:grid; grid-template-columns:1fr auto; gap:12px;}
+.join-row{display:grid; gap:12px; grid-template-columns:1fr auto;}
+@media (max-width:600px){ .menu-grid{grid-template-columns:1fr;} }
+
+/* Decor should not intercept clicks */
+.decor-layer{ position:relative; pointer-events:none; }
+.decor{ position:absolute; pointer-events:none; user-select:none; opacity:.95; }
+.decor.stump{ left:0; bottom:-20px; width:180px; opacity:.85; }
+
+button:not([disabled]){ cursor:pointer; }
+
+/* Profile */
+.profile-card{ display:grid; gap:18px; }
+.profile-head{ display:flex; gap:16px; align-items:center; }
+.avatar{ width:84px; height:84px; border-radius:50%; overflow:hidden; object-fit:cover; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); }
+.nick-chip{ padding:6px 10px; border-radius:12px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); font-weight:600; }
+.events-col{ display:grid; gap:10px; }
+.event-item{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(0,0,0,.14); }
+.event-title{ font-weight:700; }
+.event-meta{ opacity:.8; font-size:12px; }
+.event-actions{ display:flex; gap:8px; }
+
+/* Сетки форм */
+.form-grid{ display:grid; gap:14px; }
+
+/* Общие панели и формы */
+.screen .panel{max-width:980px;margin:22px auto;padding:18px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.stack{display:grid;gap:12px}
+.row{display:flex;gap:12px;align-items:center}
+.row.end{justify-content:flex-end}
+
+/* Wishlist */
+.wish-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:12px}
+.wish-item{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px}
+.wish-item.taken{ opacity:.6; }
+.wish-item.taken button{ pointer-events:none; }
+
+.stack-md > * + * { margin-top: 12px; }
+.row-end { display: flex; justify-content: flex-end; }
+.gap-sm { gap: 10px; }
+
+/* Центровка лягушки, модалок и куки */
+.hero{position:relative;display:flex;justify-content:center;align-items:flex-end;margin:40px 0 0}
+.hero .stump{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:min(220px,35vw);z-index:1;pointer-events:none}
+.hero .frog{position:relative;z-index:2;width:min(520px,72vw);max-width:90vw;height:auto;pointer-events:none}
+/* Герой: лягушка на пне */
+.hero-frog{ width:clamp(var(--frog-hero-min), 38vw, var(--frog-hero-max)); margin-inline:auto; }
+.hero-frog .frog{ width:100%;max-width:none;height:auto;pointer-events:none; }
+.hero-frog .stump{ transform:translateX(-50%) scale(1.05); }
+
+.modal{position:fixed;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);backdrop-filter:saturate(1.2) blur(6px);z-index:50}
+.modal[hidden]{display:none}
+.modal .card{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 20px;min-width:min(560px,92vw);color:#fff}
+.cookie{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40}
+.cookie__text{color:#dff9ea;line-height:1.35;font-size:14px}
+.cookie__actions{margin-left:auto}
+
+/* Type modal */
+.modal-actions.row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.modal-footer{display:flex;justify-content:flex-end;margin-top:16px}
+
+/* Final screen layout */
+.final-wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+.final-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+@media (max-width:900px){.final-grid{grid-template-columns:1fr}}
+
+.card{background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.08);border-radius:18px;box-shadow:0 10px 28px rgba(0,0,0,.35);padding:18px}
+.invite-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 14px 32px rgba(0,0,0,.35);padding:18px}
+
+.final-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.final-code{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btn-chip{padding:6px 10px;border-radius:999px}
+
+.final-details .row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:start;margin:6px 0}
+.final-details .label{opacity:.8}
+.final-actions{margin-top:14px;display:flex;justify-content:flex-start}
+
+.invite-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.invite-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.18)}
+.invite-desc{opacity:.9;margin:8px 0 12px}
+.invite-subtitle{font-weight:700;margin:4px 0 6px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips .chip{cursor:default}
+.chips .chip.taken{opacity:.5;border-style:dashed}
+
+.invite-legend{display:flex;gap:12px;margin-top:10px;opacity:.8;font-size:.95em}
+.invite-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.4)}
+.invite-legend .dot.free{background:#19c34a}
+.invite-legend .dot.taken{background:#c3a019}
+.w-100{width:100%}
+
+/* === Auth polish === */
+.auth-card{max-width:640px;margin:6vh auto;padding:20px 22px;border-radius:18px;
+  background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.auth-card h1,.auth-card h2{letter-spacing:.2px}
+.auth-card .tabs{margin:10px 0 14px}
+.auth-card .input, .auth-card input[type="text"], .auth-card input[type="password"]{
+  height:52px;font-size:16px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
+  background:rgba(10,10,10,.55);padding:0 16px;color:#fff}
+.auth-card .input::placeholder{color:rgba(255,255,255,.55)}
+.btn-xl{height:52px;font-weight:600;border-radius:14px}
+.btn-primary{background:linear-gradient(180deg,#2e7a62,#1f5c49);border:1px solid rgba(255,255,255,.12)}
+.btn-primary:hover{filter:brightness(1.06)}
+@media (max-width:720px){
+  .auth-card{margin:3vh 12px;padding:16px}
 }
 
-/* контент всегда выше фона */
-body > *{ position:relative; z-index:1; }
-/* Profile — RSVP panel */
-.rsvps-panel { margin-top: 10px; }
-.rsvps-panel .section-title { font-weight: 800; opacity: .95; margin-bottom: .35rem; display:flex; align-items:center; gap:.5rem; }
-.rsvps-panel .list { margin: 6px 0; padding-left: 18px; }
-.rsvps-panel .list li { margin: 3px 0; }
-/* === Mobile final/lobby: centered card & no clock === */
-@media (max-width: 900px){
-  /* лобби: одна колонка и центр */
-  .lobby-grid{
-    grid-template-columns: 1fr;
-    justify-items: center;
-    align-items: start;
-    gap: 16px;
-    padding: 16px;
-  }
-  .lobby-right{
-    width: min(680px, 94vw);
-  }
-  .lobby-left{ display: none; } /* убираем левую колонку с часами */
-
-  /* если где-то используется большой блок часов */
-  #bigClock, .countdown{ display: none !important; }
+/* === Final single-column === */
+.final-wrap{max-width:860px;margin:32px auto;padding:0 16px;display:block}
+.final-card{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);
+  border-radius:20px;padding:22px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+#final-left{transform:scale(1.03);transform-origin:center}
+#final-right[hidden]{display:none !important}
+@media (max-width:720px){
+  .final-wrap{margin:16px auto}
+  .final-card{padding:16px}
 }
 
-/* альтернативный режим через класс (если захочешь принудительно включать) */
-body.force-mobile .lobby-grid{
-  grid-template-columns: 1fr;
-  justify-items: center;
-  gap: 16px;
+/* FH visibility defaults (append only) */
+#screen-home { display: block; }
+#screen-auth.hidden { display: none; }
+
+/* FH screens visibility (append only) */
+#screen-home, #screen-auth, #screen-profile, #screen-hub { display: none; }
+#screen-home:not(.hidden),
+#screen-auth:not(.hidden),
+#screen-profile:not(.hidden),
+#screen-hub:not(.hidden) { display: block; }
+
+/* === REMOVE FROG & STUMP (everywhere) === */
+#hero .frog,
+#hero .stump,
+.frog-stump,
+.decor.stump,
+#frog,
+#stumpImg {
+  display: none !important;
+  visibility: hidden !important;
 }
-body.force-mobile .lobby-right{ width: min(680px, 94vw); }
-body.force-mobile .lobby-left{ display: none; }
-body.force-mobile #bigClock,
-body.force-mobile .countdown{ display:none !important; }
 
 /* =======  APPENDED RESPONSIVE / MOBILE FIXES  ======= */
 /* MOBILE FIX: улучшенные тач-таргеты и анти-скейл текста iOS */
@@ -704,18 +909,60 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-
 /* === Global glass background for all pages === */
 :root{
+  /* можно править центра/масштаб здесь, если нужно */
   --fh-bg-image: url("/assets/froggy_glass_bg.jpeg");
   --fh-bg-tint: rgba(11,36,27,.55);
 }
-body::before{content:"";position:fixed;inset:0;z-index:0;background:#0b241b var(--fh-bg-image) center 45%/cover no-repeat;pointer-events:none;}
-body::after{content:"";position:fixed;inset:0;z-index:0;background:var(--fh-bg-tint);pointer-events:none;}
-body > *{ position:relative; z-index:1; }
 
-/* === Coach arrow utilities (позиционирование у карты) === */
-.coach-card[data-pos="bottom"] .coach-arrow{ top:-7px; left:18px; }
-.coach-card[data-pos="top"] .coach-arrow{ bottom:-7px; left:18px; }
-.coach-card[data-pos="left"] .coach-arrow{ right:-7px; top:18px; }
-.coach-card[data-pos="right"] .coach-arrow{ left:-7px; top:18px; }
+/* фиксированный фото-фон + затемняющая вуаль */
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:0;
+  background:#0b241b var(--fh-bg-image) center 45%/cover no-repeat;
+  pointer-events:none;
+}
+body::after{
+  content:"";
+  position:fixed; inset:0; z-index:0;
+  background:var(--fh-bg-tint);
+  pointer-events:none;
+}
+
+/* контент всегда выше фона */
+body > *{ position:relative; z-index:1; }
+/* Profile — RSVP panel */
+.rsvps-panel { margin-top: 10px; }
+.rsvps-panel .section-title { font-weight: 800; opacity: .95; margin-bottom: .35rem; display:flex; align-items:center; gap:.5rem; }
+.rsvps-panel .list { margin: 6px 0; padding-left: 18px; }
+.rsvps-panel .list li { margin: 3px 0; }
+/* === Mobile final/lobby: centered card & no clock === */
+@media (max-width: 900px){
+  /* лобби: одна колонка и центр */
+  .lobby-grid{
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: start;
+    gap: 16px;
+    padding: 16px;
+  }
+  .lobby-right{
+    width: min(680px, 94vw);
+  }
+  .lobby-left{ display: none; } /* убираем левую колонку с часами */
+
+  /* если где-то используется большой блок часов */
+  #bigClock, .countdown{ display: none !important; }
+}
+
+/* альтернативный режим через класс (если захочешь принудительно включать) */
+body.force-mobile .lobby-grid{
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 16px;
+}
+body.force-mobile .lobby-right{ width: min(680px, 94vw); }
+body.force-mobile .lobby-left{ display: none; }
+body.force-mobile #bigClock,
+body.force-mobile .countdown{ display:none !important; }
