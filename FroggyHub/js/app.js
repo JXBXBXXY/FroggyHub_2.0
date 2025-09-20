@@ -856,21 +856,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
-  // --- utils
+  // ---- helpers
   function isVisible(el){
     if (!el) return false;
     const r = el.getBoundingClientRect();
-    const hasSize = r.width > 0 && r.height > 0;
     const cs = getComputedStyle(el);
-    return hasSize && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) !== 0;
+    return r.width > 0 && r.height > 0 &&
+           cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0;
   }
-  function firstVisibleAmong(selectors){
-    const arr = Array.isArray(selectors) ? selectors : String(selectors).split(',').map(s=>s.trim()).filter(Boolean);
-    for (const sel of arr){
-      const list = document.querySelectorAll(sel);
-      for (let i=0;i<list.length;i++){
-        if (isVisible(list[i])) return list[i];
-      }
+  function findFirstVisible(selectors){
+    const list = (Array.isArray(selectors) ? selectors : String(selectors).split(','))
+      .map(s => s.trim()).filter(Boolean);
+    for (const sel of list){
+      const nodes = document.querySelectorAll(sel);
+      for (let i=0;i<nodes.length;i++) if (isVisible(nodes[i])) return nodes[i];
     }
     return null;
   }
@@ -881,50 +880,56 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
       if (!ts) return false;
-      return (Date.now() - ts) < 48 * 3600 * 1000;
+      return (Date.now() - ts) < 48*3600*1000;
     } catch { return false; }
   }
 
-  // шаги: возвращаем только селекторы и текст; элемент найдём «на лету»
-  function stepsConfigForPath() {
+  // шаги описываем селекторами, элемент ищем перед каждым показом
+  function stepsConfigForPath(){
     const S = [];
 
-    // HOME
-    if ((/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/')
-        && !document.querySelector('#screen-auth:not([hidden])')) {
-      S.push({ sels: ['[data-tour="home-create"]', '#create-event'], text: 'Создай событие здесь' });
-      S.push({ sels: ['[data-tour="home-join"]', '#join-form', '#join-code'], text: 'Есть код? Введите его здесь, чтобы присоединиться.' });
-      S.push({ sels: ['[data-tour="home-profile"]', '#nav-profile', 'a[href*="profile"]'], text: 'Ваши события и вишлисты — в профиле.' });
+    // HOME (не показываем поверх экрана авторизации)
+    const authVisible = !!document.querySelector('#screen-auth:not([hidden])');
+    if ((/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') && !authVisible){
+      S.push({ sels: ['[data-tour="home-create"]', '[data-onb="create"]', '#create-event'],
+               text: 'Создай событие здесь' });
+      S.push({ sels: ['[data-tour="home-join"]', '[data-onb="join"]', '#join-form', '#join-code'],
+               text: 'Есть код? Введите его здесь, чтобы присоединиться.' });
+      S.push({ sels: ['[data-tour="home-profile"]', '#nav-profile', 'a[href*="profile"]'],
+               text: 'Ваши события и вишлисты — в профиле.' });
     }
 
     // LOGIN
-    if (/\/login(\.html)?$/i.test(location.pathname)) {
+    if (/\/login(\.html)?$/i.test(location.pathname)){
       S.push({ sels: ['[data-tour="auth-login"]', '#loginForm'], text: 'Войдите в аккаунт здесь.' });
       S.push({ sels: ['#tab-register', '[data-tour="auth-register"]'], text: 'Нет аккаунта? Зарегистрируйтесь.' });
     }
 
     // JOIN
-    if (/\/join(\.html)?$/i.test(location.pathname)) {
+    if (/\/join(\.html)?$/i.test(location.pathname)){
       S.push({ sels: ['#join-name', '[name="name"]', '#guestName'], text: 'Напишите, как вас подписать в гостях.' });
-      S.push({ sels: ['[data-rsvp]', '#join-status-wrap'], text: 'Выберите, пойдёте ли вы на событие.' });
-      S.push({ sels: ['#btn-join', '#joinSubmit'], text: 'Готово? Жмите, чтобы присоединиться.' });
+      S.push({ sels: ['[data-rsvp]', '#join-status-wrap'],         text: 'Выберите, пойдёте ли вы на событие.' });
+      S.push({ sels: ['#btn-join', '#joinSubmit'],                  text: 'Готово? Жмите, чтобы присоединиться.' });
     }
 
     // LOBBY
-    if (/\/lobby(\.html)?$/i.test(location.pathname)) {
-      S.push({ sels: ['[data-autosave="event"]', 'button', 'a[role="button"]'], text: 'Сохраните событие, когда всё готово.' });
+    if (/\/lobby(\.html)?$/i.test(location.pathname)){
+      S.push({ sels: ['[data-autosave="event"]', 'button', 'a[role="button"]'],
+               text: 'Сохраните событие, когда всё готово.' });
     }
 
     // PROFILE
-    if (/\/profile(\.html)?$/i.test(location.pathname)) {
-      S.push({ sels: ['.event-card', '.event-item', '[data-event-id]'], text: 'Ваши события — здесь.' });
-      S.push({ sels: ['[data-action="show-rsvps"]'], text: 'Посмотрите, кто идёт.' });
+    if (/\/profile(\.html)?$/i.test(location.pathname)){
+      S.push({ sels: ['.event-card', '.event-item', '[data-event-id]'],
+               text: 'Ваши события — здесь.' });
+      S.push({ sels: ['[data-action="show-rsvps"]'],
+               text: 'Посмотрите, кто идёт.' });
     }
 
-    return S; // элементы не резолвим здесь
+    return S;
   }
 
-  function runTour(steps, doneKey) {
+  function runTour(steps, doneKey){
     if (!steps.length) return;
 
     const layer = document.createElement('div');
@@ -946,6 +951,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
 
+    // «фантом» для фолбэка (центр экрана)
+    const phantom = document.createElement('div');
+    phantom.style.cssText = 'position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);pointer-events:none;';
+    document.body.appendChild(phantom);
+
     let i = -1;
     let currentEl = null;
 
@@ -960,13 +970,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       backdrop.style.setProperty('--y', y+'px');
       backdrop.style.setProperty('--r', radius+'px');
 
-      const cw = Math.min(380, Math.max(260, r.width));
+      const cw = Math.min(380, Math.max(260, r.width || 320));
       card.style.width = cw+'px';
 
       const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
       let px = r.left + window.scrollX + (r.width - cw)/2;
       let py = below ? r.bottom + window.scrollY + 12
                      : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+
+      // если фантом (r.width == 0/1), ставим по центру
+      if (currentEl === phantom){
+        px = window.scrollX + (innerWidth - cw)/2;
+        py = window.scrollY + innerHeight*0.65 - (card.offsetHeight || 160)/2;
+      }
 
       px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
       py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
@@ -975,52 +991,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       card.style.top  = py+'px';
 
       const ax = r.left + window.scrollX + r.width/2 - 6;
-      if (below){
-        arrow.style.left = Math.max(px+12, Math.min(ax, px+cw-24))+'px';
-        arrow.style.top  = (py-6)+'px';
-        arrow.style.transform = 'rotate(45deg)';
-      } else {
-        arrow.style.left = Math.max(px+12, Math.min(ax, px+cw-24))+'px';
-        arrow.style.top  = (py + card.offsetHeight - 6)+'px';
-        arrow.style.transform = 'rotate(225deg)';
-      }
+      const arrowX = currentEl === phantom ? (px + cw/2 - 6) : Math.max(px+12, Math.min(ax, px+cw-24));
+      const arrowY = currentEl === phantom ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
+      arrow.style.left = arrowX + 'px';
+      arrow.style.top  = arrowY + 'px';
+      arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
     }
 
-    function ensureTarget(step, cb){
+    function resolveTarget(step, done){
       // пробуем сразу
-      currentEl = firstVisibleAmong(step.sels);
-      if (currentEl){
-        // скроллим в видимую область при необходимости
-        const r = currentEl.getBoundingClientRect();
-        const inView = r.top >= 0 && r.left >= 0 &&
-                       r.bottom <= (innerHeight || document.documentElement.clientHeight) &&
-                       r.right  <= (innerWidth  || document.documentElement.clientWidth);
-        if (!inView) {
-          currentEl.scrollIntoView({ behavior:'smooth', block:'center', inline:'center' });
-          setTimeout(()=>{ place(); cb&&cb(); }, 250);
-        } else { place(); cb&&cb(); }
-        return;
-      }
-      // ждём до 6 сек появления цели
+      currentEl = findFirstVisible(step.sels);
+      if (currentEl){ place(); return done(); }
+
+      // ждём до 6 сек
       const t0 = performance.now();
       const obs = new MutationObserver(() => {
-        currentEl = firstVisibleAmong(step.sels);
-        if (currentEl || performance.now()-t0 > 6000){
+        currentEl = findFirstVisible(step.sels);
+        if (currentEl || performance.now() - t0 > 6000){
           obs.disconnect();
-          if (currentEl){ place(); cb&&cb(); }
-          else cb&&cb('skip'); // пропустим шаг
+          if (!currentEl) currentEl = phantom; // фолбэк — центр экрана
+          place();
+          done();
         }
       });
       obs.observe(document.body, { childList:true, subtree:true, attributes:true });
     }
 
     function finish(){
-      try { localStorage.setItem(doneKey,'1'); } catch {}
+      try { localStorage.setItem(doneKey, '1'); } catch {}
       layer.remove();
+      phantom.remove();
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place);
       document.removeEventListener('click', onDocClick, true);
-      mo.disconnect();
     }
 
     function show(idx){
@@ -1031,23 +1034,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       layer.classList.add('on');
       backdrop.style.setProperty('--r', '140vh');
 
-      ensureTarget(steps[i], (maybeSkip)=>{
-        if (maybeSkip === 'skip'){ show(i+1); return; }
-        requestAnimationFrame(()=> requestAnimationFrame(place));
+      resolveTarget(steps[i], () => {
+        requestAnimationFrame(() => requestAnimationFrame(place));
       });
     }
 
     function onDocClick(e){
       const step = steps[i];
       if (!step) return;
-      // клик по подсвечиваемой цели тоже двигает дальше
-      const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
-      if (hit) show(i+1);
+      // клик по цели — следующий шаг (если был фолбэк — только по кнопке)
+      if (currentEl !== phantom){
+        const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
+        if (hit) show(i+1);
+      }
     }
-
-    // подстраиваемся к перерисовкам
-    const mo = new MutationObserver(()=>{ if (currentEl && !isVisible(currentEl)) place(); else place(); });
-    mo.observe(document.body, { childList:true, subtree:true, attributes:true });
 
     window.addEventListener('resize', place, { passive:true });
     window.addEventListener('scroll', place, { passive:true });
@@ -1064,8 +1064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   window.FH_startSpotlightTour = async function startSpotlightTour(){
     try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
-    const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    if (prefersReduced) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const okNew = await isNewUserWindow();
     if (!okNew) return;
@@ -1077,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await new Promise((resolve)=>{
         const obs = new MutationObserver(()=>{
           steps = stepsConfigForPath();
-          if (steps.length || performance.now() - t0 > 6000){ obs.disconnect(); resolve(); }
+          if (steps.length || performance.now()-t0 > 6000){ obs.disconnect(); resolve(); }
         });
         obs.observe(document.body, { childList:true, subtree:true });
       });
