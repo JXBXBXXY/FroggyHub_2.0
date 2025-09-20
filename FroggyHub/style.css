@@ -1039,10 +1039,11 @@ body.force-mobile .countdown{ display:none !important; }
 }
 
 /* ===== Spotlight tour (круглая подсветка) ===== */
-/* Убедись, что эти стили подключены один раз (удали дубли). */
-.tour-layer{position:fixed;inset:0;z-index:70;pointer-events:auto;display:none}
-.tour-layer.on{display:block}
-.tour-backdrop{
+/* Spotlight tour — пропускаем клики к целям */
+.tour-layer{ position:fixed; inset:0; z-index:70; display:none; pointer-events:none; }
+.tour-layer.on{ display:block; }
+.tour-backdrop{ pointer-events:none; } /* маска прозрачная для кликов */
+.tour-card, .tour-btn, .tour-arrow{ pointer-events:auto; } /* карточка ловит клики */
   position:absolute;inset:0;
   background:
     radial-gradient(circle at var(--x,50%) var(--y,50%),
