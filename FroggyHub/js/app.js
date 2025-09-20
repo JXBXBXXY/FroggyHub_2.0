@@ -848,139 +848,85 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindProfileRsvpViewer();
 });
 
-/* ===================== SPOTLIGHT TOUR (старт по вызову, мульти-страничный) ===================== */
-(function initFHSpotlightTour(){
+/* ===================== SPOTLIGHT TOUR (старт по вызову) ===================== */
+(function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
+  // ——— утилиты ———
   const TOUR_VERSION = 'v1';
+  const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g,'_') || 'index_html');
+  const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
-  const isVisible = (el) => {
-    if (!el) return false;
-    const s = getComputedStyle(el);
-    if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return false;
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
+  const isNewUserWindow = async () => {
+    // показываем тур только авторизованным и «новым» (1-й визит после логина/регистрации)
+    try {
+      // если ранее пометили «показывали» — не показываем
+      if (localStorage.getItem(pageOnceKey)) return false;
+
+      // быстрый «новый пользователь» — поднято при регистрации/логине в этом сеансе
+      if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
+
+      // fallback: если есть маркер первого входа за последние 48 часов
+      const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
+      if (!ts) return false;
+      return (Date.now() - ts) < 48 * 3600 * 1000;
+    } catch { return false; }
   };
 
-  const byAttr = (val) => `[data-tour="${val}"]`;
+  // ——— адаптивные шаги под текущую страницу ———
+  function stepsConfigForPath() {
+    const steps = [];
 
-  // мягкий поиск: сначала по селекторам, потом эвристики
-  function resolveTarget(candidates, hints = {}) {
-    // 1) явные кандидаты
-    for (const sel of candidates) {
-      const el = document.querySelector(sel);
-      if (el && isVisible(el)) return el;
+    // главная
+    if (/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') {
+      // 1) создать событие
+      steps.push({
+        sel: '[data-tour="home-create"], #create-event',
+        text: 'Создай событие здесь',
+      });
+      // 2) присоединиться по коду
+      steps.push({
+        sel: '[data-tour="home-join"], #join-form, #join-code',
+        text: 'Есть код? Введите его здесь, чтобы присоединиться.',
+      });
+      // 3) профиль
+      steps.push({
+        sel: '[data-tour="home-profile"], #nav-profile, a[href*="profile"]',
+        text: 'Ваши события и вишлисты — в профиле.',
+      });
     }
-    // 2) эвристики
-    if (hints.kind === 'join') {
-      const pool = [
-        '#join-form', '#join-code', 'input#join-code', 'form[action*="join"]',
-        '[name="join"]', '[name="code"]', '[name="join_code"]', '[id*="join"]',
-        'input[placeholder*="6"]', 'input[placeholder*="код"]', 'input[autocomplete="one-time-code"]'
-      ];
-      for (const sel of pool) {
-        const el = document.querySelector(sel);
-        if (el && isVisible(el)) return el;
-      }
+
+    // login.html
+    if (/\/login(\.html)?$/i.test(location.pathname)) {
+      steps.push({ sel: '[data-tour="auth-login"]', text: 'Войдите в аккаунт здесь.' });
+      steps.push({ sel: '#tab-register, [data-tour="auth-register"]', text: 'Нет аккаунта? Зарегистрируйтесь.' });
     }
-    if (hints.kind === 'profile') {
-      const pool = [
-        '#nav-profile', byAttr('home-profile'),
-        'a[href*="profile"]', 'a[href$="profile.html"]', '[data-go="profile"]',
-        'button#profile', '#btn-profile'
-      ];
-      for (const sel of pool) {
-        const el = document.querySelector(sel);
-        if (el && isVisible(el)) return el;
-      }
+
+    // join.html
+    if (/\/join(\.html)?$/i.test(location.pathname)) {
+      steps.push({ sel: '#join-name, [name="name"]', text: 'Напишите, как вас подписать в гостях.' });
+      steps.push({ sel: '[data-rsvp], #join-status-wrap', text: 'Выберите, пойдёте ли вы на событие.' });
+      steps.push({ sel: '#btn-join, #joinSubmit', text: 'Готово? Жмите, чтобы присоединиться.' });
     }
-    return null;
+
+    // lobby.html
+    if (/\/lobby(\.html)?$/i.test(location.pathname)) {
+      steps.push({ sel: '[data-autosave="event"], button, a[role="button"]', text: 'Сохраните событие, когда всё готово.' });
+    }
+
+    // profile.html
+    if (/\/profile(\.html)?$/i.test(location.pathname)) {
+      steps.push({ sel: '.event-card, .event-item, [data-event-id]', text: 'Ваши события — здесь.' });
+      steps.push({ sel: '[data-action="show-rsvps"]', text: 'Посмотрите, кто идёт.' });
+    }
+
+    // отфильтруем по наличию элементов
+    return steps
+      .map(s => ({ ...s, el: document.querySelector(s.sel) }))
+      .filter(s => s.el);
   }
 
-  const stepsConfigForPath = () => {
-    const p = location.pathname.toLowerCase();
-
-    // HOME
-    if (p === '/' || /\/index\.html$/.test(p)) {
-      return [
-        { candidates: [byAttr('home-create'),'[data-go="app"][data-mode="create"]', '#create-event', 'a[href*="event-edit"]'], text: 'Создай событие здесь' },
-        { candidates: [byAttr('home-join'),'#join-form', '#join-code', 'form[action*="join"]'], text: 'Есть код? Введите его здесь, чтобы присоединиться.', hints:{kind:'join'} },
-        { candidates: [byAttr('home-profile'),'#nav-profile','a[href*="profile"]','[data-go="profile"]','a[href$="profile.html"]'], text: 'Ваши события — в профиле.', hints:{kind:'profile'} },
-      ];
-    }
-
-    // AUTH
-    if (/\/(login|auth)\.html$/.test(p)) {
-      return [
-        { candidates: [byAttr('auth-email'),'#loginForm [type="email"]', '#loginForm input[name="email"]', '#loginForm'], text: 'Войдите по e-mail или никнейму.' },
-        { candidates: [byAttr('auth-register'),'#signupForm', '#pane-register', '#tab-register'], text: 'Нет аккаунта? Регистрация здесь.' },
-      ];
-    }
-
-    // EVENT EDIT
-    if (/\/(event|event-edit|create)\.html$/.test(p)) {
-      return [
-        { candidates: [byAttr('edit-title'),'[name="title"]', '#title', '.event-title'], text: 'Дайте событию название.' },
-        { candidates: [byAttr('edit-save'),'[data-action="save"]', 'button[type="submit"]', '[data-autosave="event"]'], text: 'Сохраняйте изменения этой кнопкой.' },
-        { candidates: [byAttr('edit-share'),'[data-action="share"]', '.share', 'a[href*="invite"]'], text: 'Пригласите друзей — поделитесь ссылкой или кодом.' },
-      ];
-    }
-
-    // LOBBY / INVITE / FINAL
-    if (/\/(lobby|invite|final)\.html$/.test(p)) {
-      return [
-        { candidates: [byAttr('lobby-code'),'.event-code', '#evCode', '[data-code]'], text: 'Это код события — отправьте его друзьям.' },
-        { candidates: [byAttr('lobby-wishlist'),'[data-action="wishlist"]', 'a[href*="wishlist"]', '#btn-go-wishlist'], text: 'Откройте вишлист — пусть гости отметят, кто что берёт.' },
-      ];
-    }
-
-    // WISHLIST
-    if (/\/wishlist(\-claim)?\.html$/.test(p)) {
-      return [
-        { candidates: [byAttr('wish-add'),'#form-wish-add', '[name="wish"]', '#wishlist-input'], text: 'Добавьте желаемые вещи или ссылки.' },
-        { candidates: [byAttr('wish-done'),'#btn-wishlist-done', '#link-to-lobby', '[data-action="done"]'], text: 'Готово? Вернитесь в событие.' },
-      ];
-    }
-
-    // PROFILE
-    if (/\/profile\.html$/.test(p)) {
-      return [
-        { candidates: [byAttr('profile-events'),'.event-card', '.event-item', '[data-event-id]'], text: 'Ваши события. Нажмите, чтобы открыть.' },
-        { candidates: [byAttr('profile-rsvps'),'[data-action="show-rsvps"]', '.profile-actions', '.event-actions'], text: 'Посмотрите, кто идёт — список гостей здесь.' },
-      ];
-    }
-
-    return [];
-  };
-
-  // ждём, пока элементы появятся (до 6 сек)
-  const waitForSteps = async (timeoutMs = 6000) => {
-    let steps = [];
-    const deadline = performance.now() + timeoutMs;
-
-    const collect = () => {
-      const cfg = stepsConfigForPath();
-      steps = cfg.map(s => ({ ...s, el: resolveTarget(s.candidates, s.hints) }))
-                 .filter(s => s.el);
-    };
-
-    collect();
-    if (steps.length) return steps;
-
-    await new Promise(res => {
-      const obs = new MutationObserver(() => {
-        collect();
-        if (steps.length || performance.now() > deadline) { obs.disconnect(); res(); }
-      });
-      obs.observe(document.body, { childList:true, subtree:true });
-      setTimeout(()=>{ obs.disconnect(); res(); }, timeoutMs);
-    });
-
-    collect();
-    return steps;
-  };
-
-  const runTour = (steps, pageOnceKey) => {
+  function runTour(steps, doneKey){
     if (!steps.length) return;
 
     const layer = document.createElement('div');
@@ -1004,8 +950,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let i = -1;
 
-    const positionAround = (el) => {
-      const r = el.getBoundingClientRect();
+    const place = () => {
+      const step = steps[i]; if (!step) return;
+
+      const r = step.el.getBoundingClientRect();
       const x = r.left + window.scrollX + r.width/2;
       const y = r.top  + window.scrollY + r.height/2;
       const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
@@ -1019,8 +967,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
       let px = r.left + window.scrollX + (r.width - cw)/2;
-      let py = below ? r.bottom + window.scrollY + 12
-                     : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+      let py = below
+        ? r.bottom + window.scrollY + 12
+        : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
       px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
       py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
@@ -1040,53 +989,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
-    const place = () => {
-      const step = steps[i]; if (!step) return;
-      // обновляем ссылку на элемент (вдруг перерендер)
-      step.el = step.el && isVisible(step.el) ? step.el : resolveTarget(step.candidates, step.hints);
-      if (!step.el) return;
-      positionAround(step.el);
-    };
-
     const finish = () => {
-      try { localStorage.setItem(pageOnceKey, '1'); } catch {}
+      try { localStorage.setItem(doneKey, '1'); } catch {}
+      layer.remove();
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place);
-      layer.remove();
+      document.removeEventListener('click', clickAdvance, true);
     };
 
-    const show = async (idx) => {
+    const show = (idx) => {
       i = idx;
       if (i >= steps.length) return finish();
 
-      // гарантируем видимость: скролл к цели и короткое ожидание
-      const step = steps[i];
-      step.el = step.el && isVisible(step.el) ? step.el : resolveTarget(step.candidates, step.hints);
-      if (!step.el) {
-        // ждём до 1500ms, вдруг дорендерится
-        const t0 = performance.now();
-        await new Promise(r => {
-          const obs = new MutationObserver(() => {
-            step.el = resolveTarget(step.candidates, step.hints);
-            if (step.el || performance.now() - t0 > 1500) { obs.disconnect(); r(); }
-          });
-          obs.observe(document.body, { childList:true, subtree:true });
-          setTimeout(()=>{ obs.disconnect(); r(); }, 1500);
-        });
-      }
-      if (!step.el) return show(i + 1); // пропускаем отсутствующий шаг
-
-      step.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
-      titleEl.textContent = step.text;
-
+      titleEl.textContent = steps[i].text;
       layer.classList.add('on');
+      // эффект «сужения»
       backdrop.style.setProperty('--r', '140vh');
-      setTimeout(place, 60);
+      place();
       requestAnimationFrame(() => requestAnimationFrame(place));
+    };
+
+    const clickAdvance = (e) => {
+      const step = steps[i];
+      if (!step) return;
+      if (e.target.closest(step.sel)) show(i + 1);
     };
 
     window.addEventListener('resize', place, { passive:true });
     window.addEventListener('scroll', place, { passive:true });
+    document.addEventListener('click', clickAdvance, true);
 
     layer.addEventListener('click', (e) => {
       const act = e.target.closest('[data-act]')?.getAttribute('data-act');
@@ -1094,41 +1025,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (act === 'next') return show(i + 1);
     }, { passive:true });
 
-    document.addEventListener('click', (e) => {
-      const step = steps[i]; if (!step) return;
-      if (e.target.closest && step.candidates.some(sel => e.target.closest(sel))) {
-        show(i + 1);
-      }
-    }, true);
-
     requestAnimationFrame(() => show(0));
-  };
-
-  async function isNewUserWindow() {
-    try { return sessionStorage.getItem('fh:newlyRegistered') === '1'; }
-    catch { return false; }
   }
 
+  // публичный стартер
   window.FH_startSpotlightTour = async function startSpotlightTour(){
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (!(await isNewUserWindow())) return;
+    try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
+    const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (prefersReduced) return;
 
-    const pageKey = (location.pathname.toLowerCase() || '/index.html').replace(/[^\w\-\/.]/g, '_');
-    const onceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
-    try { if (localStorage.getItem(onceKey)) return; } catch {}
+    const okNew = await isNewUserWindow();
+    if (!okNew) return;
 
-    const screenOk = (() => {
-      const p = location.pathname.toLowerCase();
-      if (p === '/' || /\/index\.html$/.test(p)) return !document.getElementById('screen-home')?.hasAttribute('hidden');
-      if (/\/(login|auth)\.html$/.test(p))      return true;
-      return true;
-    })();
-    if (!screenOk) return;
-
-    const steps = await waitForSteps(6000);
-    if (!steps.length) return;
-
-    runTour(steps, onceKey);
-  };
-})();
-
+    // ждём DOM (до 6 сек), чтобы элементы точно появились
+    let steps = stepsConfigForPath();
+    const t0 = performance.now();
+    if (!steps.length) {
+      await new Promise(resolve => {
+        const obs = new MutationObserver(() => {
+          steps = stepsConfigForPath();
+          if (steps.length || (performance.now() - t0) > 6000) { obs.disconnect(); resolve(); }
+        });
+        obs.observe(document.body, { childList:true, subtree:true });
+      });
+      if (!steps.length) return;
+    }
