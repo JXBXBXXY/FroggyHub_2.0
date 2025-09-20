@@ -853,18 +853,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.FH_startSpotlightTour) return;
 
   const TOUR_VERSION = 'v1';
-  const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g,'_') || 'index_html');
+  const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
-  const isNewUserWindow = async () => {
+  async function isNewUserWindow() {
     try {
       if (localStorage.getItem(pageOnceKey)) return false;
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
       if (!ts) return false;
       return (Date.now() - ts) < 48 * 3600 * 1000;
-    } catch { return false; }
-  };
+    } catch {
+      return false;
+    }
+  }
 
   function stepsConfigForPath() {
     const steps = [];
@@ -878,7 +880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // LOGIN
     if (/\/login(\.html)?$/i.test(location.pathname)) {
-      steps.push({ sel: '[data-tour="auth-login"]', text: 'Войдите в аккаунт здесь.' });
+      steps.push({ sel: '[data-tour="auth-login"], #loginForm', text: 'Войдите в аккаунт здесь.' });
       steps.push({ sel: '#tab-register, [data-tour="auth-register"]', text: 'Нет аккаунта? Зарегистрируйтесь.' });
     }
 
@@ -901,128 +903,131 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     return steps
-      .map(s => ({ ...s, el: document.querySelector(s.sel) }))
-      .filter(s => s.el);
+      .map(function (s) { return { sel: s.sel, text: s.text, el: document.querySelector(s.sel) }; })
+      .filter(function (s) { return !!s.el; });
   }
 
-  function runTour(steps, doneKey){
+  function runTour(steps, doneKey) {
     if (!steps.length) return;
 
-    const layer = document.createElement('div');
+    var layer = document.createElement('div');
     layer.className = 'tour-layer';
-    layer.innerHTML = `
-      <div class="tour-backdrop"></div>
-      <div class="tour-card" role="dialog" aria-live="polite">
-        <div class="tour-title"></div>
-        <div class="tour-actions">
-          <button class="tour-btn" data-act="skip">Пропустить</button>
-          <button class="tour-btn primary" data-act="next">Понятно</button>
-        </div>
-        <div class="tour-arrow"></div>
-      </div>`;
+    layer.innerHTML =
+      '<div class="tour-backdrop"></div>' +
+      '<div class="tour-card" role="dialog" aria-live="polite">' +
+      '  <div class="tour-title"></div>' +
+      '  <div class="tour-actions">' +
+      '    <button class="tour-btn" data-act="skip">Пропустить</button>' +
+      '    <button class="tour-btn primary" data-act="next">Понятно</button>' +
+      '  </div>' +
+      '  <div class="tour-arrow"></div>' +
+      '</div>';
     document.body.appendChild(layer);
 
-    const backdrop = layer.querySelector('.tour-backdrop');
-    const card     = layer.querySelector('.tour-card');
-    const titleEl  = layer.querySelector('.tour-title');
-    const arrow    = layer.querySelector('.tour-arrow');
+    var backdrop = layer.querySelector('.tour-backdrop');
+    var card     = layer.querySelector('.tour-card');
+    var titleEl  = layer.querySelector('.tour-title');
+    var arrow    = layer.querySelector('.tour-arrow');
 
-    let i = -1;
+    var i = -1;
 
-    const place = () => {
-      const step = steps[i]; if (!step) return;
+    function place() {
+      var step = steps[i]; if (!step) return;
 
-      const r = step.el.getBoundingClientRect();
-      const x = r.left + window.scrollX + r.width/2;
-      const y = r.top  + window.scrollY + r.height/2;
-      const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
+      var r = step.el.getBoundingClientRect();
+      var x = r.left + window.scrollX + r.width / 2;
+      var y = r.top  + window.scrollY + r.height / 2;
+      var radius = Math.round(Math.hypot(r.width, r.height) / 2) + 14;
 
-      backdrop.style.setProperty('--x', `${x}px`);
-      backdrop.style.setProperty('--y', `${y}px`);
-      backdrop.style.setProperty('--r', `${radius}px`);
+      backdrop.style.setProperty('--x', x + 'px');
+      backdrop.style.setProperty('--y', y + 'px');
+      backdrop.style.setProperty('--r', radius + 'px');
 
-      const cw = Math.min(380, Math.max(260, r.width));
-      card.style.width = `${cw}px`;
+      var cw = Math.min(380, Math.max(260, r.width));
+      card.style.width = cw + 'px';
 
-      const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
-      let px = r.left + window.scrollX + (r.width - cw)/2;
-      let py = below
+      var below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
+      var px = r.left + window.scrollX + (r.width - cw) / 2;
+      var py = below
         ? r.bottom + window.scrollY + 12
         : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
       px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
       py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
 
-      card.style.left = `${px}px`;
-      card.style.top  = `${py}px`;
+      card.style.left = px + 'px';
+      card.style.top  = py + 'px';
 
-      const ax = r.left + window.scrollX + r.width/2 - 6;
+      var ax = r.left + window.scrollX + r.width / 2 - 6;
       if (below) {
-        arrow.style.left = `${Math.max(px+12, Math.min(ax, px+cw-24))}px`;
-        arrow.style.top  = `${py - 6}px`;
+        arrow.style.left = Math.max(px + 12, Math.min(ax, px + cw - 24)) + 'px';
+        arrow.style.top  = (py - 6) + 'px';
         arrow.style.transform = 'rotate(45deg)';
       } else {
-        arrow.style.left = `${Math.max(px+12, Math.min(ax, px+cw-24))}px`;
-        arrow.style.top  = `${py + card.offsetHeight - 6}px`;
+        arrow.style.left = Math.max(px + 12, Math.min(ax, px + cw - 24)) + 'px';
+        arrow.style.top  = (py + card.offsetHeight - 6) + 'px';
         arrow.style.transform = 'rotate(225deg)';
       }
-    };
+    }
 
-    const finish = () => {
-      try { localStorage.setItem(doneKey, '1'); } catch {}
+    function finish() {
+      try { localStorage.setItem(doneKey, '1'); } catch (e) {}
       layer.remove();
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place);
       document.removeEventListener('click', clickAdvance, true);
-    };
+    }
 
-    const show = (idx) => {
+    function show(idx) {
       i = idx;
-      if (i >= steps.length) return finish();
+      if (i >= steps.length) { finish(); return; }
 
       titleEl.textContent = steps[i].text;
       layer.classList.add('on');
       backdrop.style.setProperty('--r', '140vh');
       place();
-      requestAnimationFrame(() => requestAnimationFrame(place));
-    };
+      requestAnimationFrame(function(){ requestAnimationFrame(place); });
+    }
 
-    const clickAdvance = (e) => {
-      const step = steps[i];
+    function clickAdvance(e) {
+      var step = steps[i];
       if (!step) return;
       if (e.target.closest(step.sel)) show(i + 1);
-    };
+    }
 
-    window.addEventListener('resize', place, { passive:true });
-    window.addEventListener('scroll', place, { passive:true });
+    window.addEventListener('resize', place, { passive: true });
+    window.addEventListener('scroll', place, { passive: true });
     document.addEventListener('click', clickAdvance, true);
 
-    layer.addEventListener('click', (e) => {
-      const act = e.target.closest('[data-act]')?.getAttribute('data-act');
-      if (act === 'skip') return finish();
-      if (act === 'next') return show(i + 1);
-    }, { passive:true });
+    layer.addEventListener('click', function (e) {
+      var actEl = e.target.closest('[data-act]');
+      if (!actEl) return;
+      var act = actEl.getAttribute('data-act');
+      if (act === 'skip') { finish(); return; }
+      if (act === 'next') { show(i + 1); return; }
+    }, { passive: true });
 
-    requestAnimationFrame(() => show(0));
+    requestAnimationFrame(function(){ show(0); });
   }
 
-  window.FH_startSpotlightTour = async function startSpotlightTour(){
-    try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
-    const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  window.FH_startSpotlightTour = async function startSpotlightTour() {
+    try { if (localStorage.getItem(pageOnceKey)) return; } catch (e) {}
+    var prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (prefersReduced) return;
 
-    const okNew = await isNewUserWindow();
+    var okNew = await isNewUserWindow();
     if (!okNew) return;
 
-    let steps = stepsConfigForPath();
-    const t0 = performance.now();
+    var steps = stepsConfigForPath();
+    var t0 = performance.now();
+
     if (!steps.length) {
-      await new Promise(resolve => {
-        const obs = new MutationObserver(() => {
+      await new Promise(function (resolve) {
+        var obs = new MutationObserver(function () {
           steps = stepsConfigForPath();
           if (steps.length || (performance.now() - t0) > 6000) { obs.disconnect(); resolve(); }
         });
-        obs.observe(document.body, { childList:true, subtree:true });
+        obs.observe(document.body, { childList: true, subtree: true });
       });
       if (!steps.length) return;
     }
@@ -1030,7 +1035,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     runTour(steps, pageOnceKey);
   };
 })();
-        obs.observe(document.body, { childList:true, subtree:true });
-      });
-      if (!steps.length) return;
-    }
