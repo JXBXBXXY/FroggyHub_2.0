@@ -314,8 +314,8 @@ function bindIndexNav() {
     const to = navBtn.getAttribute('data-go');
     const mode = navBtn.getAttribute('data-mode') || '';
     if (to === 'app' && mode === 'create') {
-      try { localStorage.setItem('fh:onboarded','1'); } catch {}
-      window.location.href = '/event-edit.html';
+// try { localStorage.setItem('fh:onboarded','1'); } catch {}
+// ↑ закомментируй эту строку      window.location.href = '/event-edit.html';
       return;
     }
   }, { passive: false });
@@ -804,8 +804,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // >>> запуск тура только когда реально открыт home
   if (!document.getElementById('screen-home')?.hasAttribute('hidden')) {
-    window.FH_startSpotlightTour?.();
-  }
+  window.FH_startSpotlightTour?.();
+}
 
   // 🔔 ШАГ 1: показать подсказку, если пользователь впервые на главной
   showFirstRunHint();
