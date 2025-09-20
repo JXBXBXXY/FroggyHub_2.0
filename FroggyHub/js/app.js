@@ -310,14 +310,18 @@ function bindIndexNav() {
   document.addEventListener('click', (e) => {
     const navBtn = e.target.closest?.('[data-go]');
     if (!navBtn) return;
-    e.preventDefault();
-    const to = navBtn.getAttribute('data-go');
+
+    const to   = navBtn.getAttribute('data-go');
     const mode = navBtn.getAttribute('data-mode') || '';
+
     if (to === 'app' && mode === 'create') {
-// try { localStorage.setItem('fh:onboarded','1'); } catch {}
-// ↑ закомментируй эту строку      window.location.href = '/event-edit.html';
+      e.preventDefault(); // перехватываем и идём на экран создания
+      try { localStorage.setItem('fh:onboarded', '1'); } catch {}
+      window.location.assign('/event-edit.html'); // <— сюда твой роут
       return;
     }
+
+    // для остальных `[data-go]` — по умолчанию ничего не ломаем
   }, { passive: false });
 
   const form      = document.getElementById('join-form');
@@ -325,7 +329,7 @@ function bindIndexNav() {
   const joinInput = document.getElementById('join-code');
 
   if (joinInput) {
-    joinInput.setAttribute('inputmode', 'text'); // буквенно-цифровой код
+    joinInput.setAttribute('inputmode', 'text');
     joinInput.setAttribute('autocomplete', 'one-time-code');
     joinInput.setAttribute('enterkeyhint', 'go');
     joinInput.setAttribute('autocapitalize', 'characters');
@@ -338,17 +342,16 @@ function bindIndexNav() {
       if (joinInput) {
         joinInput.classList.add('input-error');
         setTimeout(()=> joinInput.classList.remove('input-error'), 800);
-        joinInput.focus();
-        joinInput.select?.();
+        joinInput.focus(); joinInput.select?.();
       }
       return;
     }
     window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
   };
 
-  if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); }, { passive: false });
-  if (joinBtn) joinBtn.addEventListener('click', goJoin, { passive: true });
-  joinInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); goJoin(); } }, { passive: false });
+  if (form)     form.addEventListener('submit', (e)=>{ e.preventDefault(); goJoin(); }, { passive:false });
+  if (joinBtn)  joinBtn.addEventListener('click', goJoin, { passive:true });
+  joinInput?.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { e.preventDefault(); goJoin(); } }, { passive:false });
 }
 
 /* -------------------- join.html -------------------- */
