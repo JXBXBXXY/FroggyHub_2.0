@@ -850,97 +850,105 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 /* ===================== SPOTLIGHT TOUR (старт по вызову, все страницы) ===================== */
 (function initFHSpotlightTourStarter(){
-  // не дублируем
   if (window.FH_startSpotlightTour) return;
 
-  // — Настройки показа —
-  const TOUR_VERSION = 'v2';
-  const NEW_USER_WINDOW_HOURS = 12; // сколько часов после регистрации считаем «новым пользователем»
+  const TOUR_VERSION = 'v2.1';
+  const NEW_USER_WINDOW_HOURS = 12;
   const LS_DONE_KEY = `fh:tour:done:${TOUR_VERSION}`;
 
-  // утилита ожидания: пока есть хотя бы один шаг с существующим элементом
-  function buildStepsForPage() {
-    const p = location.pathname.toLowerCase();
+  const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-    // универсальные селекторы (могут присутствовать на нескольких страницах)
+  // утилиты
+  const isVisible = (el) => {
+    if (!el) return false;
+    if (el.hasAttribute('hidden')) return false;
+    const st = getComputedStyle(el);
+    if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
+    // если элемент внутри невидимого .screen — тоже пропускаем
+    const scr = el.closest('.screen');
+    if (scr && scr.hasAttribute('hidden')) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  };
+
+  const q = (sel) => document.querySelector(sel);
+
+  // карта шагов по страницам с БОЛЕЕ ШИРОКИМИ селекторами
+  function stepsConfigForPath(){
     const common = {
-      profile:    { sel: '#nav-profile, a[href*="profile"]', text: 'Ваши события и вишлисты — в профиле.' },
-      settings:   { sel: '#nav-settings, a[href*="settings"], a[href*="account"]', text: 'Здесь можно настроить профиль и уведомления.' },
-      logout:     { sel: '[data-action="logout"], button[name="logout"]', text: 'Завершить сеанс можно тут.' }
+      profile: { sel: '#nav-profile, [data-go="profile"], a[href*="profile"], button[id*="profile"], .btn-profile', text: 'Ваши события и вишлисты — в профиле.' },
+      share:   { sel: '[data-action*="share"], [data-copy="invite"], [data-share], .btn-share', text: 'Поделитесь событием с друзьями.' },
     };
 
-    // карта шагов по страницам
-    /** @type {Record<string, Array<{sel:string,text:string}>>} */
     const map = {
       '/': [
-        { sel: '[data-go="app"][data-mode="create"], #create-event', text: 'Начните с создания события.' },
-        { sel: '#join-form, form[action*="join"], #join-code',       text: 'Уже есть код? Введите его здесь, чтобы присоединиться.' },
+        { sel: '[data-go="app"][data-mode="create"], #create-event, [data-create], .btn-create', text: 'Начните с создания события.' },
+        { sel: '#join-form, form[action*="join"], #join-code, input[name="code"], input[placeholder*="код" i]', text: 'Есть код? Введите его здесь.' },
         common.profile
       ],
       '/index.html': [
-        { sel: '[data-go="app"][data-mode="create"], #create-event', text: 'Начните с создания события.' },
-        { sel: '#join-form, form[action*="join"], #join-code',       text: 'Уже есть код? Введите его здесь, чтобы присоединиться.' },
+        { sel: '[data-go="app"][data-mode="create"], #create-event, [data-create], .btn-create', text: 'Начните с создания события.' },
+        { sel: '#join-form, form[action*="join"], #join-code, input[name="code"], input[placeholder*="код" i]', text: 'Есть код? Введите его здесь.' },
         common.profile
       ],
       '/event-edit.html': [
-        { sel: '[data-autosave="event"], button, [role="button"]',   text: 'Сохраните событие, когда будете готовы.' },
-        { sel: '#event-title, [name="title"]',                       text: 'Дайте событию название.' },
+        { sel: '#event-title, [name="title"], input[placeholder*="назв" i]', text: 'Дайте событию название.' },
         { sel: '#event-date, [type="datetime-local"], [name*="date"]', text: 'Выберите дату и время.' },
-        { sel: '#invite-link, [data-copy="invite"]',                 text: 'Скопируйте приглашение и поделитесь с друзьями.' },
-        common.profile
+        { sel: '[data-autosave="event"], [data-action="save"], button:has(+ [data-action="publish"]), .btn-save', text: 'Сохраните событие, когда будете готовы.' },
+        { sel: '#invite-link, [data-copy="invite"], [data-share], .btn-share', text: 'Скопируйте приглашение и поделитесь.' }
       ],
       '/wishlist.html': [
-        { sel: '#form-wish-add, [name="wish"], #wish-input',         text: 'Добавляйте желания сюда.' },
-        { sel: '#wishlist-box, .wishlist, .chips',                   text: 'Ваш список — здесь. Можно редактировать и удалять.' },
-        { sel: '#btn-wishlist-done, [data-go="lobby"]',              text: 'Готово? Вернёмся к событию отсюда.' }
+        { sel: '#form-wish-add, [name="wish"], #wish-input, form[action*="wish"]', text: 'Добавляйте желания сюда.' },
+        { sel: '#wishlist-box, .wishlist, .chips', text: 'Ваш список — здесь. Можно редактировать.' },
+        { sel: '#btn-wishlist-done, [data-go="lobby"], a[href*="lobby"]', text: 'Готово? Вернёмся к событию отсюда.' }
       ],
       '/wishlist-claim.html': [
-        { sel: '[data-action="claim"], .btn-claim',                  text: 'Забронируйте пункт, чтобы никто не дублировал.' },
-        { sel: '#link-to-lobby, a[href*="lobby"]',                   text: 'Вернуться к событию можно этой ссылкой.' }
+        { sel: '[data-action="claim"], .btn-claim, button[name="claim"]', text: 'Забронируйте пункт, чтобы никто не дублировал.' },
+        { sel: '#link-to-lobby, a[href*="lobby"]', text: 'Вернуться к событию можно этой ссылкой.' }
       ],
       '/lobby.html': [
-        { sel: '.rsvp, [data-rsvp], #join-status-wrap',              text: 'Отметьте, придёте ли вы.' },
-        { sel: '[data-action*="share"], [data-copy="invite"]',       text: 'Поделитесь событием с друзьями.' },
+        { sel: '.rsvp, [data-rsvp], #join-status-wrap', text: 'Отметьте, придёте ли вы.' },
+        common.share,
         common.profile
       ],
       '/profile.html': [
-        { sel: '.event-card, .event-item, [data-event-id]',          text: 'Ваши события — здесь.' },
-        { sel: '[data-action="show-rsvps"]',                         text: 'Посмотрите, кто идёт, одной кнопкой.' },
-        { sel: 'a[href*="event-edit"], [data-go="edit"]',            text: 'Редактируйте событие отсюда.' }
+        { sel: '.event-card, .event-item, [data-event-id]', text: 'Ваши события — здесь.' },
+        { sel: '[data-action="show-rsvps"]', text: 'Посмотрите, кто идёт, одной кнопкой.' },
+        { sel: 'a[href*="event-edit"], [data-go="edit"], .btn-edit', text: 'Редактируйте событие отсюда.' }
       ],
       '/settings.html': [
-        { sel: 'form, .settings-form',                               text: 'Настройки аккаунта — здесь.' },
-        common.logout
+        { sel: 'form, .settings-form', text: 'Настройки аккаунта — здесь.' },
+        { sel: '[data-action="logout"], button[name="logout"], a[href*="logout"]', text: 'Завершить сеанс можно тут.' }
       ]
     };
 
-    // подобрать конфиг по текущему пути
-    const key = Object.keys(map).find(k => k === p) || // точное совпадение
-                Object.keys(map).find(k => k !== '/' && p.endsWith(k)) || // окончание
+    const p = location.pathname.toLowerCase();
+    const key = Object.keys(map).find(k => k === p) ||
+                Object.keys(map).find(k => k !== '/' && p.endsWith(k)) ||
                 (p === '/' ? '/' : '/index.html');
 
-    // отфильтровать шаги по наличию элементов
-    return (map[key] || []).map(s => ({ ...s, el: document.querySelector(s.sel) })).filter(s => s.el);
+    // собрать реальные элементы и отбросить невидимые
+    return (map[key] || [])
+      .map(s => ({ ...s, el: q(s.sel) }))
+      .filter(s => s.el && isVisible(s.el));
   }
 
-  // проверка: пользователь «новый»?
   async function isNewUserWindow() {
     try {
       if (!window.supa?.auth) return false;
       const { data } = await supa.auth.getUser();
       const user = data?.user;
       if (!user?.created_at) return false;
-      const created = new Date(user.created_at).getTime();
-      const diffHours = (Date.now() - created) / 36e5;
+      const diffHours = (Date.now() - new Date(user.created_at).getTime()) / 36e5;
       return diffHours >= 0 && diffHours <= NEW_USER_WINDOW_HOURS;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
-  // общее отображение тура по массиву шагов
-  function runTour(steps, doneKeyForPage) {
+  function runTour(steps, pageOnceKey){
     if (!steps.length) return;
+
+    // если висит одиночная подсказка — снимаем её, чтобы не конфликтовать
+    document.querySelector('.onb-layer')?.remove();
 
     const layer = document.createElement('div');
     layer.className = 'tour-layer';
@@ -964,7 +972,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let i = -1;
 
     const place = () => {
-      const step = steps[i]; if (!step) return;
+      const step = steps[i]; if (!step || !isVisible(step.el)) return;
       const r = step.el.getBoundingClientRect();
       const x = r.left + window.scrollX + r.width/2;
       const y = r.top  + window.scrollY + r.height/2;
@@ -979,9 +987,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
       let px = r.left + window.scrollX + (r.width - cw)/2;
-      let py = below
-        ? r.bottom + window.scrollY + 12
-        : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+      let py = below ? r.bottom + window.scrollY + 12
+                     : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
       px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
       py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
@@ -1004,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const finish = () => {
       layer.remove();
       try { localStorage.setItem(LS_DONE_KEY, '1'); } catch {}
-      if (doneKeyForPage) { try { localStorage.setItem(doneKeyForPage, '1'); } catch {} }
+      if (pageOnceKey) { try { localStorage.setItem(pageOnceKey, '1'); } catch {} }
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place);
     };
@@ -1014,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (i >= steps.length) return finish();
       titleEl.textContent = steps[i].text;
       layer.classList.add('on');
-      backdrop.style.setProperty('--r', '140vh'); // эффект «сужения»
+      backdrop.style.setProperty('--r', '140vh');
       place();
       requestAnimationFrame(() => requestAnimationFrame(place));
     };
@@ -1028,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (act === 'next') return show(i + 1);
     }, { passive:true });
 
-    // клик по целевой зоне тоже двигает вперёд, не мешая действию
+    // клик по целевой зоне тоже двигает вперёд
     document.addEventListener('click', (e) => {
       const step = steps[i]; if (!step) return;
       if (e.target.closest(steps[i].sel)) { show(i + 1); }
@@ -1039,20 +1046,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // публичный стартер
   window.FH_startSpotlightTour = async function startSpotlightTour(){
-    // базовые стоп-факторы
     if (prefersReduced) return;
     try { if (localStorage.getItem(LS_DONE_KEY)) return; } catch {}
 
-    // не показываем на экране авторизации/регистрации
+    // не запускаем, если открыт экран авторизации
     const authVisible = !!document.getElementById('screen-auth') && !document.getElementById('screen-auth').hasAttribute('hidden');
     if (authVisible) return;
 
-    // только для «новых» юзеров по времени регистрации
+    // если уже висит одиночная подсказка — не стартуем (чтобы не дублировать)
+    if (document.querySelector('.onb-layer')) return;
+
+    // только для «новых» пользователей
     const okNew = await isNewUserWindow();
     if (!okNew) return;
 
-    // подготовить шаги для текущей страницы, дождаться элементов (до 5с)
-    let steps = buildStepsForPage();
+    // формируем шаги; ждём DOM до 6 секунд, если пусто
+    let steps = stepsConfigForPath();
     const pageKey = (location.pathname.toLowerCase() || '/index.html').replace(/\W+/g,'_');
     const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
@@ -1060,18 +1069,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!steps.length) {
       const t0 = performance.now();
-      const waiter = new Promise(resolve => {
+      await new Promise(resolve => {
         const obs = new MutationObserver(() => {
-          steps = buildStepsForPage();
-          if (steps.length || performance.now() - t0 > 5000) {
-            obs.disconnect(); resolve();
-          }
+          steps = stepsConfigForPath();
+          if (steps.length || performance.now() - t0 > 6000) { obs.disconnect(); resolve(); }
         });
         obs.observe(document.body, { childList:true, subtree:true });
       });
-      await waiter;
       if (!steps.length) return;
     }
+
+    runTour(steps, pageOnceKey);
+  };
+})();
 
     runTour(steps, pageOnceKey);
   };
