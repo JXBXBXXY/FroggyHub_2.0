@@ -802,8 +802,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.FH_startSpotlightTour?.();
   }
 
-  // 🔔 ШАГ 1: показать подсказку, если пользователь впервые на главной
-  showFirstRunHint();
+  // 🔔 Вместо "плоского" хинта запускаем сразу тур
+window.FH_startSpotlightTour?.();
 
   /* ---------- AUTOSAVE на финальной странице (лоби/финалка) ---------- */
   (function autosaveFinalOnce(){
