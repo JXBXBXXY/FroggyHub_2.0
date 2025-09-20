@@ -969,42 +969,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentEl = null;
 
     function place(){
-      if (!currentEl) return;
-      const r = currentEl.getBoundingClientRect();
-      const x = r.left + window.scrollX + r.width/2;
-      const y = r.top  + window.scrollY + r.height/2;
-      const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
+  if (!currentEl) return;
+  const r = currentEl.getBoundingClientRect();
+  const x = r.left + window.scrollX + r.width/2;
+  const y = r.top  + window.scrollY + r.height/2;
+  const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
 
-      backdrop.style.setProperty('--x', x+'px');
-      backdrop.style.setProperty('--y', y+'px');
-      animateSpotlightTo(radius);
+  backdrop.style.setProperty('--x', x+'px');
+  backdrop.style.setProperty('--y', y+'px');
 
-      const cw = Math.min(380, Math.max(260, r.width || 320));
-      card.style.width = cw+'px';
+  // 🔥 вместо прямого назначения радиуса
+  animateSpotlightTo(radius);
 
-      const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
-      let px = r.left + window.scrollX + (r.width - cw)/2;
-      let py = below ? r.bottom + window.scrollY + 12
-                     : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+  const cw = Math.min(380, Math.max(260, r.width || 320));
+  card.style.width = cw+'px';
 
-      if (currentEl === phantom){
-        px = window.scrollX + (innerWidth - cw)/2;
-        py = window.scrollY + innerHeight*0.65 - (card.offsetHeight || 160)/2;
-      }
+  const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
+  let px = r.left + window.scrollX + (r.width - cw)/2;
+  let py = below ? r.bottom + window.scrollY + 12
+                 : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
-      px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
-      py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
+  if (currentEl === phantom){
+    px = window.scrollX + (innerWidth - cw)/2;
+    py = window.scrollY + innerHeight*0.65 - (card.offsetHeight || 160)/2;
+  }
 
-      card.style.left = px+'px';
-      card.style.top  = `${py}px`;
+  px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
+  py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
 
-      const ax = r.left + window.scrollX + r.width/2 - 6;
-      const arrowX = currentEl === phantom ? (px + cw/2 - 6) : Math.max(px+12, Math.min(ax, px+cw-24));
-      const arrowY = currentEl === phantom ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
-      arrow.style.left = arrowX + 'px';
-      arrow.style.top  = arrowY + 'px';
-      arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
-    }
+  card.style.left = px+'px';
+  card.style.top  = `${py}px`;
+
+  const ax = r.left + window.scrollX + r.width/2 - 6;
+  const arrowX = currentEl === phantom ? (px + cw/2 - 6) : Math.max(px+12, Math.min(ax, px+cw-24));
+  const arrowY = currentEl === phantom ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
+  arrow.style.left = arrowX + 'px';
+  arrow.style.top  = arrowY + 'px';
+  arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
+}
 
     function resolveTarget(step, done){
       currentEl = findFirstVisible(step.sels);
