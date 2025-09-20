@@ -12,42 +12,45 @@
   <!-- иконка -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
 
-  <!-- iOS safe-area + запрет авто-линков телефонов (оставляю как есть) -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- iOS safe-area + запрет авто-линков телефонов -->
   <meta name="format-detection" content="telephone=no">
 
-  <!-- ДОБАВЛЕНО: системные подсказки ОС/браузеру -->
+  <!-- системные подсказки ОС/браузеру -->
   <meta name="color-scheme" content="dark light">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b241b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- ДОБАВЛЕНО: подсказки загрузчику -->
+  <!-- подсказки загрузчику -->
   <link rel="preload" as="image" href="/assets/frog_idle.png" imagesrcset="/assets/frog_idle.png 1x" imagesizes="(max-width:640px) 60vw, 520px">
   <link rel="preload" as="image" href="/assets/stump.png" imagesrcset="/assets/stump.png 1x" imagesizes="(max-width:640px) 60vw, 220px">
   <link rel="dns-prefetch" href="//supabase.co">
   <link rel="dns-prefetch" href="//supabase.net">
 
+  <!-- Минимальный CSS для онбординг-подсказки (append-only) -->
   <style>
-    .fh-bg{position:fixed;inset:0;z-index:0;background:#0b241b url("/assets/froggy_glass_bg.jpeg") center 45%/cover no-repeat;}
-    .fh-bg::after{content:"";position:absolute;inset:0;background:rgba(11,36,27,.55)}
-    .fh-content{position:relative;z-index:20;min-height:100svh;padding-inline:1rem;}
-    /* ДОБАВЛЕНО: корректный 100vh на iOS/Android с адресной строкой */
-    .fh-content{min-height:calc(var(--vh, 1vh) * 100);}
-    .screen[hidden]{display:none !important;}
-
-    #fh-message-clouds{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-    .fh-bubble{position:absolute;padding:8px 14px;border-radius:16px;background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.12);backdrop-filter:saturate(150%) blur(6px);-webkit-backdrop-filter:saturate(150%) blur(6px);
-      color:rgba(255,255,255,.88);font-size:14px;line-height:1.25;box-shadow:0 8px 20px rgba(0,0,0,.25);
-      opacity:0;transform:translate3d(0,0,0) scale(1);transition:opacity .35s ease, transform .35s ease}
-    .fh-bubble--in{opacity:1}.fh-bubble--out{opacity:0;transform:translate3d(0,6px,0) scale(.98)}
-    @media (max-width:640px){.fh-bubble{font-size:12px}}
+    .onb-layer{position:fixed;inset:0;z-index:60;pointer-events:none;}
+    .onb-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;transition:opacity .2s;}
+    .onb-layer.on .onb-backdrop{opacity:1;}
+    .onb-spot{position:absolute;border-radius:12px;box-shadow:0 0 0 2px rgba(79,226,167,.9),0 0 0 8px rgba(79,226,167,.25);transition:all .2s;}
+    .onb-card{
+      position:absolute;max-width:320px;background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;
+      color:#eaf7f1;box-shadow:0 12px 30px rgba(0,0,0,.4);backdrop-filter:saturate(1.2) blur(6px);
+      pointer-events:auto;
+    }
+    .onb-card .ttl{font-weight:900;margin:0 0 6px;}
+    .onb-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+    .onb-close{background:transparent;border:1px solid rgba(255,255,255,.28);color:#eaf7f1;padding:6px 10px;border-radius:10px;cursor:pointer}
+    .onb-ok{background:linear-gradient(180deg,#2e7a62,#1f5c49);border:1px solid rgba(255,255,255,.18);color:#e9fff2;padding:6px 10px;border-radius:10px;cursor:pointer}
+    .onb-arrow{position:absolute;width:10px;height:10px;background:rgba(0,0,0,.55);border-left:1px solid rgba(255,255,255,.14);border-top:1px solid rgba(255,255,255,.14);transform:rotate(45deg)}
+    @media (max-width:640px){ .onb-card{max-width:min(92vw,360px);} }
   </style>
 </head>
 
 <body class="scene-intro" data-page="index">
+  <!-- фоновые сообщения/«облачка» -->
   <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -62,11 +65,11 @@
       </div>
     </nav>
 
+    <!-- Экран авторизации -->
     <section id="screen-auth" class="screen container" role="main" hidden>
       <div class="card auth-card auth-panel" id="authPanel" style="max-width:620px;margin:40px auto">
         <div class="auth-head">
           <div class="auth-avatar">
-            <!-- ДОБАВЛЕНО: width/height + lazy для CLS/производительности -->
             <img src="/assets/frog_idle.png" alt="Froggy" width="56" height="56" loading="lazy" decoding="async" />
           </div>
           <div class="auth-title">
@@ -126,7 +129,6 @@
     <!-- Домашний экран -->
     <section id="screen-home" class="screen visible" role="main">
       <div id="hero" class="hero hero-frog">
-        <!-- ДОБАВЛЕНО: размеры/ленивая загрузка, чтобы снизить CLS и расход трафика -->
         <img class="frog" src="/assets/frog_idle.png" alt="Froggy"
              width="520" height="520" loading="lazy" decoding="async"
              srcset="/assets/frog_idle.png 1x"
@@ -137,12 +139,13 @@
              sizes="(max-width: 640px) 35vw, 220px" />
       </div>
 
-      <div class="menu-deck">
+      <!-- Фикс-панель только на главной -->
+      <div class="menu-deck" data-onb="deck">
         <div class="panel">
           <div class="menu-grid">
-            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
+            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create" data-onb="create">Создать событие</button>
 
-            <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate>
+            <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate data-onb="join">
               <input
                 id="join-code"
                 class="input"
@@ -161,7 +164,9 @@
     </section>
   </div>
 
-  <!-- noscript: сообщение пользователю -->
+  <!-- Слой для первого онбординга -->
+  <div id="onb-layer" class="onb-layer" hidden aria-hidden="true"></div>
+
   <noscript>
     <div class="panel" style="max-width:720px;margin:16px auto">
       Для работы FroggyHub требуется включённый JavaScript.
