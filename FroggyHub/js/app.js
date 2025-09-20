@@ -852,11 +852,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
+  const DEBUG_TOUR = true; // ← можно выключить после проверки
   const TOUR_VERSION = 'v1';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
-  // ---- helpers
+  const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); };
+
   function isVisible(el){
     if (!el) return false;
     const r = el.getBoundingClientRect();
@@ -869,7 +871,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       .map(s => s.trim()).filter(Boolean);
     for (const sel of list){
       const nodes = document.querySelectorAll(sel);
-      for (let i=0;i<nodes.length;i++) if (isVisible(nodes[i])) return nodes[i];
+      for (let i=0;i<nodes.length;i++){
+        if (isVisible(nodes[i])) { log('found', sel, nodes[i]); return nodes[i]; }
+      }
     }
     return null;
   }
@@ -884,48 +888,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch { return false; }
   }
 
-  // шаги описываем селекторами, элемент ищем перед каждым показом
   function stepsConfigForPath(){
     const S = [];
-
-    // HOME (не показываем поверх экрана авторизации)
     const authVisible = !!document.querySelector('#screen-auth:not([hidden])');
+
+    // HOME
     if ((/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') && !authVisible){
-      S.push({ sels: ['[data-tour="home-create"]', '[data-onb="create"]', '#create-event'],
-               text: 'Создай событие здесь' });
-      S.push({ sels: ['[data-tour="home-join"]', '[data-onb="join"]', '#join-form', '#join-code'],
-               text: 'Есть код? Введите его здесь, чтобы присоединиться.' });
-      S.push({ sels: ['[data-tour="home-profile"]', '#nav-profile', 'a[href*="profile"]'],
-               text: 'Ваши события и вишлисты — в профиле.' });
+      S.push({ id:'home-create',
+        sels: ['[data-tour="home-create"]','[data-onb="create"]','#create-event'],
+        text:'Создай событие здесь' });
+      S.push({ id:'home-join',
+        sels: ['[data-tour="home-join"]','[data-onb="join"]','#join-code','#join-form'],
+        text:'Есть код? Введите его здесь, чтобы присоединиться.' });
+      S.push({ id:'home-profile',
+        sels: ['[data-tour="home-profile"]','#nav-profile','a[href*="profile"]'],
+        text:'Ваши события и вишлисты — в профиле.' });
     }
 
     // LOGIN
     if (/\/login(\.html)?$/i.test(location.pathname)){
-      S.push({ sels: ['[data-tour="auth-login"]', '#loginForm'], text: 'Войдите в аккаунт здесь.' });
-      S.push({ sels: ['#tab-register', '[data-tour="auth-register"]'], text: 'Нет аккаунта? Зарегистрируйтесь.' });
+      S.push({ id:'login-form', sels:['[data-tour="auth-login"]','#loginForm'], text:'Войдите в аккаунт здесь.' });
+      S.push({ id:'login-reg',  sels:['#tab-register','[data-tour="auth-register"]'], text:'Нет аккаунта? Зарегистрируйтесь.' });
     }
 
     // JOIN
     if (/\/join(\.html)?$/i.test(location.pathname)){
-      S.push({ sels: ['#join-name', '[name="name"]', '#guestName'], text: 'Напишите, как вас подписать в гостях.' });
-      S.push({ sels: ['[data-rsvp]', '#join-status-wrap'],         text: 'Выберите, пойдёте ли вы на событие.' });
-      S.push({ sels: ['#btn-join', '#joinSubmit'],                  text: 'Готово? Жмите, чтобы присоединиться.' });
+      S.push({ id:'join-name',  sels:['#join-name','[name="name"]','#guestName'], text:'Напишите, как вас подписать в гостях.' });
+      S.push({ id:'join-rsvp',  sels:['[data-rsvp]','#join-status-wrap'],       text:'Выберите, пойдёте ли вы на событие.' });
+      S.push({ id:'join-go',    sels:['#btn-join','#joinSubmit'],               text:'Готово? Жмите, чтобы присоединиться.' });
     }
 
     // LOBBY
     if (/\/lobby(\.html)?$/i.test(location.pathname)){
-      S.push({ sels: ['[data-autosave="event"]', 'button', 'a[role="button"]'],
-               text: 'Сохраните событие, когда всё готово.' });
+      S.push({ id:'lobby-save', sels:['[data-autosave="event"]','a[role="button"]','button'],
+               text:'Сохраните событие, когда всё готово.' });
     }
 
     // PROFILE
     if (/\/profile(\.html)?$/i.test(location.pathname)){
-      S.push({ sels: ['.event-card', '.event-item', '[data-event-id]'],
-               text: 'Ваши события — здесь.' });
-      S.push({ sels: ['[data-action="show-rsvps"]'],
-               text: 'Посмотрите, кто идёт.' });
+      S.push({ id:'prof-events', sels:['.event-card','.event-item','[data-event-id]'], text:'Ваши события — здесь.' });
+      S.push({ id:'prof-rsvp',   sels:['[data-action="show-rsvps"]'],                   text:'Посмотрите, кто идёт.' });
     }
 
+    log('steps for path', location.pathname, S.map(s=>s.id));
     return S;
   }
 
@@ -951,7 +956,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
 
-    // «фантом» для фолбэка (центр экрана)
     const phantom = document.createElement('div');
     phantom.style.cssText = 'position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);pointer-events:none;';
     document.body.appendChild(phantom);
@@ -978,7 +982,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       let py = below ? r.bottom + window.scrollY + 12
                      : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
-      // если фантом (r.width == 0/1), ставим по центру
       if (currentEl === phantom){
         px = window.scrollX + (innerWidth - cw)/2;
         py = window.scrollY + innerHeight*0.65 - (card.offsetHeight || 160)/2;
@@ -999,19 +1002,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function resolveTarget(step, done){
-      // пробуем сразу
       currentEl = findFirstVisible(step.sels);
       if (currentEl){ place(); return done(); }
 
-      // ждём до 6 сек
       const t0 = performance.now();
       const obs = new MutationObserver(() => {
         currentEl = findFirstVisible(step.sels);
         if (currentEl || performance.now() - t0 > 6000){
           obs.disconnect();
-          if (!currentEl) currentEl = phantom; // фолбэк — центр экрана
-          place();
-          done();
+          if (!currentEl) { currentEl = phantom; log('fallback center for step', step.id); }
+          place(); done();
         }
       });
       obs.observe(document.body, { childList:true, subtree:true, attributes:true });
@@ -1019,22 +1019,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function finish(){
       try { localStorage.setItem(doneKey, '1'); } catch {}
-      layer.remove();
-      phantom.remove();
+      layer.remove(); phantom.remove();
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place);
       document.removeEventListener('click', onDocClick, true);
+      log('finish');
     }
 
     function show(idx){
       i = idx;
       if (i >= steps.length) return finish();
-
-      titleEl.textContent = steps[i].text;
+      const step = steps[i];
+      titleEl.textContent = step.text;
       layer.classList.add('on');
       backdrop.style.setProperty('--r', '140vh');
+      log('show step', i, step.id, step.sels);
 
-      resolveTarget(steps[i], () => {
+      resolveTarget(step, () => {
         requestAnimationFrame(() => requestAnimationFrame(place));
       });
     }
@@ -1042,10 +1043,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     function onDocClick(e){
       const step = steps[i];
       if (!step) return;
-      // клик по цели — следующий шаг (если был фолбэк — только по кнопке)
       if (currentEl !== phantom){
         const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
-        if (hit) show(i+1);
+        if (hit) { log('advance by target click'); show(i+1); }
       }
     }
 
@@ -1056,18 +1056,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     layer.addEventListener('click', (e)=>{
       const act = e.target.closest('[data-act]')?.getAttribute('data-act');
       if (act === 'skip') return finish();
-      if (act === 'next') return show(i+1);
+      if (act === 'next') { log('advance by button'); return show(i+1); }
     }, { passive:true });
 
     requestAnimationFrame(()=> show(0));
   }
 
   window.FH_startSpotlightTour = async function startSpotlightTour(){
-    try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
+    try { if (localStorage.getItem(pageOnceKey)) { log('already shown once'); return; } } catch {}
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const okNew = await isNewUserWindow();
-    if (!okNew) return;
+    if (!okNew) { log('not a new user window'); return; }
 
     let steps = stepsConfigForPath();
     const t0 = performance.now();
@@ -1080,7 +1080,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         obs.observe(document.body, { childList:true, subtree:true });
       });
-      if (!steps.length) return;
+      if (!steps.length) { log('no steps after wait'); return; }
     }
 
     runTour(steps, pageOnceKey);
