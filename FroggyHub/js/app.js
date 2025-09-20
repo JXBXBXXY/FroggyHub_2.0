@@ -642,96 +642,114 @@ function bindProfileRsvpViewer() {
 }
 
 /* -------------------- First-run hint (ШАГ 1) -------------------- */
+/* Обновлено: ждём появления и видимости #screen-home, не показываем на авторизации */
 function showFirstRunHint() {
-  // только на главной, только один раз
-  const isHome = /\/(index\.html)?$/.test(location.pathname) || location.pathname === '/';
-  if (!isHome) return;
+  // только на главной и только один раз
+  const isHomePath = /\/(index\.html)?$/.test(location.pathname) || location.pathname === '/';
+  if (!isHomePath || prefersReduced) return;
   try { if (localStorage.getItem('fh:onboarded')) return; } catch {}
 
-  const btn = document.getElementById('create-event');
-  if (!btn) return;
+  const startIfReady = () => {
+    const home = document.getElementById('screen-home');
+    const auth = document.getElementById('screen-auth');
+    const homeVisible = !!home && !home.hasAttribute('hidden');
+    const authVisible = !!auth && !auth.hasAttribute('hidden');
+    const btn = document.getElementById('create-event');
+    if (!homeVisible || authVisible || !btn) return false;
 
-  // создаём слой
-  const layer = document.createElement('div');
-  layer.className = 'onb-layer';
-  layer.innerHTML = `
-    <div class="onb-backdrop" data-act="close"></div>
-    <div class="onb-spot"></div>
-    <div class="onb-card" role="dialog" aria-live="polite">
-      <div class="onb-text">Создай событие здесь</div>
-      <div class="onb-actions">
-        <button class="onb-btn" data-act="close">Понятно</button>
-        <button class="onb-btn primary" data-act="go">Создать</button>
+    // создаём слой
+    const layer = document.createElement('div');
+    layer.className = 'onb-layer';
+    layer.innerHTML = `
+      <div class="onb-backdrop" data-act="close"></div>
+      <div class="onb-spot"></div>
+      <div class="onb-card" role="dialog" aria-live="polite">
+        <div class="onb-text">Создай событие здесь</div>
+        <div class="onb-actions">
+          <button class="onb-btn" data-act="close">Понятно</button>
+          <button class="onb-btn primary" data-act="go">Создать</button>
+        </div>
+        <div class="onb-arrow"></div>
       </div>
-      <div class="onb-arrow"></div>
-    </div>
-  `;
-  document.body.appendChild(layer);
+    `;
+    document.body.appendChild(layer);
 
-  // позиционирование
-  const place = () => {
-    const r = btn.getBoundingClientRect();
-    const spot = layer.querySelector('.onb-spot');
-    const card = layer.querySelector('.onb-card');
-    const arrow= layer.querySelector('.onb-arrow');
-    const pad = 10;
+    const place = () => {
+      const r = btn.getBoundingClientRect();
+      const spot = layer.querySelector('.onb-spot');
+      const card = layer.querySelector('.onb-card');
+      const arrow= layer.querySelector('.onb-arrow');
+      const pad = 10;
 
-    spot.style.left = `${r.left + window.scrollX - 6}px`;
-    spot.style.top  = `${r.top  + window.scrollY - 6}px`;
-    spot.style.width = `${r.width + 12}px`;
-    spot.style.height= `${r.height+ 12}px`;
+      spot.style.left = `${r.left + window.scrollX - 6}px`;
+      spot.style.top  = `${r.top  + window.scrollY - 6}px`;
+      spot.style.width = `${r.width + 12}px`;
+      spot.style.height= `${r.height+ 12}px`;
 
-    const cw = Math.min(360, Math.max(260, r.width));
-    const below = (r.bottom + 16 + 180 < window.scrollY + window.innerHeight); // хватит места снизу?
-    card.style.width = `${cw}px`;
+      const cw = Math.min(360, Math.max(260, r.width));
+      const below = (r.bottom + 16 + 180 < window.scrollY + window.innerHeight);
+      card.style.width = `${cw}px`;
 
-    let x = r.left + window.scrollX + (r.width - cw)/2;
-    let y = (below ? r.bottom + window.scrollY + pad : r.top + window.scrollY - pad - card.offsetHeight);
+      let x = r.left + window.scrollX + (r.width - cw)/2;
+      let y = (below ? r.bottom + window.scrollY + pad : r.top + window.scrollY - pad - card.offsetHeight);
 
-    // в экран
-    x = Math.max(12 + window.scrollX, Math.min(x, window.scrollX + innerWidth - cw - 12));
-    y = Math.max(12 + window.scrollY, Math.min(y, window.scrollY + innerHeight - card.offsetHeight - 12));
+      x = Math.max(12 + window.scrollX, Math.min(x, window.scrollX + innerWidth - cw - 12));
+      y = Math.max(12 + window.scrollY, Math.min(y, window.scrollY + innerHeight - card.offsetHeight - 12));
 
-    card.style.left = `${x}px`;
-    card.style.top  = `${y}px`;
+      card.style.left = `${x}px`;
+      card.style.top  = `${y}px`;
 
-    // стрелка
-    const ax = r.left + window.scrollX + r.width/2 - 6; // 12px square
-    if (below) {
-      arrow.style.left = `${Math.max(x+12, Math.min(ax, x+cw-24))}px`;
-      arrow.style.top  = `${y - 6}px`;
-      arrow.style.transform = 'rotate(45deg)'; // уголком вверх к кнопке
-    } else {
-      arrow.style.left = `${Math.max(x+12, Math.min(ax, x+cw-24))}px`;
-      arrow.style.top  = `${y + card.offsetHeight - 6}px`;
-      arrow.style.transform = 'rotate(225deg)'; // уголком вниз к кнопке
-    }
+      const ax = r.left + window.scrollX + r.width/2 - 6;
+      if (below) {
+        arrow.style.left = `${Math.max(x+12, Math.min(ax, x+cw-24))}px`;
+        arrow.style.top  = `${y - 6}px`;
+        arrow.style.transform = 'rotate(45deg)';
+      } else {
+        arrow.style.left = `${Math.max(x+12, Math.min(ax, x+cw-24))}px`;
+        arrow.style.top  = `${y + card.offsetHeight - 6}px`;
+        arrow.style.transform = 'rotate(225deg)';
+      }
+    };
+
+    const close = (mark=true) => {
+      layer.classList.remove('on');
+      layer.remove();
+      if (mark) { try { localStorage.setItem('fh:onboarded','1'); } catch {} }
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onResize);
+      vv?.removeEventListener?.('resize', onResize);
+    };
+
+    const onResize = debounce(place, 50);
+    window.addEventListener('resize', onResize, { passive:true });
+    window.addEventListener('scroll', onResize, { passive:true });
+    const vv = window.visualViewport;
+    vv?.addEventListener?.('resize', onResize, { passive:true });
+
+    layer.addEventListener('click', (e)=>{
+      const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+      if (!act) return;
+      if (act === 'close') close(true);
+      if (act === 'go') { close(true); btn.click(); }
+    }, { passive:true });
+
+    btn.addEventListener('click', () => close(true), { once:true, passive:true });
+
+    layer.classList.add('on');
+    setTimeout(place, 0);
+    return true;
   };
 
-  const close = (mark=true) => {
-    layer.classList.remove('on');
-    layer.remove();
-    if (mark) { try { localStorage.setItem('fh:onboarded','1'); } catch {} }
-    window.removeEventListener('resize', onResize);
-    window.removeEventListener('scroll', onResize, { passive:true });
-  };
+  if (startIfReady()) return;
 
-  const onResize = debounce(place, 50);
-  window.addEventListener('resize', onResize, { passive:true });
-  window.addEventListener('scroll', onResize, { passive:true });
+  // ждём, пока домашний экран станет видимым (после логина)
+  const obs = new MutationObserver(() => {
+    if (startIfReady()) obs.disconnect();
+  });
+  obs.observe(document.body, { attributes:true, subtree:true, childList:true });
 
-  layer.addEventListener('click', (e)=>{
-    const act = e.target.closest('[data-act]')?.getAttribute('data-act');
-    if (!act) return;
-    if (act === 'close') close(true);
-    if (act === 'go') { close(true); btn.click(); }
-  }, { passive:true });
-
-  btn.addEventListener('click', () => close(true), { once:true, passive:true });
-
-  layer.classList.add('on');
-  // чуть позже, когда DOM измерится
-  setTimeout(place, 0);
+  // не висим бесконечно
+  setTimeout(() => obs.disconnect(), 10000);
 }
 
 /* -------------------- init -------------------- */
@@ -829,6 +847,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // подключаем просмотр гостей в профиле (после рендера профиля)
   bindProfileRsvpViewer();
 });
+
 /* ===================== SPOTLIGHT TOUR (старт по вызову) ===================== */
 (function initFHSpotlightTourStarter(){
   // создаём функцию-стартер в window, но НИЧЕГО не запускаем сами
