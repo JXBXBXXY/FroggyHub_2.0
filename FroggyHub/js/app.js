@@ -1003,20 +1003,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       arrow.style.top =arrowY+'px';
       arrow.style.transform=below?'rotate(45deg)':'rotate(225deg)';
     }
-    function resolveTarget(step, done){
-      currentEl = findFirstVisible(step.sels, step.matchText);
-      if (currentEl){ place(); return done(); }
-      const t0=performance.now();
-      const obs=new MutationObserver(()=>{
-        currentEl = findFirstVisible(step.sels, step.matchText);
-        if (currentEl || performance.now()-t0>6000){
-          obs.disconnect();
-          if (!currentEl) currentEl=phantom;
-          place(); done();
-        }
-      });
-      obs.observe(document.body,{childList:true,subtree:true,attributes:true});
+   function resolveTarget(step, done){
+  currentEl = findFirstVisible(step.sels, step.matchText);
+  if (currentEl){ place(); return done(); }
+
+  // ждём до 10 секунд появления таргета
+  const t0 = performance.now();
+  const obs = new MutationObserver(() => {
+    currentEl = findFirstVisible(step.sels, step.matchText);
+    if (currentEl || performance.now() - t0 > 10000){
+      obs.disconnect();
+      if (!currentEl) currentEl = phantom; // fallback
+      place(); done();
     }
+  });
+  obs.observe(document.body, { childList:true, subtree:true, attributes:true });
+}
     function finish(){
       try { localStorage.setItem(doneKey,'1'); } catch {}
       layer.remove(); phantom.remove();
