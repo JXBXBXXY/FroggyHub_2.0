@@ -718,6 +718,9 @@ function showFirstRunHint() {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', onResize);
       vv?.removeEventListener?.('resize', onResize);
+
+      // <<< ДОБАВЛЕНО: стартуем тур сразу после закрытия подсказки
+      try { window.FH_startSpotlightTour?.(); } catch {}
     };
 
     const onResize = debounce(place, 50);
@@ -852,7 +855,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
-  const DEBUG_TOUR = true; // ← можно выключить после проверки
+  const DEBUG_TOUR = true; // ← включено для проверки (можно выключить)
   const TOUR_VERSION = 'v1';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
@@ -878,18 +881,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     return null;
   }
 
-  // >>> FIX: показываем тур один раз всем, даже если нет firstLoginTs
   async function isNewUserWindow() {
     try {
-      if (localStorage.getItem(pageOnceKey)) return false; // уже показывали на этой странице
+      // форсаж показа: DEBUG_TOUR или fh:tour:force=1
+      if (DEBUG_TOUR) return true;
+      if (localStorage.getItem('fh:tour:force') === '1') return true;
+
+      if (localStorage.getItem(pageOnceKey)) return false;
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
-      if (ts && (Date.now() - ts) < 48 * 3600 * 1000) return true;
-      // если маркеры отсутствуют — показываем тур ОДИН РАЗ
-      return true;
-    } catch {
-      return true;
-    }
+      if (!ts) return false;
+      return (Date.now() - ts) < 48*3600*1000;
+    } catch { return false; }
   }
 
   function stepsConfigForPath(){
@@ -943,6 +946,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const layer = document.createElement('div');
     layer.className = 'tour-layer';
+    layer.style.zIndex = 2147483647; // поверх всего
     layer.innerHTML =
       '<div class="tour-backdrop"></div>' +
       '<div class="tour-card" role="dialog" aria-live="polite">' +
@@ -1047,9 +1051,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function onDocClick(e){
       const step = steps[i];
       if (!step) return;
+
+      // если кликаем по целевому элементу — продвигаем ШАГ и блокируем нативный клик/навигацию
       if (currentEl !== phantom){
         const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
-        if (hit) { log('advance by target click'); show(i+1); }
+        if (hit) {
+          e.preventDefault();
+          e.stopPropagation();
+          log('advance by target click (prevented native)');
+          show(i+1);
+        }
       }
     }
 
