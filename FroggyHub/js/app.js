@@ -1082,7 +1082,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     runTour(steps, pageOnceKey);
   };
 })();
-
-    runTour(steps, pageOnceKey);
-  };
-})();
