@@ -950,7 +950,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const card     = layer.querySelector('.tour-card');
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
-
+// внутри runTour, после создания элементов layer/backdrop
+function animateSpotlightTo(targetPx){
+  const start = Math.max(targetPx * 1.18, targetPx + 40);
+  backdrop.style.setProperty('--r', start + 'px');
+  requestAnimationFrame(() => {
+    backdrop.style.setProperty('--r', targetPx + 'px');
+  });
+}
     // локальная функция плавного «сужения» круга
    function animateSpotlightTo(targetPx){
   const start = Math.max(targetPx * 1.18, targetPx + 40);
@@ -968,41 +975,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     let i = -1;
     let currentEl = null;
 
-    function place(){
+  function place(){
   if (!currentEl) return;
   const r = currentEl.getBoundingClientRect();
-  const x = r.left + window.scrollX + r.width/2;
-  const y = r.top  + window.scrollY + r.height/2;
-  const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
 
-  backdrop.style.setProperty('--x', x+'px');
-  backdrop.style.setProperty('--y', y+'px');
+  // центр «дыры» в градиенте — во viewport-координатах
+  const x = r.left + r.width / 2;
+  const y = r.top  + r.height / 2;
+  const radius = Math.round(Math.hypot(r.width, r.height) / 2) + 14;
 
-  // 🔥 вместо прямого назначения радиуса
+  backdrop.style.setProperty('--x', x + 'px');
+  backdrop.style.setProperty('--y', y + 'px');
+
+  // плавное сужение вместо прямой установки:
   animateSpotlightTo(radius);
 
   const cw = Math.min(380, Math.max(260, r.width || 320));
-  card.style.width = cw+'px';
+  card.style.width = cw + 'px';
 
-  const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
-  let px = r.left + window.scrollX + (r.width - cw)/2;
-  let py = below ? r.bottom + window.scrollY + 12
-                 : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+  const below = (r.bottom + 16 + 160 < window.innerHeight);
+  let px = r.left + (r.width - cw) / 2;
+  let py = below ? (r.bottom + 12) : (r.top - (card.offsetHeight || 160) - 12);
 
+  // «фантом» — центр экрана
   if (currentEl === phantom){
-    px = window.scrollX + (innerWidth - cw)/2;
-    py = window.scrollY + innerHeight*0.65 - (card.offsetHeight || 160)/2;
+    px = (window.innerWidth - cw) / 2;
+    py = window.innerHeight * 0.65 - (card.offsetHeight || 160) / 2;
   }
 
-  px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
-  py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
+  // в пределах вьюпорта
+  px = Math.max(12, Math.min(px, window.innerWidth  - cw  - 12));
+  py = Math.max(12, Math.min(py, window.innerHeight - (card.offsetHeight || 160) - 12));
 
-  card.style.left = px+'px';
-  card.style.top  = `${py}px`;
+  card.style.left = px + 'px';
+  card.style.top  = py + 'px';
 
-  const ax = r.left + window.scrollX + r.width/2 - 6;
-  const arrowX = currentEl === phantom ? (px + cw/2 - 6) : Math.max(px+12, Math.min(ax, px+cw-24));
-  const arrowY = currentEl === phantom ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
+  // стрелка
+  const ax = r.left + r.width / 2 - 6;
+  const arrowX = (currentEl === phantom) ? (px + cw/2 - 6) : Math.max(px + 12, Math.min(ax, px + cw - 24));
+  const arrowY = (currentEl === phantom) ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
   arrow.style.left = arrowX + 'px';
   arrow.style.top  = arrowY + 'px';
   arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
