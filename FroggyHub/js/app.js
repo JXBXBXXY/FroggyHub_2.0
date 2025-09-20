@@ -952,13 +952,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const arrow    = layer.querySelector('.tour-arrow');
 
     // локальная функция плавного «сужения» круга
-    function animateSpotlightTo(targetPx){
-      const start = Math.max(targetPx * 1.18, targetPx + 40);
-      backdrop.style.setProperty('--r', start + 'px');
-      requestAnimationFrame(() => {
-        backdrop.style.setProperty('--r', targetPx + 'px');
-      });
-    }
+   function animateSpotlightTo(targetPx){
+  const start = Math.max(targetPx * 1.18, targetPx + 40);
+  backdrop.style.setProperty('--r', start + 'px');
+  requestAnimationFrame(() => {
+    backdrop.style.setProperty('--r', targetPx + 'px');
+  });
+}
 
     // «фантом», если не нашли target — центрируем карточку
     const phantom = document.createElement('div');
