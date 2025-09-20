@@ -642,9 +642,7 @@ function bindProfileRsvpViewer() {
 }
 
 /* -------------------- First-run hint (ШАГ 1) -------------------- */
-/* Обновлено: ждём появления и видимости #screen-home, не показываем на авторизации */
 function showFirstRunHint() {
-  // только на главной и только один раз
   const isHomePath = /\/(index\.html)?$/.test(location.pathname) || location.pathname === '/';
   if (!isHomePath || prefersReduced) return;
   try { if (localStorage.getItem('fh:onboarded')) return; } catch {}
@@ -657,7 +655,6 @@ function showFirstRunHint() {
     const btn = document.getElementById('create-event');
     if (!homeVisible || authVisible || !btn) return false;
 
-    // создаём слой
     const layer = document.createElement('div');
     layer.className = 'onb-layer';
     layer.innerHTML = `
@@ -742,13 +739,11 @@ function showFirstRunHint() {
 
   if (startIfReady()) return;
 
-  // ждём, пока домашний экран станет видимым (после логина)
   const obs = new MutationObserver(() => {
     if (startIfReady()) obs.disconnect();
   });
   obs.observe(document.body, { attributes:true, subtree:true, childList:true });
 
-  // не висим бесконечно
   setTimeout(() => obs.disconnect(), 10000);
 }
 
@@ -804,8 +799,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // >>> запуск тура только когда реально открыт home
   if (!document.getElementById('screen-home')?.hasAttribute('hidden')) {
-  window.FH_startSpotlightTour?.();
-}
+    window.FH_startSpotlightTour?.();
+  }
 
   // 🔔 ШАГ 1: показать подсказку, если пользователь впервые на главной
   showFirstRunHint();
@@ -852,11 +847,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
-  const DEBUG_TOUR = false;         // можно включить для логов
+  const DEBUG_TOUR = false;
   const TOUR_VERSION = 'v1';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
-  const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); };
+  const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); }
 
   function isVisible(el){
     if (!el) return false;
@@ -882,7 +877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (localStorage.getItem(pageOnceKey)) return false;
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
-      if (!ts) return true; // разрешим показать хотя бы раз
+      if (!ts) return true;
       return (Date.now() - ts) < 48*3600*1000;
     } catch { return true; }
   }
@@ -948,13 +943,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       '  </div>' +
       '  <div class="tour-arrow"></div>' +
       '</div>';
-    layer.style.zIndex = '2147483647'; // максимально поверх всего
+    layer.style.zIndex = '2147483647';
     document.body.appendChild(layer);
 
     const backdrop = layer.querySelector('.tour-backdrop');
     const card     = layer.querySelector('.tour-card');
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
+
+    // локальная функция плавного «сужения» круга
+    function animateSpotlightTo(targetPx){
+      const start = Math.max(targetPx * 1.18, targetPx + 40);
+      backdrop.style.setProperty('--r', start + 'px');
+      requestAnimationFrame(() => {
+        backdrop.style.setProperty('--r', targetPx + 'px');
+      });
+    }
 
     // «фантом», если не нашли target — центрируем карточку
     const phantom = document.createElement('div');
@@ -973,7 +977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       backdrop.style.setProperty('--x', x+'px');
       backdrop.style.setProperty('--y', y+'px');
-      backdrop.style.setProperty('--r', radius+'px');
+      animateSpotlightTo(radius);
 
       const cw = Math.min(380, Math.max(260, r.width || 320));
       card.style.width = cw+'px';
@@ -1042,7 +1046,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function onDocClick(e){
-      // клики по кнопкам тура не прокидываем
       if (e.target.closest('.tour-card') || e.target.closest('.tour-backdrop')) return;
       const step = steps[i];
       if (!step) return;
