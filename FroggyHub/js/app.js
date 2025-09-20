@@ -824,3 +824,121 @@ document.addEventListener('DOMContentLoaded', async () => {
   // подключаем просмотр гостей в профиле (после рендера профиля)
   bindProfileRsvpViewer();
 });
+/* ===================== SPOTLIGHT TOUR (без правок HTML) ===================== */
+(function FH_SpotlightTour(){
+  const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  try { if (localStorage.getItem('fh:tour:v1')) return; } catch {}
+  if (prefersReduced) return;
+
+  const isHome = /\/(?:index\.html)?$/.test(location.pathname) || location.pathname === '/';
+  if (!isHome) return;
+
+  // Точки фокуса — подбираем элементы «как есть» в твоей верстке
+  const steps = [
+    { sel: '[data-go="app"][data-mode="create"], #create-event', text: 'Здесь вы можете начать творить!' },
+    { sel: '#join-form, form[action*="join"], #join-code',       text: 'Есть код? Введите его здесь, чтобы присоединиться.' },
+    { sel: '#nav-profile, a[href*="profile"]',                   text: 'Ваши события и вишлисты — в профиле.' },
+  ].map(s => ({ ...s, el: document.querySelector(s.sel) })).filter(s => s.el);
+
+  if (!steps.length) return;
+
+  // Слой + карточка создаются кодом — HTML трогать не надо
+  const layer = document.createElement('div');
+  layer.className = 'tour-layer';
+  layer.innerHTML = `
+    <div class="tour-backdrop"></div>
+    <div class="tour-card" role="dialog" aria-live="polite">
+      <div class="tour-title"></div>
+      <div class="tour-actions">
+        <button class="tour-btn" data-act="skip">Пропустить</button>
+        <button class="tour-btn primary" data-act="next">Понятно</button>
+      </div>
+      <div class="tour-arrow"></div>
+    </div>`;
+  document.body.appendChild(layer);
+
+  const backdrop = layer.querySelector('.tour-backdrop');
+  const card     = layer.querySelector('.tour-card');
+  const titleEl  = layer.querySelector('.tour-title');
+  const arrow    = layer.querySelector('.tour-arrow');
+
+  let i = -1;
+
+  const place = () => {
+    const step = steps[i]; if (!step) return;
+    const r = step.el.getBoundingClientRect();
+
+    const x = r.left + window.scrollX + r.width/2;
+    const y = r.top  + window.scrollY + r.height/2;
+    const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
+
+    backdrop.style.setProperty('--x', `${x}px`);
+    backdrop.style.setProperty('--y', `${y}px`);
+    backdrop.style.setProperty('--r', `${radius}px`);
+
+    const cw = Math.min(380, Math.max(260, r.width));
+    card.style.width = `${cw}px`;
+
+    // стараемся поставить описание рядом
+    const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
+    let px = r.left + window.scrollX + (r.width - cw)/2;
+    let py = below
+      ? r.bottom + window.scrollY + 12
+      : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+
+    px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
+    py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
+
+    card.style.left = `${px}px`;
+    card.style.top  = `${py}px`;
+
+    const ax = r.left + window.scrollX + r.width/2 - 6;
+    if (below) {
+      arrow.style.left = `${Math.max(px+12, Math.min(ax, px+cw-24))}px`;
+      arrow.style.top  = `${py - 6}px`;
+      arrow.style.transform = 'rotate(45deg)';
+    } else {
+      arrow.style.left = `${Math.max(px+12, Math.min(ax, px+cw-24))}px`;
+      arrow.style.top  = `${py + card.offsetHeight - 6}px`;
+      arrow.style.transform = 'rotate(225deg)';
+    }
+  };
+
+  const show = (idx) => {
+    i = idx;
+    if (i >= steps.length) return finish();
+    titleEl.textContent = steps[i].text;
+    layer.classList.add('on');
+    // «сужение» из большого радиуса в цель
+    backdrop.style.setProperty('--r', '140vh');
+    place();
+    requestAnimationFrame(() => requestAnimationFrame(place));
+  };
+
+  const finish = () => {
+    layer.remove();
+    try { localStorage.setItem('fh:tour:v1','1'); } catch {}
+  };
+
+  const onLayout = () => place();
+  window.addEventListener('resize', onLayout, { passive:true });
+  window.addEventListener('scroll', onLayout, { passive:true });
+
+  layer.addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+    if (act === 'skip') finish();
+    if (act === 'next') show(i + 1);
+  }, { passive:true });
+
+  // Клик по целевому элементу тоже двигает тур (и не ломает твою логику)
+  document.addEventListener('click', (e) => {
+    const step = steps[i]; if (!step) return;
+    if (e.target.closest(step.el)) {
+      e.preventDefault(); e.stopPropagation();
+      show(i + 1);
+    }
+  }, true);
+
+  // Запуск после первого кадра (когда всё отрисовано)
+  window.requestAnimationFrame(() => show(0));
+})();
