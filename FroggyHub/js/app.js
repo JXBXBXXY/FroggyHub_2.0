@@ -846,7 +846,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.FH_startSpotlightTour) return;
 
   const DEBUG_TOUR = false;
-  const TOUR_VERSION = 'v1';
+  const TOUR_VERSION = 'v2';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
   const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); }
@@ -878,14 +878,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 }
 
   async function isNewUserWindow() {
-    try {
-      if (localStorage.getItem(pageOnceKey)) return false;
-      if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
-      const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
-      if (!ts) return true;
-      return (Date.now() - ts) < 48*3600*1000;
-    } catch { return true; }
+  try {
+    // показываем, если ещё ни разу не показывали на этой странице
+    return !localStorage.getItem(pageOnceKey);
+  } catch {
+    return true;
   }
+}
 
   function stepsConfigForPath(){
     const S = [];
