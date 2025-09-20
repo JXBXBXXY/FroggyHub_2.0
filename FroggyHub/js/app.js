@@ -794,7 +794,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ensureLobbyParamsFromDraft();
   bootBubbles();
 
-    const session = await ensureSession();
+  const session = await ensureSession();
   if (session) {
     document.getElementById('screen-auth')?.remove();
     showScreen('screen-home');
@@ -878,14 +878,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     return null;
   }
 
+  // >>> FIX: показываем тур один раз всем, даже если нет firstLoginTs
   async function isNewUserWindow() {
     try {
-      if (localStorage.getItem(pageOnceKey)) return false;
+      if (localStorage.getItem(pageOnceKey)) return false; // уже показывали на этой странице
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
-      if (!ts) return false;
-      return (Date.now() - ts) < 48*3600*1000;
-    } catch { return false; }
+      if (ts && (Date.now() - ts) < 48 * 3600 * 1000) return true;
+      // если маркеры отсутствуют — показываем тур ОДИН РАЗ
+      return true;
+    } catch {
+      return true;
+    }
   }
 
   function stepsConfigForPath(){
