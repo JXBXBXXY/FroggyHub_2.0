@@ -800,13 +800,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     showScreen('screen-auth');
   }
 
-  // >>> запуск тура только когда реально открыт home
-  if (!document.getElementById('screen-home')?.hasAttribute('hidden')) {
-    window.FH_startSpotlightTour?.();
-  }
-
-  // 🔔 Вместо "плоского" хинта запускаем сразу тур
-window.FH_startSpotlightTour?.();
+  // запускаем тур (сам подберёт шаги по текущему pathname)
+  window.FH_startSpotlightTour?.();
 
   /* ---------- AUTOSAVE на финальной странице (лоби/финалка) ---------- */
   (function autosaveFinalOnce(){
@@ -915,11 +910,20 @@ window.FH_startSpotlightTour?.();
       S.push({ id:'join-go',    sels:['#btn-join','#joinSubmit'],               text:'Готово? Жмите, чтобы присоединиться.' });
     }
 
-    // LOBBY
-    if (/\/lobby(\.html)?$/i.test(location.pathname)){
-      S.push({ id:'lobby-save', sels:['[data-autosave="event"]','a[role="button"]','button'],
-               text:'Сохраните событие, когда всё готово.' });
-    }
+    // LOBBY + FINAL
+if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)){
+  S.push({
+    id: 'final-save',
+    // сначала ищем явную кнопку с data-autosave, потом — обычные кнопки в карточке
+    sels: [
+      '[data-autosave="event"]',
+      '.final-card .btn-primary',
+      '.final-actions .btn',
+      'button'
+    ],
+    text: 'Сохраните событие, чтобы пригласить друзей 🎉'
+  });
+}
 
     // PROFILE
     if (/\/profile(\.html)?$/i.test(location.pathname)){
@@ -955,14 +959,6 @@ window.FH_startSpotlightTour?.();
     const arrow    = layer.querySelector('.tour-arrow');
 // внутри runTour, после создания элементов layer/backdrop
 function animateSpotlightTo(targetPx){
-  const start = Math.max(targetPx * 1.18, targetPx + 40);
-  backdrop.style.setProperty('--r', start + 'px');
-  requestAnimationFrame(() => {
-    backdrop.style.setProperty('--r', targetPx + 'px');
-  });
-}
-    // локальная функция плавного «сужения» круга
-   function animateSpotlightTo(targetPx){
   const start = Math.max(targetPx * 1.18, targetPx + 40);
   backdrop.style.setProperty('--r', start + 'px');
   requestAnimationFrame(() => {
