@@ -125,24 +125,14 @@
 
     <!-- Домашний экран -->
     <section id="screen-home" class="screen visible" role="main">
-      <div id="hero" class="hero hero-frog">
-        <!-- ДОБАВЛЕНО: размеры/ленивая загрузка, чтобы снизить CLS и расход трафика -->
-        <img class="frog" src="/assets/frog_idle.png" alt="Froggy"
-             width="520" height="520" loading="lazy" decoding="async"
-             srcset="/assets/frog_idle.png 1x"
-             sizes="(max-width: 640px) 72vw, 520px" />
-        <img class="stump" src="/assets/stump.png" alt="" aria-hidden="true"
-             width="220" height="120" loading="lazy" decoding="async"
-             srcset="/assets/stump.png 1x"
-             sizes="(max-width: 640px) 35vw, 220px" />
-      </div>
-
-      <div class="menu-deck">
+      <div class="menu-deck" id="menuDeck" data-onb="deck">
         <div class="panel">
           <div class="menu-grid">
-            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create">Создать событие</button>
+            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create" data-onb="create">
+              Создать событие
+            </button>
 
-            <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate>
+            <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate data-onb="join">
               <input
                 id="join-code"
                 class="input"
@@ -160,6 +150,10 @@
       </div>
     </section>
   </div>
+
+  <!-- Коучмарки и тосты -->
+  <div id="coachLayer" aria-live="polite" aria-atomic="true"></div>
+  <div id="toastLayer" aria-live="polite" aria-atomic="true"></div>
 
   <!-- noscript: сообщение пользователю -->
   <noscript>
