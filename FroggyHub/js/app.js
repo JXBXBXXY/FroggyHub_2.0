@@ -776,12 +776,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   ensureLobbyParamsFromDraft();
   bootBubbles();
 
-  const session = await ensureSession();
+    const session = await ensureSession();
   if (session) {
     document.getElementById('screen-auth')?.remove();
     showScreen('screen-home');
   } else {
     showScreen('screen-auth');
+  }
+
+  // >>> запуск тура только когда реально открыт home
+  if (!document.getElementById('screen-home')?.hasAttribute('hidden')) {
+    window.FH_startSpotlightTour?.();
   }
 
   // 🔔 ШАГ 1: показать подсказку, если пользователь впервые на главной
