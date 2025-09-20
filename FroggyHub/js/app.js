@@ -1132,6 +1132,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 })();
 
-    runTour(steps, onceKey);
-  };
-})();
