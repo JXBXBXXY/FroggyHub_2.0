@@ -718,9 +718,6 @@ function showFirstRunHint() {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', onResize);
       vv?.removeEventListener?.('resize', onResize);
-
-      // <<< ДОБАВЛЕНО: стартуем тур сразу после закрытия подсказки
-      try { window.FH_startSpotlightTour?.(); } catch {}
     };
 
     const onResize = debounce(place, 50);
@@ -851,15 +848,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindProfileRsvpViewer();
 });
 
-/* ===================== SPOTLIGHT TOUR (старт по вызову) ===================== */
+/* ===================== SPOTLIGHT TOUR (круглый) ===================== */
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
-  const DEBUG_TOUR = true; // ← включено для проверки (можно выключить)
+  const DEBUG_TOUR = false;         // можно включить для логов
   const TOUR_VERSION = 'v1';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
-
   const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); };
 
   function isVisible(el){
@@ -883,16 +879,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function isNewUserWindow() {
     try {
-      // форсаж показа: DEBUG_TOUR или fh:tour:force=1
-      if (DEBUG_TOUR) return true;
-      if (localStorage.getItem('fh:tour:force') === '1') return true;
-
       if (localStorage.getItem(pageOnceKey)) return false;
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
-      if (!ts) return false;
+      if (!ts) return true; // разрешим показать хотя бы раз
       return (Date.now() - ts) < 48*3600*1000;
-    } catch { return false; }
+    } catch { return true; }
   }
 
   function stepsConfigForPath(){
@@ -946,7 +938,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const layer = document.createElement('div');
     layer.className = 'tour-layer';
-    layer.style.zIndex = 2147483647; // поверх всего
     layer.innerHTML =
       '<div class="tour-backdrop"></div>' +
       '<div class="tour-card" role="dialog" aria-live="polite">' +
@@ -957,6 +948,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       '  </div>' +
       '  <div class="tour-arrow"></div>' +
       '</div>';
+    layer.style.zIndex = '2147483647'; // максимально поверх всего
     document.body.appendChild(layer);
 
     const backdrop = layer.querySelector('.tour-backdrop');
@@ -964,6 +956,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
 
+    // «фантом», если не нашли target — центрируем карточку
     const phantom = document.createElement('div');
     phantom.style.cssText = 'position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);pointer-events:none;';
     document.body.appendChild(phantom);
@@ -999,7 +992,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
 
       card.style.left = px+'px';
-      card.style.top  = py+'px';
+      card.style.top  = `${py}px`;
 
       const ax = r.left + window.scrollX + r.width/2 - 6;
       const arrowX = currentEl === phantom ? (px + cw/2 - 6) : Math.max(px+12, Math.min(ax, px+cw-24));
@@ -1049,18 +1042,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function onDocClick(e){
+      // клики по кнопкам тура не прокидываем
+      if (e.target.closest('.tour-card') || e.target.closest('.tour-backdrop')) return;
       const step = steps[i];
       if (!step) return;
-
-      // если кликаем по целевому элементу — продвигаем ШАГ и блокируем нативный клик/навигацию
       if (currentEl !== phantom){
         const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
-        if (hit) {
-          e.preventDefault();
-          e.stopPropagation();
-          log('advance by target click (prevented native)');
-          show(i+1);
-        }
+        if (hit) { log('advance by target click'); show(i+1); }
       }
     }
 
