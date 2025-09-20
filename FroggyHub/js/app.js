@@ -164,7 +164,7 @@ const BubbleController = (() => {
   return { spawn, destroy };
 })();
 
-/** Надёжная раскладка пузырьков (Safari-safe) — публичная оболочка для обратной совместимости */
+/** Надёжная раскладка пузырьков — публичная оболочка */
 function spawnBubbles(container, count) {
   BubbleController.spawn(container, count);
 }
@@ -314,6 +314,7 @@ function bindIndexNav() {
     const to = navBtn.getAttribute('data-go');
     const mode = navBtn.getAttribute('data-mode') || '';
     if (to === 'app' && mode === 'create') {
+      try { localStorage.setItem('fh:onboarded','1'); } catch {}
       window.location.href = '/event-edit.html';
       return;
     }
@@ -640,6 +641,99 @@ function bindProfileRsvpViewer() {
   }, { passive: true });
 }
 
+/* -------------------- First-run hint (ШАГ 1) -------------------- */
+function showFirstRunHint() {
+  // только на главной, только один раз
+  const isHome = /\/(index\.html)?$/.test(location.pathname) || location.pathname === '/';
+  if (!isHome) return;
+  try { if (localStorage.getItem('fh:onboarded')) return; } catch {}
+
+  const btn = document.getElementById('create-event');
+  if (!btn) return;
+
+  // создаём слой
+  const layer = document.createElement('div');
+  layer.className = 'onb-layer';
+  layer.innerHTML = `
+    <div class="onb-backdrop" data-act="close"></div>
+    <div class="onb-spot"></div>
+    <div class="onb-card" role="dialog" aria-live="polite">
+      <div class="onb-text">Создай событие здесь</div>
+      <div class="onb-actions">
+        <button class="onb-btn" data-act="close">Понятно</button>
+        <button class="onb-btn primary" data-act="go">Создать</button>
+      </div>
+      <div class="onb-arrow"></div>
+    </div>
+  `;
+  document.body.appendChild(layer);
+
+  // позиционирование
+  const place = () => {
+    const r = btn.getBoundingClientRect();
+    const spot = layer.querySelector('.onb-spot');
+    const card = layer.querySelector('.onb-card');
+    const arrow= layer.querySelector('.onb-arrow');
+    const pad = 10;
+
+    spot.style.left = `${r.left + window.scrollX - 6}px`;
+    spot.style.top  = `${r.top  + window.scrollY - 6}px`;
+    spot.style.width = `${r.width + 12}px`;
+    spot.style.height= `${r.height+ 12}px`;
+
+    const cw = Math.min(360, Math.max(260, r.width));
+    const below = (r.bottom + 16 + 180 < window.scrollY + window.innerHeight); // хватит места снизу?
+    card.style.width = `${cw}px`;
+
+    let x = r.left + window.scrollX + (r.width - cw)/2;
+    let y = (below ? r.bottom + window.scrollY + pad : r.top + window.scrollY - pad - card.offsetHeight);
+
+    // в экран
+    x = Math.max(12 + window.scrollX, Math.min(x, window.scrollX + innerWidth - cw - 12));
+    y = Math.max(12 + window.scrollY, Math.min(y, window.scrollY + innerHeight - card.offsetHeight - 12));
+
+    card.style.left = `${x}px`;
+    card.style.top  = `${y}px`;
+
+    // стрелка
+    const ax = r.left + window.scrollX + r.width/2 - 6; // 12px square
+    if (below) {
+      arrow.style.left = `${Math.max(x+12, Math.min(ax, x+cw-24))}px`;
+      arrow.style.top  = `${y - 6}px`;
+      arrow.style.transform = 'rotate(45deg)'; // уголком вверх к кнопке
+    } else {
+      arrow.style.left = `${Math.max(x+12, Math.min(ax, x+cw-24))}px`;
+      arrow.style.top  = `${y + card.offsetHeight - 6}px`;
+      arrow.style.transform = 'rotate(225deg)'; // уголком вниз к кнопке
+    }
+  };
+
+  const close = (mark=true) => {
+    layer.classList.remove('on');
+    layer.remove();
+    if (mark) { try { localStorage.setItem('fh:onboarded','1'); } catch {} }
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('scroll', onResize, { passive:true });
+  };
+
+  const onResize = debounce(place, 50);
+  window.addEventListener('resize', onResize, { passive:true });
+  window.addEventListener('scroll', onResize, { passive:true });
+
+  layer.addEventListener('click', (e)=>{
+    const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+    if (!act) return;
+    if (act === 'close') close(true);
+    if (act === 'go') { close(true); btn.click(); }
+  }, { passive:true });
+
+  btn.addEventListener('click', () => close(true), { once:true, passive:true });
+
+  layer.classList.add('on');
+  // чуть позже, когда DOM измерится
+  setTimeout(place, 0);
+}
+
 /* -------------------- init -------------------- */
 function bootBubbles() {
   const root = document.querySelector('.fh-bubbles');
@@ -689,6 +783,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     showScreen('screen-auth');
   }
+
+  // 🔔 ШАГ 1: показать подсказку, если пользователь впервые на главной
+  showFirstRunHint();
 
   /* ---------- AUTOSAVE на финальной странице (лоби/финалка) ---------- */
   (function autosaveFinalOnce(){
