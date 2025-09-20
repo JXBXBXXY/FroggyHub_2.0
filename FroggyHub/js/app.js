@@ -838,10 +838,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindProfileRsvpViewer();
 });
 
-/* ===================== SPOTLIGHT TOUR ===================== */
-(function initFHSpotlightTourStarter(){
-  if (window.FH_startSpotlightTour) return;
+/* ===================== SPOTLIGHT TOUR (глобальный, без IIFE) ===================== */
 
+// Если уже определено (другим скриптом) — не переопределяем
+if (!window.FH_startSpotlightTour || !window.FH_debugResetTour) {
   const DEBUG_TOUR = false;
   const TOUR_VERSION = 'v2';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
@@ -938,7 +938,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       '  </div>' +
       '  <div class="tour-arrow"></div>' +
       '</div>';
-    layer.style.zIndex = '2147483647';
     document.body.appendChild(layer);
 
     const backdrop = layer.querySelector('.tour-backdrop');
@@ -1048,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     requestAnimationFrame(()=> show(0));
   }
 
-  // ПУБЛИЧНЫЙ стартер
+  // === ГЛОБАЛЬНЫЕ функции: доступны в консоли ===
   window.FH_startSpotlightTour = async function startSpotlightTour(opts={}){
     const force = !!opts.force;
 
@@ -1074,10 +1073,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     runTour(steps);
   };
 
-  // удобный сброс/запуск из консоли
   window.FH_debugResetTour = function(){
     Object.keys(localStorage).forEach(k => { if (k.startsWith('fh:tour:page:')) localStorage.removeItem(k); });
     sessionStorage.setItem('fh:newUserJustSigned','1');
     window.FH_startSpotlightTour({force:true});
   };
-})();
+}
