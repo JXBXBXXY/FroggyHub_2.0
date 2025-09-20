@@ -719,3 +719,47 @@ body > *{ position:relative; z-index:1; }
 .coach-card[data-pos="top"] .coach-arrow{ bottom:-7px; left:18px; }
 .coach-card[data-pos="left"] .coach-arrow{ right:-7px; top:18px; }
 .coach-card[data-pos="right"] .coach-arrow{ left:-7px; top:18px; }
+
+/* ---------------- PATCH: фикс «бара» присоединения/создания ---------------- */
+
+/* Базовое позиционирование «панели» по центру низа экрана.
+   Без удаления исходных правил: переопределяем лишь необходимое. */
+.menu-deck{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  /* безопасная зона для iOS + не прыгать от адресной строки */
+  bottom: max(12px, calc(10px + env(safe-area-inset-bottom)));
+  width: min(880px, 92vw);
+  z-index: 70;                 /* поверх пузырей/декора */
+  pointer-events: none;        /* сама колода не ловит клики... */
+}
+
+/* ...но интерактивы внутри ловят */
+.menu-deck > *,
+.menu-grid > *,
+.join-row > *{
+  pointer-events: auto;
+}
+
+/* На очень узких — растягиваем на всю ширину и убираем translate */
+@media (max-width: 520px){
+  .menu-deck{
+    left: 0;
+    right: 0;
+    transform: none;
+    margin: 0 auto;
+    width: auto;
+    padding: 0 12px;
+  }
+}
+
+/* Сетка/адаптив как у тебя, дополнил безопасные зоны */
+.menu-grid{display:grid; grid-template-columns:1fr auto; gap:12px;}
+.join-row{display:grid; gap:12px; grid-template-columns:1fr auto;}
+@media (max-width:600px){
+  .menu-grid{ grid-template-columns: 1fr; }
+  .join-row{ grid-template-columns: 1fr; }
+}
+
+/* -------------------------------------------------------------------------- */
