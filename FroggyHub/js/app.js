@@ -11,7 +11,7 @@ const DPR = window.devicePixelRatio || 1;
 /* ----- стабильные 100vh на мобильных (iOS/Android адресная строка) ----- */
 function setVhVar() {
   const vh = window.innerHeight * 0.01;
-  document.documentElement.style.setProperty('--vh', `${vh}px`);
+  document.documentElement.style.setProperty('--vh', ${vh}px);
 }
 setVhVar();
 window.addEventListener('resize', setVhVar, { passive: true });
@@ -91,8 +91,8 @@ const BubbleController = (() => {
       for (let tries = 0; tries < 80; tries++) {
         const x = 24 + Math.random() * maxX;
         const y = 24 + Math.random() * maxY;
-        el.style.left = `${x}px`;
-        el.style.top  = `${y}px`;
+        el.style.left = ${x}px;
+        el.style.top  = ${y}px;
         const r1 = el.getBoundingClientRect();
         if (!placed.some(p => rectsOverlap(r1, p.getBoundingClientRect(), 8))) return { x, y };
       }
@@ -134,8 +134,8 @@ const BubbleController = (() => {
             const c2 = container.getBoundingClientRect();
             const nx = Math.max(8, Math.min(c2.width  - width  - 8, anchor.x + dx));
             const ny = Math.max(8, Math.min(c2.height - height - 8, anchor.y + dy));
-            el.style.left = `${nx}px`;
-            el.style.top  = `${ny}px`;
+            el.style.left = ${nx}px;
+            el.style.top  = ${ny}px;
             el.classList.remove('fh-bubble--out');
             requestAnimationFrame(()=> el.classList.add('fh-bubble--in'));
             loop();
@@ -246,7 +246,7 @@ function bindAuthForms() {
       if (!emailRaw && !nickname) return showMsg(statusEl, 'Введите e-mail или никнейм');
       if (!password) return showMsg(statusEl, 'Введите пароль');
 
-      const email = emailRaw || (nickname ? `${nickname}@local` : '');
+      const email = emailRaw || (nickname ? ${nickname}@local : '');
       showMsg(statusEl, 'Входим…', true);
 
       try {
@@ -342,7 +342,7 @@ function bindIndexNav() {
       }
       return;
     }
-    window.location.href = `/join.html?code=${encodeURIComponent(code)}`;
+    window.location.href = /join.html?code=${encodeURIComponent(code)};
   };
 
   if (form) form.addEventListener('submit', (e) => { e.preventDefault(); goJoin(); }, { passive: false });
@@ -393,7 +393,7 @@ function bindJoinPage() {
         const { data, error } = await supa
           .from('events')
           .select('id, code, join_code, title')
-          .or(`code.eq.${code},join_code.eq.${code}`)
+          .or(code.eq.${code},join_code.eq.${code})
           .maybeSingle();
         if (error) throw error;
         return data;
@@ -428,11 +428,6 @@ function bindJoinPage() {
         return;
       }
 
-      // APPENDED: маленькая подсказка после входа по коду
-      try {
-        document.dispatchEvent(new Event('event:joined'));
-      } catch {}
-
       try {
         const draft = {
           id: ev.id,
@@ -448,15 +443,15 @@ function bindJoinPage() {
       const codeForUrl = encodeURIComponent(ev.code || ev.join_code || codeParam || '');
       const nameForUrl = encodeURIComponent(name);
       const claimUrl =
-        `/wishlist-claim.html?event=${ev.id}&code=${codeForUrl}` +
-        `&guest=${nameForUrl}&name=${nameForUrl}&guestName=${nameForUrl}&from=join`;
+        /wishlist-claim.html?event=${ev.id}&code=${codeForUrl} +
+        &guest=${nameForUrl}&name=${nameForUrl}&guestName=${nameForUrl}&from=join;
 
       try {
         const head = await fetch('/wishlist-claim.html', { method: 'HEAD' });
         if (head.ok) window.location.href = claimUrl;
-        else window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
+        else window.location.href = /lobby.html?event=${ev.id}&code=${codeForUrl};
       } catch {
-        window.location.href = `/lobby.html?event=${ev.id}&code=${codeForUrl}`;
+        window.location.href = /lobby.html?event=${ev.id}&code=${codeForUrl};
       }
     } catch (err) {
       console.error('[join] insert rsvp exception:', err);
@@ -469,9 +464,6 @@ function bindJoinPage() {
 function bindWishlistBridge() {
   if (!/\/wishlist\.html/i.test(location.pathname)) return;
 
-  // APPENDED: тост при открытии вишлиста
-  try { document.dispatchEvent(new Event('wishlist:opened')); } catch {}
-
   const getDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}'); } catch { return {}; } };
   const setDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)); } catch {} };
 
@@ -483,8 +475,8 @@ function bindWishlistBridge() {
   const linkLobby = document.getElementById('link-to-lobby');
   if (linkLobby) {
     const d = getDraft();
-    if (d?.id)       linkLobby.href = `/lobby.html?event=${encodeURIComponent(d.id)}`;
-    else if (d?.code)linkLobby.href = `/lobby.html?code=${encodeURIComponent(d.code)}`;
+    if (d?.id)       linkLobby.href = /lobby.html?event=${encodeURIComponent(d.id)};
+    else if (d?.code)linkLobby.href = /lobby.html?code=${encodeURIComponent(d.code)};
   }
 
   if (form) form.addEventListener('submit', () => {}, { passive: true });
@@ -494,7 +486,7 @@ function bindWishlistBridge() {
     const sp = new URLSearchParams();
     if (d?.id) sp.set('event', d.id);
     else if (d?.code) sp.set('code', String(d.code));
-    location.href = '/lobby.html' + (sp.toString() ? `?${sp.toString()}` : '');
+    location.href = '/lobby.html' + (sp.toString() ? ?${sp.toString()} : '');
   };
 
   const syncFromDOMToDraft = () => {
@@ -576,7 +568,7 @@ function bindProfileRsvpViewer() {
     const wrap = document.createElement('div');
     wrap.className = 'glass-section rsvps-panel';
     wrap.dataset.for = String(evId);
-    wrap.innerHTML = `
+    wrap.innerHTML = 
       <div class="section-title">Кто идёт</div>
       <div class="stats">
         <span class="badge yes">Да: ${groups.yes.length}</span>
@@ -586,18 +578,18 @@ function bindProfileRsvpViewer() {
       <div class="guests-columns">
         <div>
           <div class="bubble-head">Да</div>
-          <ul class="list">${groups.yes.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
+          <ul class="list">${groups.yes.map(n=><li>${n}</li>).join('') || '<li>—</li>'}</ul>
         </div>
         <div>
           <div class="bubble-head">Может быть</div>
-          <ul class="list">${groups.maybe.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
+          <ul class="list">${groups.maybe.map(n=><li>${n}</li>).join('') || '<li>—</li>'}</ul>
         </div>
         <div>
           <div class="bubble-head">Нет</div>
-          <ul class="list">${groups.no.map(n=>`<li>${n}</li>`).join('') || '<li>—</li>'}</ul>
+          <ul class="list">${groups.no.map(n=><li>${n}</li>).join('') || '<li>—</li>'}</ul>
         </div>
       </div>
-    `;
+    ;
     return wrap;
   };
 
@@ -681,157 +673,6 @@ function bootBubbles() {
   mq.addEventListener?.('change', apply);
 })();
 
-/* -------------------- TOAST (микроуведомления) -------------------- */
-function showToast(text, ms = 2500){
-  const layer = document.getElementById('toastLayer');
-  if (!layer) return;
-  const el = document.createElement('div');
-  el.className = 'toast-box';
-  el.textContent = text;
-  layer.appendChild(el);
-  setTimeout(()=> {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(6px)';
-    setTimeout(()=> el.remove(), 180);
-  }, ms);
-}
-
-/* -------------------- COACHMARKS (онбординг) -------------------- */
-const ONB_KEY = 'fh:onb:v1:done';
-
-function runOnboardingIfNeeded(){
-  if (prefersReduced) return; // уважим reduce motion
-  try { if (localStorage.getItem(ONB_KEY)) return; } catch {}
-
-  const coach = {
-    i: 0,
-    steps: [
-      {
-        sel: '[data-onb="deck"]',
-        pos: 'bottom',
-        tip: 'Привет! Здесь — два пути: создать своё событие или присоединиться по коду.'
-      },
-      {
-        sel: '[data-onb="create"]',
-        pos: 'top',
-        tip: 'Нажми «Создать событие», чтобы выбрать дату, место и собрать вишлист.'
-      },
-      {
-        sel: '[data-onb="join"]',
-        pos: 'top',
-        tip: 'Уже прислали код? Введи его сюда — и отметь, идёшь ли.'
-      }
-    ],
-    layer: document.getElementById('coachLayer'),
-    backdrop: null,
-    card: null,
-    spot: null,
-    place(step){
-      const target = document.querySelector(step.sel);
-      if (!target) return false;
-
-      const r = target.getBoundingClientRect();
-      const pad = 6;
-      // Спот (подсветка)
-      this.spot.style.left = `${window.scrollX + r.left - 6}px`;
-      this.spot.style.top  = `${window.scrollY + r.top  - 6}px`;
-      this.spot.style.width = `${r.width + 12}px`;
-      this.spot.style.height= `${r.height+ 12}px`;
-
-      // Карточка
-      const cw = Math.min(420, Math.max(260, r.width));
-      this.card.style.width = cw+'px';
-      let x = window.scrollX + r.left;
-      let y = window.scrollY + r.bottom + pad;
-      let pos = step.pos || 'bottom';
-
-      if (pos === 'top') y = window.scrollY + r.top - this.card.offsetHeight - pad;
-      if (pos === 'left') { x = window.scrollX + r.left - cw - pad; y = window.scrollY + r.top; }
-      if (pos === 'right'){ x = window.scrollX + r.right + pad; y = window.scrollY + r.top; }
-
-      // центрирование по умолчанию
-      if (pos === 'bottom' || pos === 'top') {
-        x = window.scrollX + r.left + (r.width - cw)/2;
-      }
-
-      // экранные границы
-      x = Math.max(12 + window.scrollX, Math.min(x, window.scrollX + innerWidth - cw - 12));
-      y = Math.max(12 + window.scrollY, Math.min(y, window.scrollY + innerHeight - this.card.offsetHeight - 12));
-
-      this.card.style.left = x+'px';
-      this.card.style.top  = y+'px';
-      this.card.setAttribute('data-pos', pos);
-
-      return true;
-    },
-    show(i){
-      this.i = i;
-      const step = this.steps[i];
-      if (!step) return this.end(true);
-
-      if (!this.layer) return;
-
-      if (!this.backdrop){
-        this.backdrop = document.createElement('div');
-        this.backdrop.className='coach-backdrop';
-        this.layer.appendChild(this.backdrop);
-
-        this.spot = document.createElement('div');
-        this.spot.className='coach-spot';
-        this.layer.appendChild(this.spot);
-
-        this.card = document.createElement('div');
-        this.card.className='coach-card';
-        this.card.innerHTML = `
-          <div class="coach-text"></div>
-          <div class="coach-actions">
-            <button class="btn btn--ghost" data-act="skip">Пропустить</button>
-            <button class="btn btn--primary" data-act="next">Дальше</button>
-          </div>
-          <div class="coach-arrow"></div>
-        `;
-        this.layer.appendChild(this.card);
-
-        this.layer.addEventListener('click', (e)=>{
-          const bNext = e.target.closest('[data-act="next"]');
-          const bSkip = e.target.closest('[data-act="skip"]');
-          if (bSkip) this.end(true);
-          if (bNext) this.next();
-        }, { passive: true });
-
-        window.addEventListener('resize', debounce(()=> this.place(this.steps[this.i]), 80), { passive:true });
-        window.addEventListener('scroll', debounce(()=> this.place(this.steps[this.i]), 80), { passive:true });
-      }
-
-      const ok = this.place(step);
-      if (!ok) return this.next(); // если элемент не нашёлся — идём дальше
-
-      this.card.querySelector('.coach-text').textContent = step.tip;
-      requestAnimationFrame(()=>{
-        this.backdrop.classList.add('on');
-        this.card.classList.add('on');
-      });
-    },
-    next(){
-      if (this.i + 1 >= this.steps.length) return this.end(true);
-      this.show(this.i + 1);
-    },
-    end(markDone){
-      if (markDone) { try { localStorage.setItem(ONB_KEY, '1'); } catch {} }
-      if (!this.layer) return;
-      this.layer.innerHTML = '';
-    }
-  };
-
-  // автозапуск через короткую паузу, чтобы всё дорендерилось
-  setTimeout(()=> coach.show(0), 350);
-
-  // микро-подсказка при фокусе поля кода
-  const code = document.getElementById('join-code');
-  code?.addEventListener('focus', ()=> showToast('Код присылает организатор события'));
-}
-
-/* -------------------- BOOT -------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
   bindTabs();
   bindAuthForms();
@@ -840,41 +681,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindWishlistBridge();
   ensureLobbyParamsFromDraft();
   bootBubbles();
-
-  // APPENDED: простой онбординг при самом первом входе
-  try {
-    if (!localStorage.getItem('fh:onboarded')) {
-      alert('Добро пожаловать! Нажмите «Создать событие», чтобы начать 🚀');
-      localStorage.setItem('fh:onboarded','1');
-    }
-  } catch {}
-
-  // APPENDED: чеклист + публичное API
-  function updateChecklist(step){
-    const box = document.getElementById('checklist');
-    if (!box) return;
-    box.hidden = false;
-    const li = box.querySelector(`li[data-step="${step}"]`);
-    if (li) li.classList.add('done');
-  }
-  window.FH = window.FH || {};
-  window.FH.updateChecklist = updateChecklist;
-  window.FH.created = function(){ document.dispatchEvent(new Event('event:created')); };
-
-  // APPENDED: события для тостов и чеклиста
-  document.addEventListener('event:created', ()=>{
-    showToast('Скопируй код и отправь друзьям ✨');
-    updateChecklist('create');
-    updateChecklist('share');
-  });
-  document.addEventListener('event:joined', ()=>{
-    showToast('Ты в событии, отметь идёшь или нет 🙌');
-    updateChecklist('rsvp');
-  });
-  document.addEventListener('wishlist:opened', ()=>{
-    showToast('Добавь подарок, чтобы друзья знали 🎁');
-    updateChecklist('wishlist');
-  });
 
   const session = await ensureSession();
   if (session) {
@@ -892,7 +698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const qs = new URLSearchParams(location.search);
     const evId  = qs.get('event') || '';
     const evCode= qs.get('code')  || '';
-    const key   = `fh:autosaved:${evId || evCode || 'draft'}`;
+    const key   = fh:autosaved:${evId || evCode || 'draft'};
 
     try { if (localStorage.getItem(key)) return; } catch {}
 
@@ -920,9 +726,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // подключаем просмотр гостей в профиле (после рендера профиля)
   bindProfileRsvpViewer();
-
-  // онбординг только на главной
-  if (/\/(index\.html)?$/i.test(location.pathname) || location.pathname === '/' ) {
-    runOnboardingIfNeeded();
-  }
 });
