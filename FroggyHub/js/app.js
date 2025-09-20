@@ -856,100 +856,124 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const isVisible = (el) => {
     if (!el) return false;
-    const style = getComputedStyle(el);
-    if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+    const s = getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return false;
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;
   };
 
-  const pickFirstVisible = (selectors) => {
-    for (const sel of selectors) {
+  const byAttr = (val) => `[data-tour="${val}"]`;
+
+  // мягкий поиск: сначала по селекторам, потом эвристики
+  function resolveTarget(candidates, hints = {}) {
+    // 1) явные кандидаты
+    for (const sel of candidates) {
       const el = document.querySelector(sel);
       if (el && isVisible(el)) return el;
     }
+    // 2) эвристики
+    if (hints.kind === 'join') {
+      const pool = [
+        '#join-form', '#join-code', 'input#join-code', 'form[action*="join"]',
+        '[name="join"]', '[name="code"]', '[name="join_code"]', '[id*="join"]',
+        'input[placeholder*="6"]', 'input[placeholder*="код"]', 'input[autocomplete="one-time-code"]'
+      ];
+      for (const sel of pool) {
+        const el = document.querySelector(sel);
+        if (el && isVisible(el)) return el;
+      }
+    }
+    if (hints.kind === 'profile') {
+      const pool = [
+        '#nav-profile', byAttr('home-profile'),
+        'a[href*="profile"]', 'a[href$="profile.html"]', '[data-go="profile"]',
+        'button#profile', '#btn-profile'
+      ];
+      for (const sel of pool) {
+        const el = document.querySelector(sel);
+        if (el && isVisible(el)) return el;
+      }
+    }
     return null;
-  };
+  }
 
   const stepsConfigForPath = () => {
     const p = location.pathname.toLowerCase();
 
-    // --- HOME / INDEX ---
+    // HOME
     if (p === '/' || /\/index\.html$/.test(p)) {
       return [
-        { candidates: ['[data-go="app"][data-mode="create"]', '#create-event', 'a[href*="event-edit"]', 'a[href*="/event"]'], text: 'Создай событие здесь' },
-        { candidates: ['#join-form', '#join-code', 'form[action*="join"]', '[data-go="join"]'], text: 'Есть код? Введите его здесь, чтобы присоединиться.' },
-        { candidates: ['#nav-profile', 'a[href*="profile"]', '[data-go="profile"]', 'a[href$="profile.html"]'], text: 'Ваши события и вишлисты — в профиле.' },
+        { candidates: [byAttr('home-create'),'[data-go="app"][data-mode="create"]', '#create-event', 'a[href*="event-edit"]'], text: 'Создай событие здесь' },
+        { candidates: [byAttr('home-join'),'#join-form', '#join-code', 'form[action*="join"]'], text: 'Есть код? Введите его здесь, чтобы присоединиться.', hints:{kind:'join'} },
+        { candidates: [byAttr('home-profile'),'#nav-profile','a[href*="profile"]','[data-go="profile"]','a[href$="profile.html"]'], text: 'Ваши события — в профиле.', hints:{kind:'profile'} },
       ];
     }
 
-    // --- AUTH ---
+    // AUTH
     if (/\/(login|auth)\.html$/.test(p)) {
       return [
-        { candidates: ['#loginForm [type="email"]', '#loginForm input[name="email"]', '#loginForm'], text: 'Войдите по e-mail или никнейму.' },
-        { candidates: ['#signupForm', '#pane-register', '#tab-register'], text: 'Нет аккаунта? Быстрая регистрация здесь.' },
+        { candidates: [byAttr('auth-email'),'#loginForm [type="email"]', '#loginForm input[name="email"]', '#loginForm'], text: 'Войдите по e-mail или никнейму.' },
+        { candidates: [byAttr('auth-register'),'#signupForm', '#pane-register', '#tab-register'], text: 'Нет аккаунта? Регистрация здесь.' },
       ];
     }
 
-    // --- EVENT EDIT / CREATE ---
+    // EVENT EDIT
     if (/\/(event|event-edit|create)\.html$/.test(p)) {
       return [
-        { candidates: ['[name="title"]', '#title', '.event-title'], text: 'Дайте событию название.' },
-        { candidates: ['[data-action="save"]', 'button[type="submit"]', '[data-autosave="event"]'], text: 'Сохраняйте изменения этой кнопкой.' },
-        { candidates: ['[data-action="share"]', '.share', 'a[href*="invite"]'], text: 'Пригласите друзей — поделитесь ссылкой или кодом.' },
+        { candidates: [byAttr('edit-title'),'[name="title"]', '#title', '.event-title'], text: 'Дайте событию название.' },
+        { candidates: [byAttr('edit-save'),'[data-action="save"]', 'button[type="submit"]', '[data-autosave="event"]'], text: 'Сохраняйте изменения этой кнопкой.' },
+        { candidates: [byAttr('edit-share'),'[data-action="share"]', '.share', 'a[href*="invite"]'], text: 'Пригласите друзей — поделитесь ссылкой или кодом.' },
       ];
     }
 
-    // --- LOBBY / INVITE / FINAL ---
+    // LOBBY / INVITE / FINAL
     if (/\/(lobby|invite|final)\.html$/.test(p)) {
       return [
-        { candidates: ['.event-code', '#evCode', '[data-code]'], text: 'Это код события — можно отправить друзьям.' },
-        { candidates: ['[data-action="wishlist"]', 'a[href*="wishlist"]', '#btn-go-wishlist'], text: 'Откройте вишлист — пусть гости отметят, кто что берёт.' },
+        { candidates: [byAttr('lobby-code'),'.event-code', '#evCode', '[data-code]'], text: 'Это код события — отправьте его друзьям.' },
+        { candidates: [byAttr('lobby-wishlist'),'[data-action="wishlist"]', 'a[href*="wishlist"]', '#btn-go-wishlist'], text: 'Откройте вишлист — пусть гости отметят, кто что берёт.' },
       ];
     }
 
-    // --- WISHLIST ---
+    // WISHLIST
     if (/\/wishlist(\-claim)?\.html$/.test(p)) {
       return [
-        { candidates: ['#form-wish-add', '[name="wish"]', '#wishlist-input'], text: 'Добавьте желаемые вещи или ссылки.' },
-        { candidates: ['#btn-wishlist-done', '#link-to-lobby', '[data-action="done"]'], text: 'Готово? Вернитесь в событие.' },
+        { candidates: [byAttr('wish-add'),'#form-wish-add', '[name="wish"]', '#wishlist-input'], text: 'Добавьте желаемые вещи или ссылки.' },
+        { candidates: [byAttr('wish-done'),'#btn-wishlist-done', '#link-to-lobby', '[data-action="done"]'], text: 'Готово? Вернитесь в событие.' },
       ];
     }
 
-    // --- PROFILE ---
+    // PROFILE
     if (/\/profile\.html$/.test(p)) {
       return [
-        { candidates: ['.event-card', '.event-item', '[data-event-id]'], text: 'Ваши события. Нажмите, чтобы открыть.' },
-        { candidates: ['[data-action="show-rsvps"]', '.profile-actions', '.event-actions'], text: 'Посмотрите, кто идёт — список гостей здесь.' },
+        { candidates: [byAttr('profile-events'),'.event-card', '.event-item', '[data-event-id]'], text: 'Ваши события. Нажмите, чтобы открыть.' },
+        { candidates: [byAttr('profile-rsvps'),'[data-action="show-rsvps"]', '.profile-actions', '.event-actions'], text: 'Посмотрите, кто идёт — список гостей здесь.' },
       ];
     }
 
-    // default — ничего
     return [];
   };
 
+  // ждём, пока элементы появятся (до 6 сек)
   const waitForSteps = async (timeoutMs = 6000) => {
     let steps = [];
     const deadline = performance.now() + timeoutMs;
 
     const collect = () => {
-      const config = stepsConfigForPath();
-      steps = config
-        .map(s => ({ el: pickFirstVisible(s.candidates), text: s.text, candidates: s.candidates }))
-        .filter(s => s.el);
+      const cfg = stepsConfigForPath();
+      steps = cfg.map(s => ({ ...s, el: resolveTarget(s.candidates, s.hints) }))
+                 .filter(s => s.el);
     };
 
     collect();
     if (steps.length) return steps;
 
-    // ждём появления DOM (SPA/поздний рендер)
-    await new Promise(resolve => {
+    await new Promise(res => {
       const obs = new MutationObserver(() => {
         collect();
-        if (steps.length || performance.now() > deadline) { obs.disconnect(); resolve(); }
+        if (steps.length || performance.now() > deadline) { obs.disconnect(); res(); }
       });
-      obs.observe(document.body, { childList: true, subtree: true });
-      // страховка по таймауту
-      setTimeout(() => { obs.disconnect(); resolve(); }, timeoutMs);
+      obs.observe(document.body, { childList:true, subtree:true });
+      setTimeout(()=>{ obs.disconnect(); res(); }, timeoutMs);
     });
 
     collect();
@@ -980,15 +1004,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let i = -1;
 
-    const place = () => {
-      const step = steps[i]; if (!step) return;
-      // элемент мог исчезнуть — попробуем найти его снова по кандидатам
-      if (!step.el || !isVisible(step.el)) {
-        step.el = pickFirstVisible(step.candidates);
-        if (!step.el) return;
-      }
-
-      const r = step.el.getBoundingClientRect();
+    const positionAround = (el) => {
+      const r = el.getBoundingClientRect();
       const x = r.left + window.scrollX + r.width/2;
       const y = r.top  + window.scrollY + r.height/2;
       const radius = Math.round(Math.hypot(r.width, r.height)/2) + 14;
@@ -1002,9 +1019,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const below = (r.bottom + 16 + 160 < window.scrollY + window.innerHeight);
       let px = r.left + window.scrollX + (r.width - cw)/2;
-      let py = below
-        ? r.bottom + window.scrollY + 12
-        : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
+      let py = below ? r.bottom + window.scrollY + 12
+                     : r.top + window.scrollY - (card.offsetHeight || 160) - 12;
 
       px = Math.max(12 + window.scrollX, Math.min(px, window.scrollX + innerWidth - cw - 12));
       py = Math.max(12 + window.scrollY, Math.min(py, window.scrollY + innerHeight - (card.offsetHeight || 160) - 12));
@@ -1024,6 +1040,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
+    const place = () => {
+      const step = steps[i]; if (!step) return;
+      // обновляем ссылку на элемент (вдруг перерендер)
+      step.el = step.el && isVisible(step.el) ? step.el : resolveTarget(step.candidates, step.hints);
+      if (!step.el) return;
+      positionAround(step.el);
+    };
+
     const finish = () => {
       try { localStorage.setItem(pageOnceKey, '1'); } catch {}
       window.removeEventListener('resize', place);
@@ -1031,13 +1055,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       layer.remove();
     };
 
-    const show = (idx) => {
+    const show = async (idx) => {
       i = idx;
       if (i >= steps.length) return finish();
-      titleEl.textContent = steps[i].text;
+
+      // гарантируем видимость: скролл к цели и короткое ожидание
+      const step = steps[i];
+      step.el = step.el && isVisible(step.el) ? step.el : resolveTarget(step.candidates, step.hints);
+      if (!step.el) {
+        // ждём до 1500ms, вдруг дорендерится
+        const t0 = performance.now();
+        await new Promise(r => {
+          const obs = new MutationObserver(() => {
+            step.el = resolveTarget(step.candidates, step.hints);
+            if (step.el || performance.now() - t0 > 1500) { obs.disconnect(); r(); }
+          });
+          obs.observe(document.body, { childList:true, subtree:true });
+          setTimeout(()=>{ obs.disconnect(); r(); }, 1500);
+        });
+      }
+      if (!step.el) return show(i + 1); // пропускаем отсутствующий шаг
+
+      step.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      titleEl.textContent = step.text;
+
       layer.classList.add('on');
-      backdrop.style.setProperty('--r', '140vh'); // «сужение»
-      place();
+      backdrop.style.setProperty('--r', '140vh');
+      setTimeout(place, 60);
       requestAnimationFrame(() => requestAnimationFrame(place));
     };
 
@@ -1060,41 +1104,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     requestAnimationFrame(() => show(0));
   };
 
-  // Проверка «новый пользователь» — показываем тур только тем, кто только что зарегистрировался
   async function isNewUserWindow() {
-    try {
-      // если sessionStorage пометил свежую регистрацию — считаем новым
-      if (sessionStorage.getItem('fh:newlyRegistered') === '1') return true;
-
-      // иначе: нет маркера — считаем старым (без лишних запросов)
-      return false;
-    } catch { return false; }
+    try { return sessionStorage.getItem('fh:newlyRegistered') === '1'; }
+    catch { return false; }
   }
 
   window.FH_startSpotlightTour = async function startSpotlightTour(){
-    // не беспокоим, если отключено системными настройками
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!(await isNewUserWindow())) return;
 
-    // тур только для «новых»
-    const okNew = await isNewUserWindow();
-    if (!okNew) return;
-
-    // вычисляем ключ «раз в жизнь» для текущей страницы
-    const pageKey   = (location.pathname.toLowerCase() || '/index.html').replace(/[^\w\-\/.]/g, '_');
-    const onceKey   = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
+    const pageKey = (location.pathname.toLowerCase() || '/index.html').replace(/[^\w\-\/.]/g, '_');
+    const onceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
     try { if (localStorage.getItem(onceKey)) return; } catch {}
 
-    // показываем только если виден актуальный экран страницы
     const screenOk = (() => {
       const p = location.pathname.toLowerCase();
       if (p === '/' || /\/index\.html$/.test(p)) return !document.getElementById('screen-home')?.hasAttribute('hidden');
-      if (/\/(login|auth)\.html$/.test(p))      return !document.getElementById('screen-auth')?.hasAttribute('hidden') || true;
+      if (/\/(login|auth)\.html$/.test(p))      return true;
       return true;
     })();
     if (!screenOk) return;
 
     const steps = await waitForSteps(6000);
     if (!steps.length) return;
+
+    runTour(steps, onceKey);
+  };
+})();
 
     runTour(steps, onceKey);
   };
