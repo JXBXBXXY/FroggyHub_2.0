@@ -1028,3 +1028,32 @@ body.force-mobile .countdown{ display:none !important; }
   border-left:1px solid rgba(79,226,167,.35);border-top:1px solid rgba(79,226,167,.35);
   transform:rotate(45deg)}
 @media (max-width:640px){ .tour-card{max-width:min(330px,94vw)} }
+/* === Spotlight: анимируемый радиус круга === */
+@property --r {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 140vh;
+}
+
+/* ===== Spotlight tour (круглая подсветка) ===== */
+/* Убедись, что эти стили подключены один раз (удали дубли). */
+.tour-layer{position:fixed;inset:0;z-index:70;pointer-events:auto;display:none}
+.tour-layer.on{display:block}
+.tour-backdrop{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(circle at var(--x,50%) var(--y,50%),
+      rgba(0,0,0,0) 0,
+      rgba(0,0,0,0) calc(var(--r,140vh) - 1px),
+      rgba(0,0,0,.55) var(--r,140vh),
+      rgba(0,0,0,.55) 100%);
+  /* ключевое: плавно анимируем кастом-свойство --r */
+  transition: --r 520ms cubic-bezier(.2,.8,.2,1), background .3s;
+  pointer-events:auto;
+}
+.tour-card{
+  position:absolute;max-width:min(380px,92vw);
+  background:rgba(10,30,22,.95);
+  border:1px solid rgba(79,226,167,.35);
+  color:#eaffef;border-radius:14px;padding:12px 14px;
+  box-shadow:
