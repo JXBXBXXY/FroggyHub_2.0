@@ -315,13 +315,11 @@ function bindIndexNav() {
     const mode = navBtn.getAttribute('data-mode') || '';
 
     if (to === 'app' && mode === 'create') {
-      e.preventDefault(); // перехватываем и идём на экран создания
+      e.preventDefault();
       try { localStorage.setItem('fh:onboarded', '1'); } catch {}
-      window.location.assign('/event-edit.html'); // <— сюда твой роут
+      window.location.assign('/event-edit.html');
       return;
     }
-
-    // для остальных `[data-go]` — по умолчанию ничего не ломаем
   }, { passive: false });
 
   const form      = document.getElementById('join-form');
@@ -534,7 +532,6 @@ function ensureLobbyParamsFromDraft() {
 function bindProfileRsvpViewer() {
   if (!/\/profile\.html/i.test(location.pathname)) return;
 
-  // строки событий в профиле (учитываем оба класса и data-атрибут)
   const rows = [...document.querySelectorAll('.event-card, .event-item, [data-event-id]')];
 
   const getEventId = (row) => {
@@ -775,7 +772,7 @@ function bootBubbles() {
   }
 }
 
-/* Автопереключатель «мобильной финалки»: центрируем карточку, скрываем часы */
+/* Автопереключатель «мобильной финалки» */
 (function forceMobileFinal(){
   const mq = window.matchMedia('(max-width: 900px)');
   const apply = () => document.body.classList.toggle('force-mobile', mq.matches);
@@ -800,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showScreen('screen-auth');
   }
 
-  // запускаем тур (сам подберёт шаги по текущему pathname)
+  // запускаем тур
   window.FH_startSpotlightTour?.();
 
   /* ---------- AUTOSAVE на финальной странице (лоби/финалка) ---------- */
@@ -837,16 +834,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(() => { obs.disconnect(); tryAutoClick(); }, 8000);
   })();
 
-  // подключаем просмотр гостей в профиле (после рендера профиля)
+  // подключаем просмотр гостей в профиле
   bindProfileRsvpViewer();
 });
 
-/* ===================== SPOTLIGHT TOUR (круглый) ===================== */
+/* ===================== SPOTLIGHT TOUR ===================== */
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
   const DEBUG_TOUR = false;
-  const TOUR_VERSION = 'v2'; // ↑ поднимаем версию, чтобы показалось заново всем
+  const TOUR_VERSION = 'v2';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
   const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); };
@@ -902,7 +899,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       S.push({ id:'join-go',   sels:['#btn-join','#joinSubmit'],               text:'Готово? Жмите, чтобы присоединиться.' });
     }
 
-    // Лобби/финалка — подсказка «Сохраните событие…»
     if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)){
       S.push({
         id: 'final-save',
@@ -913,7 +909,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           '.final-actions .btn',
           '.final-card button',
           '.final-card a[role="button"]',
-          'button' // широкий fallback
+          'button'
         ],
         text: 'Сохраните событие, чтобы пригласить друзей 🎉',
         matchText: /сохран/i
@@ -927,7 +923,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return S;
   }
 
-  function runTour(steps, doneKey){
+  function runTour(steps){
     if (!steps.length) return;
 
     const layer = document.createElement('div');
@@ -950,7 +946,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const titleEl  = layer.querySelector('.tour-title');
     const arrow    = layer.querySelector('.tour-arrow');
 
-    // анимация «сужения» круга
     function animateSpotlightTo(targetPx){
       const start = Math.max(targetPx * 1.18, targetPx + 40);
       backdrop.style.setProperty('--r', start + 'px');
@@ -1053,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     requestAnimationFrame(()=> show(0));
   }
 
-  // ПУБЛИЧНЫЙ стартер: параметр {force:true} — игнорирует все предохранители
+  // ПУБЛИЧНЫЙ стартер
   window.FH_startSpotlightTour = async function startSpotlightTour(opts={}){
     const force = !!opts.force;
 
@@ -1076,14 +1071,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       if (!steps.length) return;
     }
-    runTour(steps, pageOnceKey);
+    runTour(steps);
   };
 
-  // удобная отладочная «кнопка»
+  // удобный сброс/запуск из консоли
   window.FH_debugResetTour = function(){
     Object.keys(localStorage).forEach(k => { if (k.startsWith('fh:tour:page:')) localStorage.removeItem(k); });
     sessionStorage.setItem('fh:newUserJustSigned','1');
     window.FH_startSpotlightTour({force:true});
   };
 })();
-  
