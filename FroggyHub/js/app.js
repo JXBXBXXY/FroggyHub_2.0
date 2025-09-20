@@ -428,6 +428,11 @@ function bindJoinPage() {
         return;
       }
 
+      // APPENDED: маленькая подсказка после входа по коду
+      try {
+        document.dispatchEvent(new Event('event:joined'));
+      } catch {}
+
       try {
         const draft = {
           id: ev.id,
@@ -463,6 +468,9 @@ function bindJoinPage() {
 /* -------------------- wishlist bridge -------------------- */
 function bindWishlistBridge() {
   if (!/\/wishlist\.html/i.test(location.pathname)) return;
+
+  // APPENDED: тост при открытии вишлиста
+  try { document.dispatchEvent(new Event('wishlist:opened')); } catch {}
 
   const getDraft = () => { try { return JSON.parse(sessionStorage.getItem('fh:draftEvent')||'{}'); } catch { return {}; } };
   const setDraft = (d) => { try { sessionStorage.setItem('fh:draftEvent', JSON.stringify(d)); } catch {} };
@@ -832,6 +840,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindWishlistBridge();
   ensureLobbyParamsFromDraft();
   bootBubbles();
+
+  // APPENDED: простой онбординг при самом первом входе
+  try {
+    if (!localStorage.getItem('fh:onboarded')) {
+      alert('Добро пожаловать! Нажмите «Создать событие», чтобы начать 🚀');
+      localStorage.setItem('fh:onboarded','1');
+    }
+  } catch {}
+
+  // APPENDED: чеклист + публичное API
+  function updateChecklist(step){
+    const box = document.getElementById('checklist');
+    if (!box) return;
+    box.hidden = false;
+    const li = box.querySelector(`li[data-step="${step}"]`);
+    if (li) li.classList.add('done');
+  }
+  window.FH = window.FH || {};
+  window.FH.updateChecklist = updateChecklist;
+  window.FH.created = function(){ document.dispatchEvent(new Event('event:created')); };
+
+  // APPENDED: события для тостов и чеклиста
+  document.addEventListener('event:created', ()=>{
+    showToast('Скопируй код и отправь друзьям ✨');
+    updateChecklist('create');
+    updateChecklist('share');
+  });
+  document.addEventListener('event:joined', ()=>{
+    showToast('Ты в событии, отметь идёшь или нет 🙌');
+    updateChecklist('rsvp');
+  });
+  document.addEventListener('wishlist:opened', ()=>{
+    showToast('Добавь подарок, чтобы друзья знали 🎁');
+    updateChecklist('wishlist');
+  });
 
   const session = await ensureSession();
   if (session) {
