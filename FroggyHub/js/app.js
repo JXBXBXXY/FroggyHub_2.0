@@ -852,75 +852,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 (function initFHSpotlightTourStarter(){
   if (window.FH_startSpotlightTour) return;
 
-  // ——— утилиты ———
   const TOUR_VERSION = 'v1';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g,'_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
 
   const isNewUserWindow = async () => {
-    // показываем тур только авторизованным и «новым» (1-й визит после логина/регистрации)
     try {
-      // если ранее пометили «показывали» — не показываем
       if (localStorage.getItem(pageOnceKey)) return false;
-
-      // быстрый «новый пользователь» — поднято при регистрации/логине в этом сеансе
       if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
-
-      // fallback: если есть маркер первого входа за последние 48 часов
       const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
       if (!ts) return false;
       return (Date.now() - ts) < 48 * 3600 * 1000;
     } catch { return false; }
   };
 
-  // ——— адаптивные шаги под текущую страницу ———
   function stepsConfigForPath() {
     const steps = [];
 
-    // главная
+    // HOME
     if (/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') {
-      // 1) создать событие
-      steps.push({
-        sel: '[data-tour="home-create"], #create-event',
-        text: 'Создай событие здесь',
-      });
-      // 2) присоединиться по коду
-      steps.push({
-        sel: '[data-tour="home-join"], #join-form, #join-code',
-        text: 'Есть код? Введите его здесь, чтобы присоединиться.',
-      });
-      // 3) профиль
-      steps.push({
-        sel: '[data-tour="home-profile"], #nav-profile, a[href*="profile"]',
-        text: 'Ваши события и вишлисты — в профиле.',
-      });
+      steps.push({ sel: '[data-tour="home-create"], #create-event', text: 'Создай событие здесь' });
+      steps.push({ sel: '[data-tour="home-join"], #join-form, #join-code', text: 'Есть код? Введите его здесь, чтобы присоединиться.' });
+      steps.push({ sel: '[data-tour="home-profile"], #nav-profile, a[href*="profile"]', text: 'Ваши события и вишлисты — в профиле.' });
     }
 
-    // login.html
+    // LOGIN
     if (/\/login(\.html)?$/i.test(location.pathname)) {
       steps.push({ sel: '[data-tour="auth-login"]', text: 'Войдите в аккаунт здесь.' });
       steps.push({ sel: '#tab-register, [data-tour="auth-register"]', text: 'Нет аккаунта? Зарегистрируйтесь.' });
     }
 
-    // join.html
+    // JOIN
     if (/\/join(\.html)?$/i.test(location.pathname)) {
       steps.push({ sel: '#join-name, [name="name"]', text: 'Напишите, как вас подписать в гостях.' });
       steps.push({ sel: '[data-rsvp], #join-status-wrap', text: 'Выберите, пойдёте ли вы на событие.' });
       steps.push({ sel: '#btn-join, #joinSubmit', text: 'Готово? Жмите, чтобы присоединиться.' });
     }
 
-    // lobby.html
+    // LOBBY
     if (/\/lobby(\.html)?$/i.test(location.pathname)) {
       steps.push({ sel: '[data-autosave="event"], button, a[role="button"]', text: 'Сохраните событие, когда всё готово.' });
     }
 
-    // profile.html
+    // PROFILE
     if (/\/profile(\.html)?$/i.test(location.pathname)) {
       steps.push({ sel: '.event-card, .event-item, [data-event-id]', text: 'Ваши события — здесь.' });
       steps.push({ sel: '[data-action="show-rsvps"]', text: 'Посмотрите, кто идёт.' });
     }
 
-    // отфильтруем по наличию элементов
     return steps
       .map(s => ({ ...s, el: document.querySelector(s.sel) }))
       .filter(s => s.el);
@@ -1003,7 +982,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       titleEl.textContent = steps[i].text;
       layer.classList.add('on');
-      // эффект «сужения»
       backdrop.style.setProperty('--r', '140vh');
       place();
       requestAnimationFrame(() => requestAnimationFrame(place));
@@ -1028,7 +1006,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     requestAnimationFrame(() => show(0));
   }
 
-  // публичный стартер
   window.FH_startSpotlightTour = async function startSpotlightTour(){
     try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
     const prefersReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1037,7 +1014,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const okNew = await isNewUserWindow();
     if (!okNew) return;
 
-    // ждём DOM (до 6 сек), чтобы элементы точно появились
     let steps = stepsConfigForPath();
     const t0 = performance.now();
     if (!steps.length) {
@@ -1046,6 +1022,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           steps = stepsConfigForPath();
           if (steps.length || (performance.now() - t0) > 6000) { obs.disconnect(); resolve(); }
         });
+        obs.observe(document.body, { childList:true, subtree:true });
+      });
+      if (!steps.length) return;
+    }
+
+    runTour(steps, pageOnceKey);
+  };
+})();
         obs.observe(document.body, { childList:true, subtree:true });
       });
       if (!steps.length) return;
