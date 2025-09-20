@@ -58,7 +58,7 @@
       </div>
       <div class="topbar-right">
         <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
-        <a id="nav-profile" class="btn btn-sm btn-ghost" href="/profile.html">Профиль</a>
+        <a id="nav-profile" class="btn btn-sm btn-ghost" href="/profile.html" data-tour="home-profile">Профиль</a>
         <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings">Настройки</button>
       </div>
     </nav>
@@ -86,7 +86,7 @@
 
         <!-- Вход -->
         <section id="pane-login" class="pane" role="tabpanel" aria-labelledby="tab-login">
-          <form id="loginForm" class="grid" novalidate autocomplete="off">
+          <form id="loginForm" class="grid" novalidate autocomplete="off" data-tour="auth-login">
             <label>E-mail
               <input id="login-email" name="email" type="email" inputmode="email" placeholder="you@example.com" autocomplete="username">
             </label>
@@ -104,7 +104,7 @@
 
         <!-- Регистрация -->
         <section id="pane-register" class="pane is-hidden" role="tabpanel" aria-labelledby="tab-register">
-          <form id="signupForm" class="grid" novalidate autocomplete="off">
+          <form id="signupForm" class="grid" novalidate autocomplete="off" data-tour="auth-register">
             <label>E-mail <small>(обязательно)</small>
               <input id="signup-email" name="email" type="email" required inputmode="email" placeholder="you@example.com" autocomplete="email">
             </label>
@@ -138,12 +138,12 @@
       </div>
 
       <!-- Фикс-панель только на главной -->
-      <div class="menu-deck">
+      <div class="menu-deck" data-tour="home-deck">
         <div class="panel" data-onb="deck">
           <div class="menu-grid">
-            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create" data-onb="create">Создать событие</button>
+            <button id="create-event" class="btn btn-primary" data-go="app" data-mode="create" data-tour="home-create">Создать событие</button>
 
-            <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate data-onb="join">
+            <form id="join-form" class="join-row" action="/join.html" method="GET" autocomplete="off" novalidate data-tour="home-join">
               <input
                 id="join-code"
                 class="input"
