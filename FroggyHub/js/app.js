@@ -673,6 +673,157 @@ function bootBubbles() {
   mq.addEventListener?.('change', apply);
 })();
 
+/* -------------------- TOAST (микроуведомления) -------------------- */
+function showToast(text, ms = 2500){
+  const layer = document.getElementById('toastLayer');
+  if (!layer) return;
+  const el = document.createElement('div');
+  el.className = 'toast-box';
+  el.textContent = text;
+  layer.appendChild(el);
+  setTimeout(()=> {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    setTimeout(()=> el.remove(), 180);
+  }, ms);
+}
+
+/* -------------------- COACHMARKS (онбординг) -------------------- */
+const ONB_KEY = 'fh:onb:v1:done';
+
+function runOnboardingIfNeeded(){
+  if (prefersReduced) return; // уважим reduce motion
+  try { if (localStorage.getItem(ONB_KEY)) return; } catch {}
+
+  const coach = {
+    i: 0,
+    steps: [
+      {
+        sel: '[data-onb="deck"]',
+        pos: 'bottom',
+        tip: 'Привет! Здесь — два пути: создать своё событие или присоединиться по коду.'
+      },
+      {
+        sel: '[data-onb="create"]',
+        pos: 'top',
+        tip: 'Нажми «Создать событие», чтобы выбрать дату, место и собрать вишлист.'
+      },
+      {
+        sel: '[data-onb="join"]',
+        pos: 'top',
+        tip: 'Уже прислали код? Введи его сюда — и отметь, идёшь ли.'
+      }
+    ],
+    layer: document.getElementById('coachLayer'),
+    backdrop: null,
+    card: null,
+    spot: null,
+    place(step){
+      const target = document.querySelector(step.sel);
+      if (!target) return false;
+
+      const r = target.getBoundingClientRect();
+      const pad = 6;
+      // Спот (подсветка)
+      this.spot.style.left = `${window.scrollX + r.left - 6}px`;
+      this.spot.style.top  = `${window.scrollY + r.top  - 6}px`;
+      this.spot.style.width = `${r.width + 12}px`;
+      this.spot.style.height= `${r.height+ 12}px`;
+
+      // Карточка
+      const cw = Math.min(420, Math.max(260, r.width));
+      this.card.style.width = cw+'px';
+      let x = window.scrollX + r.left;
+      let y = window.scrollY + r.bottom + pad;
+      let pos = step.pos || 'bottom';
+
+      if (pos === 'top') y = window.scrollY + r.top - this.card.offsetHeight - pad;
+      if (pos === 'left') { x = window.scrollX + r.left - cw - pad; y = window.scrollY + r.top; }
+      if (pos === 'right'){ x = window.scrollX + r.right + pad; y = window.scrollY + r.top; }
+
+      // центрирование по умолчанию
+      if (pos === 'bottom' || pos === 'top') {
+        x = window.scrollX + r.left + (r.width - cw)/2;
+      }
+
+      // экранные границы
+      x = Math.max(12 + window.scrollX, Math.min(x, window.scrollX + innerWidth - cw - 12));
+      y = Math.max(12 + window.scrollY, Math.min(y, window.scrollY + innerHeight - this.card.offsetHeight - 12));
+
+      this.card.style.left = x+'px';
+      this.card.style.top  = y+'px';
+      this.card.setAttribute('data-pos', pos);
+
+      return true;
+    },
+    show(i){
+      this.i = i;
+      const step = this.steps[i];
+      if (!step) return this.end(true);
+
+      if (!this.layer) return;
+
+      if (!this.backdrop){
+        this.backdrop = document.createElement('div');
+        this.backdrop.className='coach-backdrop';
+        this.layer.appendChild(this.backdrop);
+
+        this.spot = document.createElement('div');
+        this.spot.className='coach-spot';
+        this.layer.appendChild(this.spot);
+
+        this.card = document.createElement('div');
+        this.card.className='coach-card';
+        this.card.innerHTML = `
+          <div class="coach-text"></div>
+          <div class="coach-actions">
+            <button class="btn btn--ghost" data-act="skip">Пропустить</button>
+            <button class="btn btn--primary" data-act="next">Дальше</button>
+          </div>
+          <div class="coach-arrow"></div>
+        `;
+        this.layer.appendChild(this.card);
+
+        this.layer.addEventListener('click', (e)=>{
+          const bNext = e.target.closest('[data-act="next"]');
+          const bSkip = e.target.closest('[data-act="skip"]');
+          if (bSkip) this.end(true);
+          if (bNext) this.next();
+        }, { passive: true });
+
+        window.addEventListener('resize', debounce(()=> this.place(this.steps[this.i]), 80), { passive:true });
+        window.addEventListener('scroll', debounce(()=> this.place(this.steps[this.i]), 80), { passive:true });
+      }
+
+      const ok = this.place(step);
+      if (!ok) return this.next(); // если элемент не нашёлся — идём дальше
+
+      this.card.querySelector('.coach-text').textContent = step.tip;
+      requestAnimationFrame(()=>{
+        this.backdrop.classList.add('on');
+        this.card.classList.add('on');
+      });
+    },
+    next(){
+      if (this.i + 1 >= this.steps.length) return this.end(true);
+      this.show(this.i + 1);
+    },
+    end(markDone){
+      if (markDone) { try { localStorage.setItem(ONB_KEY, '1'); } catch {} }
+      if (!this.layer) return;
+      this.layer.innerHTML = '';
+    }
+  };
+
+  // автозапуск через короткую паузу, чтобы всё дорендерилось
+  setTimeout(()=> coach.show(0), 350);
+
+  // микро-подсказка при фокусе поля кода
+  const code = document.getElementById('join-code');
+  code?.addEventListener('focus', ()=> showToast('Код присылает организатор события'));
+}
+
+/* -------------------- BOOT -------------------- */
 document.addEventListener('DOMContentLoaded', async () => {
   bindTabs();
   bindAuthForms();
@@ -726,4 +877,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // подключаем просмотр гостей в профиле (после рендера профиля)
   bindProfileRsvpViewer();
+
+  // онбординг только на главной
+  if (/\/(index\.html)?$/i.test(location.pathname) || location.pathname === '/' ) {
+    runOnboardingIfNeeded();
+  }
 });
