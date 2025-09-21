@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Присоединиться — FroggyHub</title>
   <link rel="stylesheet" href="/style.css" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ctext y='.9em' font-size='96'%3E🐸%3C/text%3E%3C/svg%3E">
@@ -44,8 +44,7 @@
     .name-input{width:100%}
   </style>
 </head>
-<body>
-
+<body data-page="join">
   <div class="fh-bg" aria-hidden="true"></div>
 
   <!-- единый topbar как в лобби -->
@@ -103,6 +102,6 @@
   </div>
 
   <!-- app.js тянет логику; важно оставить id: join-name, btn-join, join-status-wrap, join-error, join-code-text -->
-<script type="module" src="/js/app.js"></script>
+  <script type="module" src="/js/app.js"></script>
 </body>
 </html>
