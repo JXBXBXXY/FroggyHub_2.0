@@ -838,36 +838,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindProfileRsvpViewer();
 });
 
-//* ===================== SPOTLIGHT TOUR (глобальный, без IIFE) ===================== */
-/* Показывает подсказки один раз за сессию (per-page + версия тура).
-   Экспортирует:
-     - FH_startSpotlightTour({force?:boolean})
-     - FH_debugResetTour()
-*/
+<!-- ===================== SPOTLIGHT TOUR (глобальный, без дублей) ===================== -->
+<script>
+;(() => {
+  const G = (typeof window !== 'undefined' ? window : globalThis);
+  if (G.FH_startSpotlightTour) return; // уже инициализировано
 
-if (!window.FH_startSpotlightTour || !window.FH_debugResetTour) {
-  const DEBUG_TOUR   = false;
+  const DEBUG_TOUR = false;
   const TOUR_VERSION = 'v2';
-
-  const pageKey    = (location.pathname.toLowerCase().replace(/[\W]+/g,'_') || 'index_html');
-  const sessionKey = `fh:tour:shown:${pageKey}:${TOUR_VERSION}`;
-  const TOUR_SHOWN_THIS_SESSION = !!sessionStorage.getItem(sessionKey);
-
+  const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
+  const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;        // флаг "показано когда-либо" (localStorage)
+const sessionKey  = `fh:tour:shown:ALL:${TOUR_VERSION}`;
   const log = (...a) => { if (DEBUG_TOUR) console.log('[tour]', ...a); };
 
-  // ---------- utils ----------
-  function isVisible(el){
+  const isVisible = (el) => {
     if (!el) return false;
-    const r  = el.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
     const cs = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0;
-  }
+    return r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && +cs.opacity > 0;
+  };
 
-  function findFirstVisible(selectors, matchRe){
-    const list = (Array.isArray(selectors) ? selectors : String(selectors || '')).split(',').map(s=>s.trim()).filter(Boolean);
+  const findFirstVisible = (selectors, matchRe) => {
+    const list = (Array.isArray(selectors) ? selectors : String(selectors).split(','))
+      .map(s => s.trim()).filter(Boolean);
     for (const sel of list) {
       const nodes = document.querySelectorAll(sel);
-      for (let i=0; i<nodes.length; i++){
+      for (let i = 0; i < nodes.length; i++) {
         const el = nodes[i];
         if (!isVisible(el)) continue;
         if (matchRe && !matchRe.test((el.textContent || '').trim())) continue;
@@ -875,167 +871,245 @@ if (!window.FH_startSpotlightTour || !window.FH_debugResetTour) {
       }
     }
     return null;
+  };
+
+  async function isNewUserWindow() {
+    try {
+      if (sessionStorage.getItem('fh:newUserJustSigned')) return true;
+      const ts = Number(localStorage.getItem('fh:firstLoginTs') || 0);
+      if (!ts) return true;
+      return (Date.now() - ts) < 48 * 3600 * 1000;
+    } catch { return true; }
   }
 
-  // ---------- DOM for spotlight ----------
-  let layer, backdrop, card, titleEl, textEl, actionsEl, arrowEl;
-  function ensureLayer(){
-    if (layer) return;
-    layer = document.createElement('div');
-    layer.className = 'tour-layer on';
+  function stepsConfigForPath() {
+    const S = [];
+    const authVisible = !!document.querySelector('#screen-auth:not([hidden])');
+
+    // home
+    if ((/\/(index\.html)?$/.test(location.pathname) || location.pathname === '/') && !authVisible) {
+      S.push({ id: 'home-create',  sels: ['[data-tour="home-create"]','[data-onb="create"]','#create-event'], text: 'Создай событие здесь' });
+      S.push({ id: 'home-join',    sels: ['[data-tour="home-join"]','[data-onb="join"]','#join-code','#join-form'], text: 'Есть код? Введите его здесь, чтобы присоединиться.' });
+      S.push({ id: 'home-profile', sels: ['[data-tour="home-profile"]','#nav-profile','a[href*="profile"]'], text: 'Ваши события и вишлисты — в профиле.' });
+    }
+
+    // login
+    if (/\/login(\.html)?$/i.test(location.pathname)) {
+      S.push({ id: 'login-form', sels: ['[data-tour="auth-login"]','#loginForm'], text: 'Войдите в аккаунт здесь.' });
+      S.push({ id: 'login-reg',  sels: ['#tab-register','[data-tour="auth-register"]'], text: 'Нет аккаунта? Зарегистрируйтесь.' });
+    }
+
+    // join
+    if (/\/join(\.html)?$/i.test(location.pathname)) {
+      S.push({ id: 'join-name', sels: ['#join-name','[name="name"]','#guestName'], text: 'Напишите, как вас подписать в гостях.' });
+      S.push({ id: 'join-rsvp', sels: ['[data-rsvp]','#join-status-wrap'],       text: 'Выберите, пойдёте ли вы на событие.' });
+      S.push({ id: 'join-go',   sels: ['#btn-join','#joinSubmit'],               text: 'Готово? Жмите, чтобы присоединиться.' });
+    }
+
+    // lobby/final
+    if (/\/(lobby|final)(\.html)?$/i.test(location.pathname)) {
+      S.push({
+        id: 'final-save',
+        sels: [
+          '[data-autosave="event"]',
+          '.final-card .btn--primary',
+          '.final-card .btn-primary',
+          '.final-actions .btn',
+          '.final-card button',
+          '.final-card a[role="button"]',
+          'button'
+        ],
+        text: 'Сохраните событие, чтобы пригласить друзей 🎉',
+        matchText: /сохран/i
+      });
+    }
+
+    // profile
+    if (/\/profile(\.html)?$/i.test(location.pathname)) {
+      S.push({ id: 'prof-events', sels: ['.event-card','.event-item','[data-event-id]'], text: 'Ваши события — здесь.' });
+      S.push({ id: 'prof-rsvp',   sels: ['[data-action="show-rsvps"]'],                   text: 'Посмотрите, кто идёт.' });
+    }
+
+    return S;
+  }
+
+  function runTour(steps, doneKey) {
+    if (!steps.length) return;
+
+    const layer = document.createElement('div');
+    layer.className = 'tour-layer';
     layer.innerHTML = `
-      <div class="tour-backdrop" style="--x:50%;--y:50%;--r:140vh"></div>
-      <div class="tour-card" style="left:0;top:0">
-        <div class="tour-title" id="tourTitle"></div>
-        <div class="tour-text"  id="tourText"  style="opacity:.9;margin-top:.35rem"></div>
+      <div class="tour-backdrop"></div>
+      <div class="tour-card" role="dialog" aria-live="polite">
+        <div class="tour-title"></div>
         <div class="tour-actions">
           <button class="tour-btn" data-act="skip">Пропустить</button>
-          <button class="tour-btn primary" data-act="next">Дальше</button>
+          <button class="tour-btn primary" data-act="next">Понятно</button>
         </div>
-        <div class="tour-arrow" style="left:-9999px;top:-9999px"></div>
-      </div>
-    `;
+        <div class="tour-arrow"></div>
+      </div>`;
+    layer.style.zIndex = '2147483647';
     document.body.appendChild(layer);
-    backdrop  = layer.querySelector('.tour-backdrop');
-    card      = layer.querySelector('.tour-card');
-    titleEl   = layer.querySelector('#tourTitle');
-    textEl    = layer.querySelector('#tourText');
-    actionsEl = layer.querySelector('.tour-actions');
-    arrowEl   = layer.querySelector('.tour-arrow');
-  }
 
-  function setSpotlightToEl(el, radius = 160){
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width/2;
-    const cy = r.top  + r.height/2;
-    const x = Math.round(cx);
-    const y = Math.round(cy);
-    backdrop.style.setProperty('--x', `${x}px`);
-    backdrop.style.setProperty('--y', `${y}px`);
-    backdrop.style.setProperty('--r', `${radius}px`);
-    // стрелка сбоку от цели
-    const arrowSize = 12;
-    arrowEl.style.left = `${Math.max(8, r.left + r.width + 8)}px`;
-    arrowEl.style.top  = `${Math.max(8, r.top  + r.height/2 - arrowSize/2)}px`;
-  }
+    const backdrop = layer.querySelector('.tour-backdrop');
+    const card     = layer.querySelector('.tour-card');
+    const titleEl  = layer.querySelector('.tour-title');
+    const arrow    = layer.querySelector('.tour-arrow');
 
-  function positionCardNear(el, pref = 'right'){
-    const r = el.getBoundingClientRect();
-    const gap = 12;
-    const ww = innerWidth, wh = innerHeight;
-    let left = r.right + gap, top = r.top;
-    if (pref === 'bottom') { left = r.left; top = r.bottom + gap; }
-    if (pref === 'left')   { left = Math.max(8, r.left - card.offsetWidth - gap); top = r.top; }
-    if (pref === 'top')    { left = r.left; top = Math.max(8, r.top - card.offsetHeight - gap); }
+    function animateSpotlightTo(targetPx) {
+      const start = Math.max(targetPx * 1.18, targetPx + 40);
+      backdrop.style.setProperty('--r', start + 'px');
+      requestAnimationFrame(() => { backdrop.style.setProperty('--r', targetPx + 'px'); });
+    }
 
-    // подгон по краям
-    left = Math.min(Math.max(8, left), ww - card.offsetWidth - 8);
-    top  = Math.min(Math.max(8, top),  wh - card.offsetHeight - 8);
+    const phantom = document.createElement('div');
+    phantom.style.cssText = 'position:fixed;left:50%;top:50%;width:1px;height:1px;transform:translate(-50%,-50%);pointer-events:none;';
+    document.body.appendChild(phantom);
 
-    card.style.left = `${left}px`;
-    card.style.top  = `${top}px`;
-  }
+    let i = -1;
+    let currentEl = null;
 
-  // Ждём, пока элемент появится (например, после рендера)
-  function waitForEl(getter, timeout = 1200){
-    return new Promise(resolve=>{
+    function place() {
+      if (!currentEl) return;
+      const r = currentEl.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top  + r.height / 2;
+      const radius = Math.round(Math.hypot(r.width, r.height) / 2) + 14;
+
+      backdrop.style.setProperty('--x', x + 'px');
+      backdrop.style.setProperty('--y', y + 'px');
+      animateSpotlightTo(radius);
+
+      const cw = Math.min(380, Math.max(260, r.width || 320));
+      card.style.width = cw + 'px';
+
+      const below = (r.bottom + 16 + 160 < window.innerHeight);
+      let px = r.left + (r.width - cw) / 2;
+      let py = below ? (r.bottom + 12) : (r.top - (card.offsetHeight || 160) - 12);
+
+      if (currentEl === phantom) {
+        px = (window.innerWidth - cw) / 2;
+        py = window.innerHeight * 0.65 - (card.offsetHeight || 160) / 2;
+      }
+
+      px = Math.max(12, Math.min(px, window.innerWidth  - cw  - 12));
+      py = Math.max(12, Math.min(py, window.innerHeight - (card.offsetHeight || 160) - 12));
+
+      card.style.left = px + 'px';
+      card.style.top  = py + 'px';
+
+      const ax = r.left + r.width / 2 - 6;
+      const arrowX = (currentEl === phantom) ? (px + cw / 2 - 6) : Math.max(px + 12, Math.min(ax, px + cw - 24));
+      const arrowY = (currentEl === phantom) ? (py - 6) : (below ? (py - 6) : (py + card.offsetHeight - 6));
+      arrow.style.left = arrowX + 'px';
+      arrow.style.top  = arrowY + 'px';
+      arrow.style.transform = below ? 'rotate(45deg)' : 'rotate(225deg)';
+    }
+
+    function resolveTarget(step, done) {
+      currentEl = findFirstVisible(step.sels, step.matchText);
+      if (currentEl) { place(); return done(); }
+
       const t0 = performance.now();
-      (function tick(){
-        const el = getter();
-        if (el && isVisible(el)) return resolve(el);
-        if (performance.now() - t0 > timeout) return resolve(null);
-        requestAnimationFrame(tick);
-      })();
-    });
+      const obs = new MutationObserver(() => {
+        currentEl = findFirstVisible(step.sels, step.matchText);
+        if (currentEl || performance.now() - t0 > 6000) {
+          obs.disconnect();
+          if (!currentEl) currentEl = phantom;
+          place(); done();
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true, attributes: true });
+    }
+
+    function finish() {
+      try { localStorage.setItem(doneKey, '1'); } catch {}
+      layer.remove(); phantom.remove();
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place);
+      document.removeEventListener('click', onDocClick, true);
+      log('tour finished');
+    }
+
+    function show(idx) {
+      i = idx;
+      if (i >= steps.length) return finish();
+      const step = steps[i];
+      titleEl.textContent = step.text;
+      layer.classList.add('on');
+      backdrop.style.setProperty('--r', '140vh');
+      resolveTarget(step, () => requestAnimationFrame(() => requestAnimationFrame(place)));
+    }
+
+    function onDocClick(e) {
+      if (e.target.closest('.tour-card') || e.target.closest('.tour-backdrop')) return;
+      const step = steps[i];
+      if (!step || currentEl === phantom) return;
+      const hit = step.sels.some(sel => e.target.closest && e.target.closest(sel));
+      if (hit) show(i + 1);
+    }
+
+    window.addEventListener('resize', place, { passive: true });
+    window.addEventListener('scroll', place, { passive: true });
+    document.addEventListener('click', onDocClick, true);
+
+    layer.addEventListener('click', (e) => {
+      const act = e.target.closest('[data-act]')?.getAttribute('data-act');
+      if (act === 'skip') return finish();
+      if (act === 'next') return show(i + 1);
+    }, { passive: true });
+
+    requestAnimationFrame(() => show(0));
   }
 
-  // ---------- API ----------
-  window.FH_startSpotlightTour = async function startSpotlightTour(opts = {}){
+  // ПУБЛИЧНАЯ функция
+  G.FH_startSpotlightTour = async function startSpotlightTour(opts = {}) {
     const force = !!opts.force;
 
-    if (TOUR_SHOWN_THIS_SESSION && !force) {
-      log('already shown this session → skip');
-      return;
+    if (!force) {
+      // 1) уже показывали в этой вкладке?
+      if (sessionStorage.getItem(sessionKey)) return;
+      // 2) когда-либо уже показывали на этой странице/версии?
+      try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
+      // 3) у пользователя Reduced Motion?
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      // 4) окно не "новое" для онбординга?
+      const okNew = await isNewUserWindow();
+      if (!okNew) return;
     }
 
-    // помечаем показ в этой сессии (до показа — чтобы избежать гонок при быстрых переходах)
+    // Помечаем сразу, чтобы последующие вызовы в этой сессии не запускали тур
     try { sessionStorage.setItem(sessionKey, '1'); } catch {}
 
-    // получаем шаги (ожидается, что в проекте есть stepsConfigForPath или верни пустой массив)
-    const steps = (typeof stepsConfigForPath === 'function' ? stepsConfigForPath() : []) || [];
-    if (!steps.length) { log('no steps'); return; }
-
-    ensureLayer();
-    layer.style.display = 'block';
-
-    let i = 0, disposed = false;
-
-    function finish(){
-      disposed = true;
-      if (layer) layer.style.display = 'none';
-    }
-
-    actionsEl.onclick = (e)=>{
-      const act = e.target?.getAttribute?.('data-act');
-      if (act === 'skip') return finish();
-      if (act === 'next') { i++; show(); }
-    };
-
-    async function show(){
-      if (disposed) return;
-      const step = steps[i];
-      if (!step) return finish();
-
-      // Найдём цель
-      const target = await waitForEl(()=>{
-        if (step.getEl && typeof step.getEl === 'function') return step.getEl();
-        if (step.sel) return findFirstVisible(step.sel, step.textMatch ? new RegExp(step.textMatch,'i') : null);
-        return null;
-      }, step.waitMs || 1200);
-
-      if (!target) { log('miss target', step); i++; return show(); }
-
-      // контент
-      titleEl.textContent = step.title || '';
-      textEl.textContent  = step.text  || '';
-
-      // разместить подсветку и карточку
-      setSpotlightToEl(target, step.radius || 160);
-      // сначала показать, чтобы была известна ширина/высота карточки
-      card.style.opacity = '0';
-      requestAnimationFrame(()=>{
-        positionCardNear(target, step.pos || 'right');
-        card.style.opacity = '1';
+    let steps = stepsConfigForPath();
+    if (!steps.length) {
+      await new Promise((resolve) => {
+        const t0 = performance.now();
+        const obs = new MutationObserver(() => {
+          steps = stepsConfigForPath();
+          if (steps.length || performance.now() - t0 > 6000) { obs.disconnect(); resolve(); }
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
       });
-
-      // авто-next по клику на подсвеченной области (опционально)
-      const once = (ev)=>{ ev.stopPropagation(); i++; show(); };
-      if (step.nextOnTargetClick) target.addEventListener('click', once, { once:true, capture:true });
-
-      // клавиатура: Tab → next, Esc → skip
-      const onKey = (ev)=>{
-        if (ev.key === 'Escape') { finish(); }
-        else if (ev.key === 'Tab' || ev.key === 'Enter') { ev.preventDefault(); i++; show(); }
-      };
-      window.addEventListener('keydown', onKey, { once:true });
-
-      // авто-переход по таймеру (если задан)
-      if (step.autoMs && Number(step.autoMs) > 0) {
-        setTimeout(()=>{ if (!disposed) { i++; show(); } }, step.autoMs);
-      }
+      if (!steps.length) return;
     }
-
-    requestAnimationFrame(()=> show());
+    runTour(steps, pageOnceKey);
   };
 
-  window.FH_debugResetTour = function(){
-    try {
-      // чистим только ключи этой схемы
-      Object.keys(sessionStorage).forEach(k=>{
-        if (k.startsWith('fh:tour:shown:')) sessionStorage.removeItem(k);
-      });
-    } catch {}
-    console.log('[tour] session flags cleared');
+  // Отладка
+  G.FH_debugResetTour = function () {
+    Object.keys(localStorage).forEach(k => { if (k.startsWith('fh:tour:page:')) localStorage.removeItem(k); });
+    sessionStorage.removeItem(sessionKey);
+    sessionStorage.setItem('fh:newUserJustSigned', '1');
+    G.FH_startSpotlightTour({ force: true });
   };
-}
-/* =================== /SPOTLIGHT TOUR =================== */
+
+  // Авто-старт после загрузки (гейтится проверками выше)
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    G.FH_startSpotlightTour?.();
+  } else {
+    document.addEventListener('DOMContentLoaded', () => G.FH_startSpotlightTour?.(), { once: true });
+  }
+})();
+</script>
+   
