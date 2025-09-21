@@ -846,6 +846,12 @@ if (!window.FH_startSpotlightTour || !window.FH_debugResetTour) {
   const TOUR_VERSION = 'v2';
   const pageKey = (location.pathname.toLowerCase().replace(/[^\w]+/g, '_') || 'index_html');
   const pageOnceKey = `fh:tour:page:${pageKey}:${TOUR_VERSION}`;
+const sessionKey = `fh:tour:shown:${pageKey}:${TOUR_VERSION}`;
+if (sessionStorage.getItem(sessionKey)) {
+  if (DEBUG_TOUR) console.log('[tour] уже показывался в этой сессии');
+  return;
+}
+
   const log = (...a)=>{ if (DEBUG_TOUR) console.log('[tour]', ...a); };
 
   function isVisible(el){
@@ -1049,7 +1055,9 @@ if (!window.FH_startSpotlightTour || !window.FH_debugResetTour) {
 
   // === ГЛОБАЛЬНЫЕ функции: доступны в консоли ===
   window.FH_startSpotlightTour = async function startSpotlightTour(opts={}){
-    const force = !!opts.force;
+sessionStorage.setItem(sessionKey, '1');
+
+  const force = !!opts.force;
 
     if (!force){
       try { if (localStorage.getItem(pageOnceKey)) return; } catch {}
