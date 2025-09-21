@@ -838,7 +838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindProfileRsvpViewer();
 });
 
-<!-- ===================== SPOTLIGHT TOUR (глобальный, без дублей) ===================== -->
+//<!-- ===================== SPOTLIGHT TOUR (глобальный, без дублей) ===================== -->
 ;(() => {
   const G = (typeof window !== 'undefined' ? window : globalThis);
   if (G.FH_startSpotlightTour) return; // уже инициализировано
