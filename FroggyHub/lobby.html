@@ -73,7 +73,8 @@
             </div>
 
             <div style="margin:.5rem 0 0">
-              <button id="saveEventBtn" class="btn btn--primary">Сохранить событие</button>
+              <!-- добавлено data-autosave для автосохранения -->
+              <button id="saveEventBtn" class="btn btn--primary" data-autosave="event">Сохранить событие</button>
             </div>
           </div>
 
@@ -111,6 +112,9 @@
       </section>
     </main>
   </div>
+
+  <!-- Глобальная логика (Spotlight-тур, автосейв, и т.п.) -->
+  <script type="module" src="/js/app.js"></script>
 
   <script type="module">
     import { supa } from '/js/api.js';
