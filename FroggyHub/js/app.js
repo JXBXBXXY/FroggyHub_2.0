@@ -839,7 +839,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 <!-- ===================== SPOTLIGHT TOUR (глобальный, без дублей) ===================== -->
-<script>
 ;(() => {
   const G = (typeof window !== 'undefined' ? window : globalThis);
   if (G.FH_startSpotlightTour) return; // уже инициализировано
@@ -1111,5 +1110,4 @@ const sessionKey  = `fh:tour:shown:ALL:${TOUR_VERSION}`;
     document.addEventListener('DOMContentLoaded', () => G.FH_startSpotlightTour?.(), { once: true });
   }
 })();
-</script>
    
