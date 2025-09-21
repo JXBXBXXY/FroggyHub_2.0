@@ -27,29 +27,10 @@
   <link rel="preload" as="image" href="/assets/stump.png" imagesrcset="/assets/stump.png 1x" imagesizes="(max-width:640px) 60vw, 220px">
   <link rel="dns-prefetch" href="//supabase.co">
   <link rel="dns-prefetch" href="//supabase.net">
-
-  <!-- 👇 мини-CSS для «подсказки первого входа» (append-only) -->
-<!--
-<style>
-  .onb-layer{position:fixed;inset:0;z-index:70;display:none}
-  .onb-layer.on{display:block}
-  .onb-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45)}
-  .onb-spot{position:absolute;border-radius:12px;box-shadow:0 0 0 2px rgba(79,226,167,.9),0 0 0 12px rgba(79,226,167,.22)}
-  .onb-card{position:absolute;max-width:min(360px,90vw);background:rgba(10,30,22,.9);border:1px solid rgba(79,226,167,.35);color:#eaffef;border-radius:14px;padding:12px 14px;box-shadow:0 16px 42px rgba(0,0,0,.45);backdrop-filter:saturate(1.2) blur(4px)}
-  .onb-text{font-weight:800}
-  .onb-actions{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
-  .onb-btn{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#eaffef;cursor:pointer}
-  .onb-btn.primary{background:linear-gradient(180deg,#2e7a62,#1f5c49);border-color:#2e7a62}
-  .onb-arrow{position:absolute;width:12px;height:12px;background:rgba(10,30,22,.9);border-left:1px solid rgba(79,226,167,.35);border-top:1px solid rgba(79,226,167,.35);transform:rotate(45deg)}
-  @media (max-width:640px){
-    .onb-card{max-width:min(320px,92vw)}
-  }
-</style>
--->
 </head>
 
 <body class="scene-intro" data-page="index">
-  <!-- фоновые сообщения/«облачка» -->
+  <!-- фоновые сообщения/«облачка» (нужно для /js/app.js) -->
   <div id="fh-message-clouds" class="fh-bubbles" aria-hidden="true"></div>
 
   <div class="fh-content">
@@ -58,6 +39,7 @@
         <a href="/" id="logo" class="logo" data-link="home">FroggyHub</a>
       </div>
       <div class="topbar-right">
+        <!-- id/nav-* остаются, их читает app.js -->
         <button id="nav-menu" class="btn btn-sm btn-ghost" data-link="home" hidden>Меню</button>
         <a id="nav-profile" class="btn btn-sm btn-ghost" href="/profile.html" data-tour="home-profile">Профиль</a>
         <button id="nav-settings" class="btn btn-sm btn-ghost" data-link="settings" data-role="settings">Настройки</button>
@@ -169,7 +151,7 @@
     </div>
   </noscript>
 
-  <!-- слой для онбординга создаётся скриптом; JS ниже -->
+  <!-- нормализация кода приглашения (локально, без зависимостей) -->
   <script>
     (function () {
       const form = document.getElementById('join-form');
@@ -195,7 +177,7 @@
     })();
   </script>
 
-  <!-- модульное приложение -->
+  <!-- модульное приложение (Spotlight-тур, автосейв и т.д.) -->
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>
